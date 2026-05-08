@@ -158,6 +158,22 @@ export default defineConfig<'vite'>(async (merge, _env) => {
               },
             ]
           : []),
+        {
+          name: 'remove-wxss-tilde',
+          closeBundle() {
+            const wxssPath = path.resolve(__dirname, '..', outputRoot, 'app-origin.wxss');
+            if (fs.existsSync(wxssPath)) {
+              let content = fs.readFileSync(wxssPath, 'utf-8');
+              // 移除包含 ~ 的 CSS 规则（微信小程序 WXSS 不支持 ~ 通用兄弟选择器）
+              const before = content.length;
+              content = content.replace(/[^}]*~[^{]*\{[^}]*\}/g, '');
+              if (content.length !== before) {
+                fs.writeFileSync(wxssPath, content);
+                console.log('[remove-wxss-tilde] Removed rules containing ~ selector');
+              }
+            }
+          },
+        },
       ],
     },
     mini: {
