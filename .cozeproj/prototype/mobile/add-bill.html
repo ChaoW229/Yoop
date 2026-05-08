@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1, maximum-scale=1" />
+
+  <script src="https://lf-code-agent.coze.cn/obj/x-ai-cn/cdn/jquery/jquery-3.7.1.min.js"></script>
+  <script src="https://lf-code-agent.coze.cn/obj/x-ai-cn/cdn/lucide/lucide-1.11.0.min.js"></script>
+  <script src="https://lf-code-agent.coze.cn/obj/x-ai-cn/cdn/tailwindcss/tailwindcss-browser-4.2.4.min.js"></script>
+
+  <style type="text/tailwindcss">
+    @theme {
+      --color-primary:              #9AA5B1;
+      --color-primary-container:    #D4D9DE;
+      --color-on-primary:           #FFFFFF;
+      --color-background:                 #F0EDE8;
+      --color-surface-container-lowest:   #FFFFFF;
+      --color-surface:                    #F7F5F2;
+      --color-surface-container:          #EBE8E3;
+      --color-surface-container-high:     #E2DED8;
+      --color-surface-container-highest:  #D8D3CC;
+      --color-on-surface:           #3D3B38;
+      --color-on-surface-variant:   #8A8680;
+      --color-success:  #22c55e;
+      --color-error:    #ef4444;
+      --color-warning:  #f59e0b;
+      --color-outline:          #C4BFB8;
+      --color-outline-variant:  #DDD8D2;
+      --radius-sm:   0.5rem;
+      --radius-md:   0.75rem;
+      --radius-lg:   1rem;
+      --radius-xl:   1.25rem;
+      --radius-2xl:  1.5rem;
+      --radius-full: 9999px;
+      --shadow-card:   0 4px 12px rgba(0,0,0,0.06);
+      --shadow-float:  0 10px 25px rgba(0,0,0,0.08);
+      --shadow-dialog: 0 25px 50px rgba(0,0,0,0.12);
+      --font-sans: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+  </style>
+
+  <style>
+    body { min-height: max(812px, 100dvh); font-family: system-ui, sans-serif; }
+    .category-btn.active { background-color: #9AA5B1 !important; color: #FFFFFF !important; }
+    .payer-btn.active { ring: 2px solid #9AA5B1; }
+  </style>
+
+  <script>
+    document.addEventListener('error', function (e) {
+      const img = e.target;
+      if (img.tagName !== 'IMG' || img.dataset.fallback) return;
+      img.dataset.fallback = '1';
+      const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const cat = img.getAttribute('data-category') || '其他';
+      const alt = img.getAttribute('alt') || '';
+      const label = esc(alt.length > 8 ? alt.slice(0, 8) + '…' : alt);
+      const icons = { '人物': '👤', '自然风景': '🏞', '动物': '🐾', '建筑城市': '🏙', '运动体育': '⚽', '交通工具': '🚗', '食物': '🍽', '服饰时尚': '👗', '商业科技': '💼', '游戏娱乐': '🎮', '艺术': '🎨', '其他': '🖼' };
+      const icon = icons[cat] || '🖼';
+      const w = img.width || 400, h = img.height || 300;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="45%" text-anchor="middle" font-size="${Math.min(w, h) * 0.18}" dominant-baseline="central">${icon}</text><text x="50%" y="68%" text-anchor="middle" font-size="${Math.min(w, h) * 0.07}" fill="%239ca3af" font-family="system-ui,sans-serif" dominant-baseline="central">${label}</text></svg>`;
+      img.src = 'data:image/svg+xml,' + svg;
+    }, true);
+  </script>
+</head>
+
+<body class="bg-background text-on-surface font-sans">
+
+  <!-- 二级页Header -->
+  <header class="bg-background sticky top-0 z-40 h-14 flex items-center justify-between px-4">
+    <button id="btn-back" class="w-10 h-10 flex items-center justify-center text-on-surface-variant rounded-full hover:bg-surface-container active:bg-surface-container-high transition-colors">
+      <i data-lucide="arrow-left" class="w-5 h-5"></i>
+    </button>
+    <h1 class="text-base font-semibold text-on-surface">添加花费</h1>
+    <div class="w-10"></div>
+  </header>
+
+  <main class="flex-1">
+    <!-- @main-content:start -->
+    <div class="px-4 py-4 flex flex-col gap-5 pb-28">
+      <!-- 花费名称 -->
+      <div>
+        <label class="block text-sm font-medium text-on-surface mb-1.5">花费名称</label>
+        <input type="text" placeholder="例如：古城门票" class="w-full bg-surface-container border-none rounded-xl px-4 py-3 text-base text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors" />
+      </div>
+
+      <!-- 类别选择 -->
+      <div>
+        <label class="block text-sm font-medium text-on-surface mb-1.5">类别</label>
+        <div class="flex gap-2 overflow-x-auto py-2" id="category-list">
+          <button class="category-btn active flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium bg-surface-container text-on-surface-variant whitespace-nowrap transition-colors" data-value="交通">
+            <i data-lucide="car" class="w-4 h-4"></i>交通
+          </button>
+          <button class="category-btn flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium bg-surface-container text-on-surface-variant whitespace-nowrap transition-colors" data-value="餐饮">
+            <i data-lucide="utensils" class="w-4 h-4"></i>餐饮
+          </button>
+          <button class="category-btn flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium bg-surface-container text-on-surface-variant whitespace-nowrap transition-colors" data-value="住宿">
+            <i data-lucide="bed" class="w-4 h-4"></i>住宿
+          </button>
+          <button class="category-btn flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium bg-surface-container text-on-surface-variant whitespace-nowrap transition-colors" data-value="纪念品">
+            <i data-lucide="gift" class="w-4 h-4"></i>纪念品
+          </button>
+          <button class="category-btn flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium bg-surface-container text-on-surface-variant whitespace-nowrap transition-colors" data-value="门票">
+            <i data-lucide="ticket" class="w-4 h-4"></i>门票
+          </button>
+          <button class="category-btn flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium bg-surface-container text-on-surface-variant whitespace-nowrap transition-colors" data-value="其他">
+            <i data-lucide="more-horizontal" class="w-4 h-4"></i>其他
+          </button>
+        </div>
+        <input type="text" id="custom-category" placeholder="输入自定义类别" class="w-full bg-surface-container border-none rounded-xl px-4 py-3 text-base text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors mt-2 hidden" />
+      </div>
+
+      <!-- 交易时间 -->
+      <div>
+        <label class="block text-sm font-medium text-on-surface mb-1.5">时间</label>
+        <input type="text" value="2024-03-16" class="w-full bg-surface-container border-none rounded-xl px-4 py-3 text-base text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors" />
+      </div>
+
+      <!-- 支出金额 -->
+      <div>
+        <label class="block text-sm font-medium text-on-surface mb-1.5">金额</label>
+        <div class="flex items-center bg-surface-container rounded-xl px-4 py-3">
+          <span class="text-base text-on-surface-variant mr-2">¥</span>
+          <input type="text" placeholder="0.00" class="flex-1 bg-transparent border-none text-base text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none" />
+        </div>
+      </div>
+
+      <!-- 支出人 -->
+      <div>
+        <label class="block text-sm font-medium text-on-surface mb-1.5">谁付的钱</label>
+        <div class="flex gap-3" id="payer-list">
+          <button class="payer-btn flex flex-col items-center gap-1.5 p-3 rounded-xl bg-surface-container transition-colors" data-payer="小明">
+            <div class="w-10 h-10 rounded-full bg-primary/15 text-primary flex items-center justify-center text-sm font-bold">明</div>
+            <span class="text-xs text-on-surface-variant">小明</span>
+          </button>
+          <button class="payer-btn flex flex-col items-center gap-1.5 p-3 rounded-xl bg-surface-container transition-colors" data-payer="小红">
+            <div class="w-10 h-10 rounded-full bg-primary/15 text-primary flex items-center justify-center text-sm font-bold">红</div>
+            <span class="text-xs text-on-surface-variant">小红</span>
+          </button>
+          <button class="payer-btn active flex flex-col items-center gap-1.5 p-3 rounded-xl bg-surface-container transition-colors ring-2 ring-primary" data-payer="自己">
+            <div class="w-10 h-10 rounded-full bg-primary/15 text-primary flex items-center justify-center text-sm font-bold">自</div>
+            <span class="text-xs text-on-surface-variant">自己</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 参与人 -->
+      <div id="split-section">
+        <label class="block text-sm font-medium text-on-surface mb-1.5">参与分摊</label>
+        <div class="flex gap-3">
+          <label class="flex items-center gap-2 bg-surface-container rounded-xl px-4 py-3 cursor-pointer">
+            <input type="checkbox" checked class="w-4 h-4 accent-primary" />
+            <span class="text-sm text-on-surface">小明</span>
+          </label>
+          <label class="flex items-center gap-2 bg-surface-container rounded-xl px-4 py-3 cursor-pointer">
+            <input type="checkbox" checked class="w-4 h-4 accent-primary" />
+            <span class="text-sm text-on-surface">小红</span>
+          </label>
+          <label class="flex items-center gap-2 bg-surface-container rounded-xl px-4 py-3 cursor-pointer">
+            <input type="checkbox" checked class="w-4 h-4 accent-primary" />
+            <span class="text-sm text-on-surface">自己</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- 请客开关 -->
+      <div class="flex items-center justify-between bg-surface rounded-xl shadow-card px-4 py-4">
+        <div>
+          <p class="text-sm font-medium text-on-surface">标记为请客</p>
+          <p class="text-xs text-on-surface-variant mt-0.5">此项不纳入分账计算</p>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" id="treat-toggle" class="sr-only peer" />
+          <div class="w-11 h-6 bg-surface-container rounded-full peer peer-checked:bg-primary transition-colors"></div>
+          <div class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
+        </label>
+      </div>
+    </div>
+    <!-- @main-content:end -->
+  </main>
+
+  <!-- 底部保存按钮 -->
+  <div class="fixed bottom-0 left-0 right-0 z-40 bg-surface border-t border-outline-variant/20 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+    <button id="btn-save" class="w-full bg-primary text-on-primary py-3.5 rounded-xl text-base font-semibold hover:opacity-90 active:scale-[0.98] transition-all">
+      保存
+    </button>
+  </div>
+
+  <script>
+    function navPush(route) {
+      console.log(`[原型演示] PUSH 到: ${route}`);
+      window.location.href = route;
+    }
+    function navReplace(route) {
+      console.log(`[原型演示] REPLACE 为: ${route}`);
+      window.location.replace(route);
+    }
+    function navReset(route) {
+      console.log(`[原型演示] RESET 到: ${route}`);
+      window.location.href = route;
+    }
+    function navBack() {
+      console.log(`[原型演示] BACK 返回上一页`);
+      if(window.history.length > 1) window.history.back();
+    }
+
+    $(function() {
+      $('#btn-back').on('click', function() { navBack(); });
+
+      // 类别选择
+      $('.category-btn').on('click', function() {
+        $('.category-btn').removeClass('active');
+        $(this).addClass('active');
+        if ($(this).data('value') === '其他') {
+          $('#custom-category').removeClass('hidden');
+        } else {
+          $('#custom-category').addClass('hidden');
+        }
+      });
+
+      // 支出人选择
+      $('.payer-btn').on('click', function() {
+        $('.payer-btn').removeClass('active ring-2 ring-primary');
+        $(this).addClass('active ring-2 ring-primary');
+      });
+
+      // 请客开关
+      $('#treat-toggle').on('change', function() {
+        if ($(this).is(':checked')) {
+          $('#split-section').addClass('opacity-40 pointer-events-none');
+        } else {
+          $('#split-section').removeClass('opacity-40 pointer-events-none');
+        }
+      });
+
+      $('#btn-save').on('click', function() {
+        console.log('保存账单');
+      });
+    });
+  </script>
+  <script>lucide.createIcons();</script>
+</body>
+
+</html>

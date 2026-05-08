@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1, maximum-scale=1" />
+
+  <script src="https://lf-code-agent.coze.cn/obj/x-ai-cn/cdn/jquery/jquery-3.7.1.min.js"></script>
+  <script src="https://lf-code-agent.coze.cn/obj/x-ai-cn/cdn/lucide/lucide-1.11.0.min.js"></script>
+  <script src="https://lf-code-agent.coze.cn/obj/x-ai-cn/cdn/tailwindcss/tailwindcss-browser-4.2.4.min.js"></script>
+
+  <style type="text/tailwindcss">
+    @theme {
+      --color-primary:              #9AA5B1;
+      --color-primary-container:    #D4D9DE;
+      --color-on-primary:           #FFFFFF;
+      --color-background:                 #F0EDE8;
+      --color-surface-container-lowest:   #FFFFFF;
+      --color-surface:                    #F7F5F2;
+      --color-surface-container:          #EBE8E3;
+      --color-surface-container-high:     #E2DED8;
+      --color-surface-container-highest:  #D8D3CC;
+      --color-on-surface:           #3D3B38;
+      --color-on-surface-variant:   #8A8680;
+      --color-success:  #22c55e;
+      --color-error:    #ef4444;
+      --color-warning:  #f59e0b;
+      --color-outline:          #C4BFB8;
+      --color-outline-variant:  #DDD8D2;
+      --radius-sm:   0.5rem;
+      --radius-md:   0.75rem;
+      --radius-lg:   1rem;
+      --radius-xl:   1.25rem;
+      --radius-2xl:  1.5rem;
+      --radius-full: 9999px;
+      --shadow-card:   0 4px 12px rgba(0,0,0,0.06);
+      --shadow-float:  0 10px 25px rgba(0,0,0,0.08);
+      --shadow-dialog: 0 25px 50px rgba(0,0,0,0.12);
+      --font-sans: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+  </style>
+
+  <style>
+    body { min-height: max(812px, 100dvh); font-family: system-ui, sans-serif; }
+  </style>
+
+  <script>
+    document.addEventListener('error', function (e) {
+      const img = e.target;
+      if (img.tagName !== 'IMG' || img.dataset.fallback) return;
+      img.dataset.fallback = '1';
+      const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const cat = img.getAttribute('data-category') || '其他';
+      const alt = img.getAttribute('alt') || '';
+      const label = esc(alt.length > 8 ? alt.slice(0, 8) + '…' : alt);
+      const icons = { '人物': '👤', '自然风景': '🏞', '动物': '🐾', '建筑城市': '🏙', '运动体育': '⚽', '交通工具': '🚗', '食物': '🍽', '服饰时尚': '👗', '商业科技': '💼', '游戏娱乐': '🎮', '艺术': '🎨', '其他': '🖼' };
+      const icon = icons[cat] || '🖼';
+      const w = img.width || 400, h = img.height || 300;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="45%" text-anchor="middle" font-size="${Math.min(w, h) * 0.18}" dominant-baseline="central">${icon}</text><text x="50%" y="68%" text-anchor="middle" font-size="${Math.min(w, h) * 0.07}" fill="%239ca3af" font-family="system-ui,sans-serif" dominant-baseline="central">${label}</text></svg>`;
+      img.src = 'data:image/svg+xml,' + svg;
+    }, true);
+  </script>
+</head>
+
+<body class="bg-background text-on-surface font-sans">
+
+  <!-- 二级页Header -->
+  <header class="bg-background sticky top-0 z-40 h-14 flex items-center justify-between px-4">
+    <button id="btn-back" class="w-10 h-10 flex items-center justify-center text-on-surface-variant rounded-full hover:bg-surface-container active:bg-surface-container-high transition-colors">
+      <i data-lucide="arrow-left" class="w-5 h-5"></i>
+    </button>
+    <h1 class="text-base font-semibold text-on-surface">个人信息</h1>
+    <div class="w-10"></div>
+  </header>
+
+  <main class="flex-1">
+    <!-- @main-content:start -->
+    <!-- 用户信息卡片 -->
+    <div class="mx-4 mt-4 bg-surface rounded-2xl shadow-card p-6 flex flex-col items-center">
+      <div class="w-20 h-20 rounded-full bg-primary/15 text-primary flex items-center justify-center text-2xl font-bold">
+        初
+      </div>
+      <p class="text-lg font-semibold mt-3">小初</p>
+      <p class="text-sm text-on-surface-variant mt-1">wechat_12345678</p>
+    </div>
+
+    <!-- 功能列表 -->
+    <div class="mx-4 mt-6 bg-surface rounded-2xl shadow-card overflow-hidden">
+      <div class="flex items-center px-4 py-3.5 border-b border-outline-variant/10 cursor-pointer hover:bg-surface-container transition-colors">
+        <i data-lucide="user-cog" class="w-5 h-5 text-on-surface-variant mr-3"></i>
+        <span class="flex-1 text-sm text-on-surface">编辑资料</span>
+        <i data-lucide="chevron-right" class="w-4 h-4 text-on-surface-variant/50"></i>
+      </div>
+      <div class="flex items-center px-4 py-3.5 border-b border-outline-variant/10 cursor-pointer hover:bg-surface-container transition-colors">
+        <i data-lucide="map" class="w-5 h-5 text-on-surface-variant mr-3"></i>
+        <span class="flex-1 text-sm text-on-surface">我的旅行项目</span>
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-primary/15 text-primary mr-2">4</span>
+        <i data-lucide="chevron-right" class="w-4 h-4 text-on-surface-variant/50"></i>
+      </div>
+      <div class="flex items-center px-4 py-3.5 border-b border-outline-variant/10 cursor-pointer hover:bg-surface-container transition-colors">
+        <i data-lucide="wallet" class="w-5 h-5 text-on-surface-variant mr-3"></i>
+        <span class="flex-1 text-sm text-on-surface">分账记录</span>
+        <i data-lucide="chevron-right" class="w-4 h-4 text-on-surface-variant/50"></i>
+      </div>
+      <div class="flex items-center px-4 py-3.5 cursor-pointer hover:bg-surface-container transition-colors">
+        <i data-lucide="settings" class="w-5 h-5 text-on-surface-variant mr-3"></i>
+        <span class="flex-1 text-sm text-on-surface">设置</span>
+        <i data-lucide="chevron-right" class="w-4 h-4 text-on-surface-variant/50"></i>
+      </div>
+    </div>
+
+    <!-- 退出登录 -->
+    <div class="px-4 mt-8 pb-8">
+      <button id="btn-logout" class="w-full py-3.5 rounded-xl bg-surface-container text-error font-semibold hover:bg-surface-container-high transition-colors">
+        退出登录
+      </button>
+    </div>
+    <!-- @main-content:end -->
+  </main>
+
+  <!-- 退出确认弹窗 -->
+  <div id="logout-dialog" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center px-6">
+    <div class="bg-surface rounded-2xl w-full max-w-sm p-6 shadow-dialog">
+      <h3 class="text-lg font-semibold text-on-surface text-center">确认退出登录？</h3>
+      <p class="text-sm text-on-surface-variant text-center mt-2">退出后将无法查看个人数据和旅行项目</p>
+      <div class="flex gap-3 mt-6">
+        <button id="btn-cancel-logout" class="flex-1 py-3 rounded-xl bg-surface-container text-on-surface font-semibold text-sm">取消</button>
+        <button id="btn-confirm-logout" class="flex-1 py-3 rounded-xl bg-error text-white font-semibold text-sm">确认退出</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function navPush(route) {
+      console.log(`[原型演示] PUSH 到: ${route}`);
+      window.location.href = route;
+    }
+    function navReplace(route) {
+      console.log(`[原型演示] REPLACE 为: ${route}`);
+      window.location.replace(route);
+    }
+    function navReset(route) {
+      console.log(`[原型演示] RESET 到: ${route}`);
+      window.location.href = route;
+    }
+    function navBack() {
+      console.log(`[原型演示] BACK 返回上一页`);
+      if(window.history.length > 1) window.history.back();
+    }
+
+    $(function() {
+      $('#btn-back').on('click', function() { navBack(); });
+
+      $('#btn-logout').on('click', function() {
+        $('#logout-dialog').css('display', 'flex');
+      });
+
+      $('#btn-cancel-logout').on('click', function() {
+        $('#logout-dialog').hide();
+      });
+
+      $('#btn-confirm-logout').on('click', function() {
+        console.log('确认退出登录');
+        $('#logout-dialog').hide();
+      });
+    });
+  </script>
+  <script>lucide.createIcons();</script>
+</body>
+
+</html>

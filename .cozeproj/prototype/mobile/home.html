@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1, maximum-scale=1" />
+
+  <script src="https://lf-code-agent.coze.cn/obj/x-ai-cn/cdn/jquery/jquery-3.7.1.min.js"></script>
+  <script src="https://lf-code-agent.coze.cn/obj/x-ai-cn/cdn/lucide/lucide-1.11.0.min.js"></script>
+  <script src="https://lf-code-agent.coze.cn/obj/x-ai-cn/cdn/tailwindcss/tailwindcss-browser-4.2.4.min.js"></script>
+
+  <style type="text/tailwindcss">
+    @theme {
+      --color-primary:              #9AA5B1;
+      --color-primary-container:    #D4D9DE;
+      --color-on-primary:           #FFFFFF;
+      --color-background:                 #F0EDE8;
+      --color-surface-container-lowest:   #FFFFFF;
+      --color-surface:                    #F7F5F2;
+      --color-surface-container:          #EBE8E3;
+      --color-surface-container-high:     #E2DED8;
+      --color-surface-container-highest:  #D8D3CC;
+      --color-on-surface:           #3D3B38;
+      --color-on-surface-variant:   #8A8680;
+      --color-success:  #22c55e;
+      --color-error:    #ef4444;
+      --color-warning:  #f59e0b;
+      --color-outline:          #C4BFB8;
+      --color-outline-variant:  #DDD8D2;
+      --radius-sm:   0.5rem;
+      --radius-md:   0.75rem;
+      --radius-lg:   1rem;
+      --radius-xl:   1.25rem;
+      --radius-2xl:  1.5rem;
+      --radius-full: 9999px;
+      --shadow-card:   0 4px 12px rgba(0,0,0,0.06);
+      --shadow-float:  0 10px 25px rgba(0,0,0,0.08);
+      --shadow-dialog: 0 25px 50px rgba(0,0,0,0.12);
+      --font-sans: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+  </style>
+
+  <style>
+    body { min-height: max(812px, 100dvh); font-family: system-ui, sans-serif; }
+  </style>
+
+  <script>
+    document.addEventListener('error', function (e) {
+      const img = e.target;
+      if (img.tagName !== 'IMG' || img.dataset.fallback) return;
+      img.dataset.fallback = '1';
+      const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const cat = img.getAttribute('data-category') || '其他';
+      const alt = img.getAttribute('alt') || '';
+      const label = esc(alt.length > 8 ? alt.slice(0, 8) + '…' : alt);
+      const icons = { '人物': '👤', '自然风景': '🏞', '动物': '🐾', '建筑城市': '🏙', '运动体育': '⚽', '交通工具': '🚗', '食物': '🍽', '服饰时尚': '👗', '商业科技': '💼', '游戏娱乐': '🎮', '艺术': '🎨', '其他': '🖼' };
+      const icon = icons[cat] || '🖼';
+      const w = img.width || 400, h = img.height || 300;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="45%" text-anchor="middle" font-size="${Math.min(w, h) * 0.18}" dominant-baseline="central">${icon}</text><text x="50%" y="68%" text-anchor="middle" font-size="${Math.min(w, h) * 0.07}" fill="%239ca3af" font-family="system-ui,sans-serif" dominant-baseline="central">${label}</text></svg>`;
+      img.src = 'data:image/svg+xml,' + svg;
+    }, true);
+  </script>
+</head>
+
+<body class="bg-background text-on-surface font-sans">
+
+  <!-- 一级页Header -->
+  <header class="bg-background sticky top-0 z-40 h-14 flex items-center justify-between px-4">
+    <button id="nav-stats" class="w-10 h-10 flex items-center justify-center text-on-surface-variant rounded-full hover:bg-surface-container active:bg-surface-container-high transition-colors">
+      <i data-lucide="pie-chart" class="w-5 h-5"></i>
+    </button>
+    <h1 class="text-base font-semibold text-on-surface">Yoop</h1>
+    <button id="nav-profile" class="w-10 h-10 flex items-center justify-center text-on-surface-variant rounded-full hover:bg-surface-container active:bg-surface-container-high transition-colors">
+      <i data-lucide="user" class="w-5 h-5"></i>
+    </button>
+  </header>
+
+  <main class="flex-1">
+    <!-- @main-content:start -->
+    <!-- 搜索栏 -->
+    <div class="px-4 mb-5">
+      <div class="flex items-center gap-3 bg-surface-container rounded-full px-4 py-2.5">
+        <i data-lucide="search" class="w-4 h-4 text-on-surface-variant/60"></i>
+        <input type="text" placeholder="搜索旅行项目" class="flex-1 bg-transparent border-none text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none" />
+      </div>
+    </div>
+
+    <!-- 项目列表 -->
+    <div class="px-4 flex flex-col gap-4 pb-8">
+      <!-- 卡片1 -->
+      <div class="card-project bg-surface rounded-2xl shadow-card overflow-hidden" data-id="1">
+        <div class="flex">
+          <div class="w-[35%] shrink-0">
+            <img src="https://images.unsplash.com/photo-1527684651001-731c474bbb5a?w=400&h=400&fit=crop" alt="丽江古城风景" data-category="自然风景" class="w-full h-full object-cover min-h-[130px]" />
+          </div>
+          <div class="flex-1 p-4 flex flex-col justify-between">
+            <div>
+              <h3 class="text-base font-semibold text-on-surface">丽江三日游</h3>
+              <p class="text-xs text-on-surface-variant mt-1">2024.03.15 - 2024.03.17</p>
+            </div>
+            <div class="flex items-center justify-between mt-3">
+              <div class="flex -space-x-2">
+                <div class="w-6 h-6 rounded-full bg-primary/15 text-primary flex items-center justify-center text-[10px] font-bold border-2 border-surface">小</div>
+                <div class="w-6 h-6 rounded-full bg-primary/15 text-primary flex items-center justify-center text-[10px] font-bold border-2 border-surface">明</div>
+                <div class="w-6 h-6 rounded-full bg-primary/15 text-primary flex items-center justify-center text-[10px] font-bold border-2 border-surface">红</div>
+              </div>
+              <span class="text-lg font-bold text-primary">¥3,680</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 卡片2 -->
+      <div class="card-project bg-surface rounded-2xl shadow-card overflow-hidden" data-id="2">
+        <div class="flex">
+          <div class="w-[35%] shrink-0">
+            <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&h=400&fit=crop" alt="青岛海滨风景" data-category="自然风景" class="w-full h-full object-cover min-h-[130px]" />
+          </div>
+          <div class="flex-1 p-4 flex flex-col justify-between">
+            <div>
+              <h3 class="text-base font-semibold text-on-surface">青岛海滨之旅</h3>
+              <p class="text-xs text-on-surface-variant mt-1">2024.05.01 - 2024.05.03</p>
+            </div>
+            <div class="flex items-center justify-between mt-3">
+              <div class="flex -space-x-2">
+                <div class="w-6 h-6 rounded-full bg-primary/15 text-primary flex items-center justify-center text-[10px] font-bold border-2 border-surface">小</div>
+                <div class="w-6 h-6 rounded-full bg-primary/15 text-primary flex items-center justify-center text-[10px] font-bold border-2 border-surface">明</div>
+              </div>
+              <span class="text-lg font-bold text-primary">¥5,240</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 卡片3 -->
+      <div class="card-project bg-surface rounded-2xl shadow-card overflow-hidden" data-id="3">
+        <div class="flex">
+          <div class="w-[35%] shrink-0">
+            <img src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=400&fit=crop" alt="成都美食" data-category="食物" class="w-full h-full object-cover min-h-[130px]" />
+          </div>
+          <div class="flex-1 p-4 flex flex-col justify-between">
+            <div>
+              <h3 class="text-base font-semibold text-on-surface">成都美食行</h3>
+              <p class="text-xs text-on-surface-variant mt-1">2024.06.10 - 2024.06.12</p>
+            </div>
+            <div class="flex items-center justify-between mt-3">
+              <div class="flex -space-x-2">
+                <div class="w-6 h-6 rounded-full bg-primary/15 text-primary flex items-center justify-center text-[10px] font-bold border-2 border-surface">小</div>
+                <div class="w-6 h-6 rounded-full bg-primary/15 text-primary flex items-center justify-center text-[10px] font-bold border-2 border-surface">红</div>
+                <div class="w-6 h-6 rounded-full bg-primary/15 text-primary flex items-center justify-center text-[10px] font-bold border-2 border-surface">华</div>
+              </div>
+              <span class="text-lg font-bold text-primary">¥2,850</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 卡片4 -->
+      <div class="card-project bg-surface rounded-2xl shadow-card overflow-hidden" data-id="4">
+        <div class="flex">
+          <div class="w-[35%] shrink-0">
+            <img src="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400&h=400&fit=crop" alt="大理苍山风景" data-category="自然风景" class="w-full h-full object-cover min-h-[130px]" />
+          </div>
+          <div class="flex-1 p-4 flex flex-col justify-between">
+            <div>
+              <h3 class="text-base font-semibold text-on-surface">大理慢生活</h3>
+              <p class="text-xs text-on-surface-variant mt-1">2024.07.20 - 2024.07.23</p>
+            </div>
+            <div class="flex items-center justify-between mt-3">
+              <div class="flex -space-x-2">
+                <div class="w-6 h-6 rounded-full bg-primary/15 text-primary flex items-center justify-center text-[10px] font-bold border-2 border-surface">小</div>
+                <div class="w-6 h-6 rounded-full bg-primary/15 text-primary flex items-center justify-center text-[10px] font-bold border-2 border-surface">明</div>
+                <div class="w-6 h-6 rounded-full bg-primary/15 text-primary flex items-center justify-center text-[10px] font-bold border-2 border-surface">红</div>
+                <div class="w-6 h-6 rounded-full bg-primary/15 text-primary flex items-center justify-center text-[10px] font-bold border-2 border-surface">华</div>
+              </div>
+              <span class="text-lg font-bold text-primary">¥4,120</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- @main-content:end -->
+  </main>
+
+  <script>
+    function navPush(route) {
+      console.log(`[原型演示] PUSH 到: ${route}`);
+      window.location.href = route;
+    }
+    function navReplace(route) {
+      console.log(`[原型演示] REPLACE 为: ${route}`);
+      window.location.replace(route);
+    }
+    function navReset(route) {
+      console.log(`[原型演示] RESET 到: ${route}`);
+      window.location.href = route;
+    }
+    function navBack() {
+      console.log(`[原型演示] BACK 返回上一页`);
+      if(window.history.length > 1) window.history.back();
+    }
+    function navPush(route) {
+      console.log(`[原型演示] PUSH 到: ${route}`);
+      window.location.href = route;
+    }
+    function navBack() {
+      console.log(`[原型演示] BACK 返回上一页`);
+      if(window.history.length > 1) window.history.back();
+    }
+
+    $(function() {
+      $('#nav-stats').on('click', function() {
+        navPush('stats.html');
+      });
+      $('#nav-profile').on('click', function() {
+        navPush('profile.html');
+      });
+      $('.card-project').on('click', function() {
+        const id = $(this).data('id');
+        navPush(`project.html?id=${id}`);
+      });
+    });
+  </script>
+  <script>lucide.createIcons();</script>
+</body>
+
+</html>

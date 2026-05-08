@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1, maximum-scale=1" />
+
+  <script src="https://lf-code-agent.coze.cn/obj/x-ai-cn/cdn/jquery/jquery-3.7.1.min.js"></script>
+  <script src="https://lf-code-agent.coze.cn/obj/x-ai-cn/cdn/lucide/lucide-1.11.0.min.js"></script>
+  <script src="https://lf-code-agent.coze.cn/obj/x-ai-cn/cdn/tailwindcss/tailwindcss-browser-4.2.4.min.js"></script>
+
+  <style type="text/tailwindcss">
+    @theme {
+      --color-primary:              #9AA5B1;
+      --color-primary-container:    #D4D9DE;
+      --color-on-primary:           #FFFFFF;
+      --color-background:                 #F0EDE8;
+      --color-surface-container-lowest:   #FFFFFF;
+      --color-surface:                    #F7F5F2;
+      --color-surface-container:          #EBE8E3;
+      --color-surface-container-high:     #E2DED8;
+      --color-surface-container-highest:  #D8D3CC;
+      --color-on-surface:           #3D3B38;
+      --color-on-surface-variant:   #8A8680;
+      --color-success:  #22c55e;
+      --color-error:    #ef4444;
+      --color-warning:  #f59e0b;
+      --color-outline:          #C4BFB8;
+      --color-outline-variant:  #DDD8D2;
+      --radius-sm:   0.5rem;
+      --radius-md:   0.75rem;
+      --radius-lg:   1rem;
+      --radius-xl:   1.25rem;
+      --radius-2xl:  1.5rem;
+      --radius-full: 9999px;
+      --shadow-card:   0 4px 12px rgba(0,0,0,0.06);
+      --shadow-float:  0 10px 25px rgba(0,0,0,0.08);
+      --shadow-dialog: 0 25px 50px rgba(0,0,0,0.12);
+      --font-sans: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+  </style>
+
+  <style>
+    body { min-height: max(812px, 100dvh); font-family: system-ui, sans-serif; }
+  </style>
+
+  <script>
+    document.addEventListener('error', function (e) {
+      const img = e.target;
+      if (img.tagName !== 'IMG' || img.dataset.fallback) return;
+      img.dataset.fallback = '1';
+      const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const cat = img.getAttribute('data-category') || '其他';
+      const alt = img.getAttribute('alt') || '';
+      const label = esc(alt.length > 8 ? alt.slice(0, 8) + '…' : alt);
+      const icons = { '人物': '👤', '自然风景': '🏞', '动物': '🐾', '建筑城市': '🏙', '运动体育': '⚽', '交通工具': '🚗', '食物': '🍽', '服饰时尚': '👗', '商业科技': '💼', '游戏娱乐': '🎮', '艺术': '🎨', '其他': '🖼' };
+      const icon = icons[cat] || '🖼';
+      const w = img.width || 400, h = img.height || 300;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="45%" text-anchor="middle" font-size="${Math.min(w, h) * 0.18}" dominant-baseline="central">${icon}</text><text x="50%" y="68%" text-anchor="middle" font-size="${Math.min(w, h) * 0.07}" fill="%239ca3af" font-family="system-ui,sans-serif" dominant-baseline="central">${label}</text></svg>`;
+      img.src = 'data:image/svg+xml,' + svg;
+    }, true);
+  </script>
+</head>
+
+<body class="bg-background text-on-surface font-sans">
+
+  <!-- 二级页Header -->
+  <header class="bg-background sticky top-0 z-40 h-14 flex items-center justify-between px-4">
+    <button id="btn-back" class="w-10 h-10 flex items-center justify-center text-on-surface-variant rounded-full hover:bg-surface-container active:bg-surface-container-high transition-colors">
+      <i data-lucide="arrow-left" class="w-5 h-5"></i>
+    </button>
+    <h1 class="text-base font-semibold text-on-surface">丽江三日游</h1>
+    <button id="btn-edit" class="w-10 h-10 flex items-center justify-center text-on-surface-variant rounded-full hover:bg-surface-container active:bg-surface-container-high transition-colors">
+      <i data-lucide="pencil" class="w-5 h-5"></i>
+    </button>
+  </header>
+
+  <main class="flex-1">
+    <!-- @main-content:start -->
+    <!-- 项目信息卡片 -->
+    <div class="mx-4 bg-surface rounded-2xl shadow-card p-5">
+      <h2 class="text-lg font-semibold text-on-surface">丽江三日游</h2>
+      <div class="flex items-center gap-2 mt-2 text-sm text-on-surface-variant">
+        <i data-lucide="calendar" class="w-4 h-4"></i>
+        <span>2024.03.15 - 2024.03.17</span>
+      </div>
+      <div class="mt-4 pt-4 border-t border-outline-variant/10 flex items-center justify-between">
+        <div class="flex -space-x-2">
+          <div class="w-8 h-8 rounded-full bg-primary/15 text-primary flex items-center justify-center text-xs font-bold border-2 border-surface">小</div>
+          <div class="w-8 h-8 rounded-full bg-primary/15 text-primary flex items-center justify-center text-xs font-bold border-2 border-surface">明</div>
+          <div class="w-8 h-8 rounded-full bg-primary/15 text-primary flex items-center justify-center text-xs font-bold border-2 border-surface">红</div>
+        </div>
+        <button id="btn-total" class="text-right">
+          <p class="text-xs text-on-surface-variant">总金额</p>
+          <p class="text-2xl font-bold text-primary">¥3,680</p>
+        </button>
+      </div>
+    </div>
+
+    <!-- 快捷操作 -->
+    <div class="flex gap-3 px-4 mt-4">
+      <button id="btn-add-bill" class="flex-1 bg-primary text-on-primary rounded-xl py-3 flex items-center justify-center gap-2 font-semibold text-sm hover:opacity-90 active:scale-[0.98] transition-all">
+        <i data-lucide="plus" class="w-4 h-4"></i>添加花费
+      </button>
+      <button class="flex-1 bg-surface-container text-on-surface rounded-xl py-3 flex items-center justify-center gap-2 font-semibold text-sm hover:bg-surface-container-high active:scale-[0.98] transition-all">
+        <i data-lucide="calculator" class="w-4 h-4"></i>分账结算
+      </button>
+    </div>
+
+    <!-- 账单列表 -->
+    <div class="px-4 mt-6 pb-8">
+      <h3 class="text-base font-semibold text-on-surface mb-3">账单明细</h3>
+
+      <!-- 03月15日 -->
+      <div class="mb-4">
+        <p class="text-xs text-on-surface-variant font-medium mb-2">03月15日</p>
+        <div class="bg-surface rounded-xl shadow-card overflow-hidden">
+          <div class="flex items-center justify-between px-4 py-3 border-b border-outline-variant/10">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-full bg-primary/15 flex items-center justify-center">
+                <i data-lucide="plane" class="w-4 h-4 text-primary"></i>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-on-surface">机票</p>
+                <p class="text-xs text-on-surface-variant">交通 · 小明</p>
+              </div>
+            </div>
+            <span class="text-sm font-semibold text-on-surface">¥680</span>
+          </div>
+          <div class="flex items-center justify-between px-4 py-3">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-full flex items-center justify-center" style="background:rgba(184,196,168,0.2)">
+                <i data-lucide="bed" class="w-4 h-4" style="color:#B8C4A8"></i>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-on-surface">客栈入住</p>
+                <p class="text-xs text-on-surface-variant">住宿 · 小红</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-primary/15 text-primary">请客</span>
+              <span class="text-sm font-semibold text-primary">¥520</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 03月16日 -->
+      <div class="mb-4">
+        <p class="text-xs text-on-surface-variant font-medium mb-2">03月16日</p>
+        <div class="bg-surface rounded-xl shadow-card overflow-hidden">
+          <div class="flex items-center justify-between px-4 py-3 border-b border-outline-variant/10">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-full flex items-center justify-center" style="background:rgba(212,196,184,0.2)">
+                <i data-lucide="ticket" class="w-4 h-4" style="color:#D4C4B8"></i>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-on-surface">古城门票</p>
+                <p class="text-xs text-on-surface-variant">其他 · 小明</p>
+              </div>
+            </div>
+            <span class="text-sm font-semibold text-on-surface">¥160</span>
+          </div>
+          <div class="flex items-center justify-between px-4 py-3 border-b border-outline-variant/10">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-full flex items-center justify-center" style="background:rgba(196,184,168,0.2)">
+                <i data-lucide="utensils" class="w-4 h-4" style="color:#C4B8A8"></i>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-on-surface">腊排骨火锅</p>
+                <p class="text-xs text-on-surface-variant">餐饮 · 小红</p>
+              </div>
+            </div>
+            <span class="text-sm font-semibold text-on-surface">¥320</span>
+          </div>
+          <div class="flex items-center justify-between px-4 py-3">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-full bg-primary/15 flex items-center justify-center">
+                <i data-lucide="car" class="w-4 h-4 text-primary"></i>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-on-surface">包车环洱海</p>
+                <p class="text-xs text-on-surface-variant">交通 · 小明</p>
+              </div>
+            </div>
+            <span class="text-sm font-semibold text-on-surface">¥420</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 03月17日 -->
+      <div class="mb-4">
+        <p class="text-xs text-on-surface-variant font-medium mb-2">03月17日</p>
+        <div class="bg-surface rounded-xl shadow-card overflow-hidden">
+          <div class="flex items-center justify-between px-4 py-3 border-b border-outline-variant/10">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-full bg-primary/15 flex items-center justify-center">
+                <i data-lucide="bus" class="w-4 h-4 text-primary"></i>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-on-surface">机场大巴</p>
+                <p class="text-xs text-on-surface-variant">交通 · 小红</p>
+              </div>
+            </div>
+            <span class="text-sm font-semibold text-on-surface">¥120</span>
+          </div>
+          <div class="flex items-center justify-between px-4 py-3">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-full flex items-center justify-center" style="background:rgba(212,196,184,0.2)">
+                <i data-lucide="gift" class="w-4 h-4" style="color:#D4C4B8"></i>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-on-surface">纪念品</p>
+                <p class="text-xs text-on-surface-variant">其他 · 小明</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-primary/15 text-primary">请客</span>
+              <span class="text-sm font-semibold text-primary">¥256</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- @main-content:end -->
+  </main>
+
+  <script>
+    function navPush(route) {
+      console.log(`[原型演示] PUSH 到: ${route}`);
+      window.location.href = route;
+    }
+    function navReplace(route) {
+      console.log(`[原型演示] REPLACE 为: ${route}`);
+      window.location.replace(route);
+    }
+    function navReset(route) {
+      console.log(`[原型演示] RESET 到: ${route}`);
+      window.location.href = route;
+    }
+    function navPush(route) {
+      console.log(`[原型演示] PUSH 到: ${route}`);
+      window.location.href = route;
+    }
+    function navBack() {
+      console.log(`[原型演示] BACK 返回上一页`);
+      if(window.history.length > 1) window.history.back();
+    }
+
+    $(function() {
+      $('#btn-back').on('click', function() { navBack(); });
+      $('#btn-edit').on('click', function() { console.log('编辑项目'); });
+      $('#btn-total').on('click', function() { navPush('stats.html'); });
+      $('#btn-add-bill').on('click', function() { navPush('add-bill.html'); });
+    });
+  </script>
+  <script>lucide.createIcons();</script>
+</body>
+
+</html>
