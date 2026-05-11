@@ -29,8 +29,8 @@ export default function ProfilePage() {
 
   const handleLogout = () => {
     Taro.showModal({
-      title: '确认退出',
-      content: '确定要退出登录吗？',
+      title: '辞别行囊',
+      content: '确定要放下行囊，就此离去吗？',
       success: (res) => {
         if (res.confirm) {
           setUserInfo(null);
@@ -40,10 +40,10 @@ export default function ProfilePage() {
   };
 
   const menuItems = [
-    { icon: Settings, label: '编辑资料' },
-    { icon: Map, label: '我的旅行项目', badge: '3' },
-    { icon: Wallet, label: '分账记录' },
-    { icon: Settings, label: '设置' },
+    { icon: Settings, label: '修葺行囊' },
+    { icon: Map, label: '我的旅程', badge: '3' },
+    { icon: Wallet, label: '清账旧录' },
+    { icon: Settings, label: '偏好设置' },
   ];
 
   return (
@@ -53,7 +53,7 @@ export default function ProfilePage() {
           <ArrowLeft size={20} color="#3D3B38" />
         </View>
         <Text className="block flex-1 text-center text-base font-semibold text-on-surface pr-10">
-          个人信息
+          我的行囊
         </Text>
       </View>
 
@@ -78,13 +78,13 @@ export default function ProfilePage() {
             <View className="w-20 h-20 rounded-full bg-surface-container flex items-center justify-center">
               <Text className="block text-2xl text-on-surface-variant">?</Text>
             </View>
-            <Text className="block text-sm text-on-surface-variant mt-3">未登录</Text>
+            <Text className="block text-sm text-on-surface-variant mt-3">未拾行囊</Text>
             <View className="mt-4 w-full">
               <Button
                 onClick={handleLogin}
                 className="bg-primary text-white rounded-xl py-3 w-full"
               >
-                微信一键登录
+                拾取行囊
               </Button>
             </View>
           </>
@@ -118,7 +118,7 @@ export default function ProfilePage() {
               onClick={handleLogout}
               className="w-full py-4 rounded-xl bg-surface-container flex items-center justify-center"
             >
-              <Text className="block text-sm font-semibold text-error">退出登录</Text>
+              <Text className="block text-sm font-semibold text-error">辞别行囊</Text>
             </View>
           </View>
         </>

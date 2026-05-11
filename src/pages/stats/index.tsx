@@ -49,19 +49,19 @@ export default function StatsPage() {
           <ArrowLeft size={20} color="#3D3B38" />
         </View>
         <Text className="block flex-1 text-center text-base font-semibold text-on-surface pr-10">
-          支出统计
+          银两用度
         </Text>
       </View>
 
       <View className="px-4 py-4">
         <View className="bg-surface rounded-2xl shadow-card p-6 flex flex-col items-center mb-4">
           <Text className="block text-3xl font-bold text-primary">¥{Number(total).toFixed(0)}</Text>
-          <Text className="block text-xs text-on-surface-variant mt-1">项目总支出</Text>
+          <Text className="block text-xs text-on-surface-variant mt-1">旅程总花销</Text>
         </View>
 
         {viewMode === 'chart' ? (
           <View className="bg-surface rounded-2xl shadow-card p-4 mb-4">
-            <Text className="block text-sm font-semibold text-on-surface mb-4">分类占比</Text>
+            <Text className="block text-sm font-semibold text-on-surface mb-4">行止分布</Text>
             {/* Pie chart using CSS conic-gradient */}
             <View className="flex items-center justify-center mb-4">
               <View
@@ -95,7 +95,7 @@ export default function StatsPage() {
           </View>
         ) : (
           <View className="bg-surface rounded-2xl shadow-card p-4 mb-4">
-            <Text className="block text-sm font-semibold text-on-surface mb-4">按日期汇总</Text>
+            <Text className="block text-sm font-semibold text-on-surface mb-4">按良辰汇总</Text>
             {Object.entries(byDate).map(([date, d]: [string, any]) => (
               <View key={date} className="mb-4">
                 <Text className="block text-xs text-on-surface-variant mb-2">{date}</Text>

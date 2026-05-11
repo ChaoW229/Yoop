@@ -74,4 +74,21 @@ export class ProjectsService {
     if (error) throw new Error(`查询失败: ${error.message}`);
     return data || [];
   }
+
+  async update(id: string, body: any) {
+    const { data, error } = await this.client
+      .from('projects')
+      .update(body)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw new Error(`更新失败: ${error.message}`);
+    return data;
+  }
+
+  async remove(id: string) {
+    await this.client.from('bills').delete().eq('project_id', id);
+    const { error } = await this.client.from('projects').delete().eq('id', id);
+    if (error) throw new Error(`删除失败: ${error.message}`);
+  }
 }

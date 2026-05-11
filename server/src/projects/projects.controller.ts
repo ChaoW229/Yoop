@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
 import { ProjectsService } from './projects.service';
 
 @Controller('projects')
@@ -27,6 +27,18 @@ export class ProjectsController {
   async findOne(@Param('id') id: string) {
     const data = await this.service.findOne(id);
     return { code: 200, msg: 'ok', data };
+  }
+
+  @Put(':id')
+  async update(@Param('id') id: string, @Body() body: any) {
+    const data = await this.service.update(id, body);
+    return { code: 200, msg: 'ok', data };
+  }
+
+  @Delete(':id')
+  async remove(@Param('id') id: string) {
+    await this.service.remove(id);
+    return { code: 200, msg: 'ok' };
   }
 
   @Get(':id/stats')
