@@ -1,116 +1,117 @@
-import { useState } from 'react';
-import { View, Text } from '@tarojs/components';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft, Map, Wallet, Settings, ChevronRight } from 'lucide-react-taro';
-import Taro from '@tarojs/taro';
+import { useState, useEffect } from 'react';
+import Taro, { useLoad } from '@tarojs/taro';
+import { View, Text, Image } from '@tarojs/components';
+
+import { Network } from '@/network';
+import { ArrowLeft, User, LogOut, Settings, Map, Wallet } from 'lucide-react-taro';
 
 export default function ProfilePage() {
-  const [userInfo, setUserInfo] = useState<any>(null);
+  const [user, setUser] = useState<any>(null);
+  const [statusBarHeight, setStatusBarHeight] = useState(0);
+
+  useEffect(() => {
+    const info = Taro.getSystemInfoSync();
+    setStatusBarHeight(info.statusBarHeight || 0);
+  }, []);
+
+  useLoad(() => {
+    const getUser = async () => {
+      try {
+        const res = await Network.request({ url: '/api/users/me' });
+        if (res.data?.data) setUser(res.data.data);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    getUser();
+  });
 
   const goBack = () => Taro.navigateBack();
 
   const handleLogin = () => {
     Taro.getUserProfile({
-      desc: '用于展示用户信息',
+      desc: '用于展示用户昵称和头像',
       success: (res) => {
-        console.log('user profile', res);
-        setUserInfo(res.userInfo);
+        setUser(res.userInfo);
       },
-      fail: (err) => {
-        console.error('login fail', err);
-        // Fallback: mock login
-        setUserInfo({
-          nickName: '小初',
-          avatarUrl: '',
-        });
+      fail: () => {
+        Taro.showToast({ title: '登录失败', icon: 'none' });
       },
     });
   };
 
   const handleLogout = () => {
     Taro.showModal({
-      title: '辞别行囊',
-      content: '确定要放下行囊，就此离去吗？',
+      title: '退出登录',
+      content: '确定要退出吗？',
       success: (res) => {
         if (res.confirm) {
-          setUserInfo(null);
+          setUser(null);
+          Taro.showToast({ title: '已退出', icon: 'success' });
         }
       },
     });
   };
 
-  const menuItems = [
-    { icon: Settings, label: '修葺行囊' },
-    { icon: Map, label: '我的旅程', badge: '3' },
-    { icon: Wallet, label: '清账旧录' },
-    { icon: Settings, label: '偏好设置' },
-  ];
-
   return (
-    <View className="flex flex-col min-h-full bg-background">
-      <View className="flex items-center px-4 py-3 bg-surface">
+    <View className="flex flex-col h-full bg-background">
+      <View style={{ paddingTop: statusBarHeight }} className="flex items-center px-4 py-3 bg-surface">
         <View onClick={goBack} className="w-10 h-10 flex items-center justify-center">
           <ArrowLeft size={20} color="#3D3B38" />
         </View>
-        <Text className="block flex-1 text-center text-base font-semibold text-on-surface pr-10">
-          我的行囊
-        </Text>
+        <Text className="block flex-1 text-center text-base font-semibold text-on-surface pr-10">个人信息</Text>
       </View>
 
-      <View className="px-4 py-4 flex flex-col items-center">
-        {userInfo ? (
-          <>
-            <View className="w-20 h-20 rounded-full bg-surface-container-high flex items-center justify-center">
-              {userInfo.avatarUrl ? (
-                <Text>头像</Text>
-              ) : (
-                <Text className="block text-2xl font-bold text-primary">
-                  {(userInfo.nickName || '用')[0]}
-                </Text>
-              )}
-            </View>
-            <Text className="block text-lg font-semibold text-on-surface mt-3">
-              {userInfo.nickName || '用户'}
-            </Text>
-          </>
-        ) : (
-          <>
-            <View className="w-20 h-20 rounded-full bg-surface-container flex items-center justify-center">
-              <Text className="block text-2xl text-on-surface-variant">?</Text>
-            </View>
-            <Text className="block text-sm text-on-surface-variant mt-3">未拾行囊</Text>
-            <View className="mt-4 w-full">
-              <Button
-                onClick={handleLogin}
-                className="bg-primary text-white rounded-xl py-3 w-full"
-              >
-                拾取行囊
-              </Button>
-            </View>
-          </>
-        )}
-      </View>
+      {!user && (
+        <View className="flex-1 flex flex-col items-center justify-center px-6">
+          <View className="w-20 h-20 rounded-full bg-surface-container flex items-center justify-center mb-4">
+            <User size={36} color="#C4BFB8" />
+          </View>
+          <Text className="block text-base text-on-surface-variant mb-6">未登录</Text>
+          <View onClick={handleLogin} className="w-full py-3 rounded-xl bg-primary flex items-center justify-center">
+            <Text className="block text-sm font-semibold text-white">微信登录</Text>
+          </View>
+        </View>
+      )}
 
-      {userInfo && (
+      {user && (
         <>
-          <View className="mx-4 bg-surface rounded-2xl shadow-card overflow-hidden">
-            {menuItems.map((item, i) => (
-              <View
-                key={i}
-                className={`flex items-center px-4 py-4 ${
-                  i < menuItems.length - 1 ? 'border-b border-outline-variant' : ''
-                }`}
-              >
-                <item.icon size={18} color="#8A8680" className="mr-3" />
-                <Text className="block flex-1 text-sm text-on-surface">{item.label}</Text>
-                {item.badge && (
-                  <View className="bg-surface-container-high rounded-full px-2 py-1 mr-2">
-                    <Text className="block text-xs text-primary font-bold">{item.badge}</Text>
-                  </View>
-                )}
-                <ChevronRight size={16} color="#8A8680" />
+          <View className="mx-4 mt-4 bg-surface rounded-2xl shadow-card p-6 flex flex-col items-center">
+            {user.avatarUrl ? (
+              <Image className="w-20 h-20 rounded-full mb-3" src={user.avatarUrl} />
+            ) : (
+              <View className="w-20 h-20 rounded-full bg-surface-container-high flex items-center justify-center mb-3">
+                <Text className="block text-2xl font-bold text-primary">
+                  {user.nickName?.[0] || '?'}
+                </Text>
               </View>
-            ))}
+            )}
+            <Text className="block text-lg font-semibold text-on-surface">{user.nickName || '用户'}</Text>
+          </View>
+
+          <View className="mx-4 mt-6 bg-surface rounded-2xl shadow-card overflow-hidden">
+            <View className="flex items-center px-4 py-4 border-b border-outline-variant">
+              <User size={18} color="#8A8680" />
+              <Text className="block text-sm text-on-surface ml-3 flex-1">编辑资料</Text>
+              <Text className="block text-sm text-on-surface-variant">{String.fromCharCode(62)}</Text>
+            </View>
+            <View className="flex items-center px-4 py-4 border-b border-outline-variant">
+              <Map size={18} color="#8A8680" />
+              <Text className="block text-sm text-on-surface ml-3 flex-1">我的项目</Text>
+              <View className="bg-surface-container-high rounded-full px-2 py-1">
+                <Text className="block text-xs text-primary font-bold">4</Text>
+              </View>
+            </View>
+            <View className="flex items-center px-4 py-4 border-b border-outline-variant">
+              <Wallet size={18} color="#8A8680" />
+              <Text className="block text-sm text-on-surface ml-3 flex-1">分账记录</Text>
+              <Text className="block text-sm text-on-surface-variant">{String.fromCharCode(62)}</Text>
+            </View>
+            <View className="flex items-center px-4 py-4">
+              <Settings size={18} color="#8A8680" />
+              <Text className="block text-sm text-on-surface ml-3 flex-1">设置</Text>
+              <Text className="block text-sm text-on-surface-variant">{String.fromCharCode(62)}</Text>
+            </View>
           </View>
 
           <View className="mt-auto p-4">
@@ -118,7 +119,8 @@ export default function ProfilePage() {
               onClick={handleLogout}
               className="w-full py-4 rounded-xl bg-surface-container flex items-center justify-center"
             >
-              <Text className="block text-sm font-semibold text-error">辞别行囊</Text>
+              <LogOut size={16} color="#ef4444" />
+              <Text className="block text-sm font-semibold text-red-500 ml-2">退出登录</Text>
             </View>
           </View>
         </>

@@ -22,15 +22,21 @@ export default function IndexPage() {
   const [newDest, setNewDest] = useState('');
   const [newStart, setNewStart] = useState('');
   const [newEnd, setNewEnd] = useState('');
+  const [statusBarHeight, setStatusBarHeight] = useState(0);
+
+  useEffect(() => {
+    const info = Taro.getSystemInfoSync();
+    setStatusBarHeight(info.statusBarHeight || 0);
+  }, []);
 
   const fetchProjects = async () => {
     try {
       setLoading(true);
       const res = await Network.request({ url: '/api/projects' });
-      console.log('journeys res', res.data);
+      console.log('projects res', res.data);
       setProjects(res.data?.data || []);
     } catch (e) {
-      console.error(e);
+      console.error('fetch projects error', e);
     } finally {
       setLoading(false);
     }
@@ -40,39 +46,19 @@ export default function IndexPage() {
     fetchProjects();
   });
 
-  useEffect(() => {
-    if (!loading && projects.length === 0) {
-      seedData();
-    }
-  }, [loading]);
-
-  const seedData = async () => {
-    const seeds = [
-      { name: '丽江三日游', destination: '丽江古城', start_date: '2024.03.15', end_date: '2024.03.17', participants: ['小明', '小红', '自己'] },
-      { name: '青岛海滨之旅', destination: '青岛', start_date: '2024.05.01', end_date: '2024.05.03', participants: ['小明', '小红'] },
-      { name: '成都美食行', destination: '成都', start_date: '2024.06.10', end_date: '2024.06.12', participants: ['小明', '自己'] },
-    ];
-    for (const s of seeds) {
-      await Network.request({ url: '/api/projects', method: 'POST', data: s });
-    }
-    fetchProjects();
-  };
-
   const goStats = () => {
     Taro.navigateTo({ url: '/pages/stats/index' });
   };
-
   const goProfile = () => {
     Taro.navigateTo({ url: '/pages/profile/index' });
   };
-
   const goProject = (id: string) => {
     Taro.navigateTo({ url: `/pages/project/index?id=${id}` });
   };
 
   const handleAddProject = async () => {
     if (!newName || !newDest) {
-      Taro.showToast({ title: '请填写旅程名与远方', icon: 'none' });
+      Taro.showToast({ title: '请填写项目名和目的地', icon: 'none' });
       return;
     }
     try {
@@ -84,45 +70,40 @@ export default function IndexPage() {
           destination: newDest,
           startDate: newStart,
           endDate: newEnd,
-          participants: ['自己'],
+          participants: ['小明', '小红'],
         },
       });
+      Taro.showToast({ title: '新项目已添加', icon: 'success' });
       setShowAddModal(false);
       setNewName('');
       setNewDest('');
       setNewStart('');
       setNewEnd('');
       fetchProjects();
-      Taro.showToast({ title: '新旅程已启程', icon: 'success' });
     } catch (e) {
-      console.error(e);
-      Taro.showToast({ title: '启程失败', icon: 'none' });
+      Taro.showToast({ title: '添加失败', icon: 'none' });
     }
   };
 
   return (
-    <View className="flex flex-col min-h-full bg-background">
-      <View className="flex items-center gap-3 px-4 py-3 bg-surface">
-        <View
-          onClick={goStats}
-          className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center"
-        >
+    <View className="flex flex-col h-full bg-background">
+      {/* Header with status bar padding */}
+      <View style={{ paddingTop: statusBarHeight }} className="px-4 pt-4 pb-3 flex items-center gap-3 bg-surface">
+        <View onClick={goStats} className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center">
           <ChartPie size={20} color="#9AA5B1" />
         </View>
-        <View className="flex-1 flex items-center gap-2 bg-surface-container rounded-full px-4 py-2">
-          <Search size={16} color="#8A8680" />
-          <Text className="block text-sm text-on-surface-variant">寻一段旅途</Text>
+        <View className="flex-1 h-10 bg-surface-container rounded-full flex items-center px-4">
+          <Search size={16} color="#9AA5B1" />
+          <Text className="block text-sm text-on-surface-variant ml-2">搜索项目</Text>
         </View>
-        <View
-          onClick={goProfile}
-          className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center"
-        >
+        <View onClick={goProfile} className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center">
           <User size={20} color="#9AA5B1" />
         </View>
       </View>
 
       <View className="flex-1 px-4 py-4">
-        <Text className="block text-lg font-semibold text-on-surface mb-4">我的足迹</Text>
+        <Text className="block text-lg font-semibold text-on-surface mb-4">我的项目</Text>
+        {loading && <Text className="block text-sm text-on-surface-variant">加载中...</Text>}
         {projects.map((p) => (
           <View
             key={p.id}
@@ -172,10 +153,13 @@ export default function IndexPage() {
 
       {/* Add project modal */}
       {showAddModal && (
-        <View className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center" style={{ zIndex: 100 }}>
+        <View
+          className="fixed inset-0 flex items-end justify-center"
+          style={{ zIndex: 100, backgroundColor: 'rgba(0,0,0,0.5)' }}
+        >
           <View className="w-full bg-surface rounded-t-3xl p-6">
             <View className="flex items-center justify-between mb-6">
-              <Text className="block text-lg font-semibold text-on-surface">开启新旅程</Text>
+              <Text className="block text-lg font-semibold text-on-surface">添加新项目</Text>
               <View onClick={() => setShowAddModal(false)}>
                 <X size={24} color="#8A8680" />
               </View>
@@ -183,13 +167,13 @@ export default function IndexPage() {
 
             <View className="flex flex-col gap-4 mb-6">
               <View>
-                <Text className="block text-sm text-on-surface mb-2">旅程名</Text>
+                <Text className="block text-sm text-on-surface-variant mb-2">项目名</Text>
                 <View className="bg-surface-container rounded-xl px-4 py-3">
                   <Text
                     className="block text-sm text-on-surface"
                     onClick={() => {
                       (Taro as any).showModal({
-                        title: '旅程名',
+                        title: '项目名',
                         editable: true,
                         placeholderText: '例如：丽江三日游',
                         success: (res: any) => {
@@ -198,21 +182,21 @@ export default function IndexPage() {
                       });
                     }}
                   >
-                    {newName || '请输入旅程名'}
+                    {newName || '请输入项目名'}
                   </Text>
                 </View>
               </View>
 
               <View>
-                <Text className="block text-sm text-on-surface mb-2">远方</Text>
+                <Text className="block text-sm text-on-surface-variant mb-2">目的地</Text>
                 <View className="bg-surface-container rounded-xl px-4 py-3">
                   <Text
                     className="block text-sm text-on-surface"
                     onClick={() => {
                       (Taro as any).showModal({
-                        title: '远方',
+                        title: '目的地',
                         editable: true,
-                        placeholderText: '例如：丽江古城',
+                        placeholderText: '例如：云南',
                         success: (res: any) => {
                           if (res.confirm && res.content) setNewDest(res.content);
                         },
@@ -224,51 +208,63 @@ export default function IndexPage() {
                 </View>
               </View>
 
-              <View className="flex gap-3">
+              <View className="flex gap-4">
                 <View className="flex-1">
-                  <Text className="block text-sm text-on-surface mb-2">启程</Text>
-                  <View
-                    className="bg-surface-container rounded-xl px-4 py-3"
-                    onClick={() => {
-                      (Taro as any).showModal({
-                        title: '启程日期',
-                        editable: true,
-                        placeholderText: '2024.03.15',
-                        success: (res: any) => {
-                          if (res.confirm && res.content) setNewStart(res.content);
-                        },
-                      });
-                    }}
-                  >
-                    <Text className="block text-sm text-on-surface">{newStart || '选择日期'}</Text>
+                  <Text className="block text-sm text-on-surface-variant mb-2">开始日期</Text>
+                  <View className="bg-surface-container rounded-xl px-4 py-3">
+                    <Text
+                      className="block text-sm text-on-surface"
+                      onClick={() => {
+                        (Taro as any).showModal({
+                          title: '开始日期',
+                          editable: true,
+                          placeholderText: '2024-03-15',
+                          success: (res: any) => {
+                            if (res.confirm) setNewStart(res.content);
+                          },
+                        });
+                      }}
+                    >
+                      {newStart || '选择日期'}
+                    </Text>
                   </View>
                 </View>
                 <View className="flex-1">
-                  <Text className="block text-sm text-on-surface mb-2">归程</Text>
-                  <View
-                    className="bg-surface-container rounded-xl px-4 py-3"
-                    onClick={() => {
-                      (Taro as any).showModal({
-                        title: '归程日期',
-                        editable: true,
-                        placeholderText: '2024.03.17',
-                        success: (res: any) => {
-                          if (res.confirm && res.content) setNewEnd(res.content);
-                        },
-                      });
-                    }}
-                  >
-                    <Text className="block text-sm text-on-surface">{newEnd || '选择日期'}</Text>
+                  <Text className="block text-sm text-on-surface-variant mb-2">结束日期</Text>
+                  <View className="bg-surface-container rounded-xl px-4 py-3">
+                    <Text
+                      className="block text-sm text-on-surface"
+                      onClick={() => {
+                        (Taro as any).showModal({
+                          title: '结束日期',
+                          editable: true,
+                          placeholderText: '2024-03-17',
+                          success: (res: any) => {
+                            if (res.confirm) setNewEnd(res.content);
+                          },
+                        });
+                      }}
+                    >
+                      {newEnd || '选择日期'}
+                    </Text>
                   </View>
                 </View>
               </View>
             </View>
 
-            <View
-              onClick={handleAddProject}
-              className="w-full bg-primary rounded-xl py-4 flex items-center justify-center"
-            >
-              <Text className="block text-sm font-semibold text-white">启程</Text>
+            <View className="flex gap-3">
+              <View
+                onClick={() => setShowAddModal(false)}
+                className="flex-1 py-3 rounded-xl bg-surface-container flex items-center justify-center"
+              >
+                <Text className="block text-sm font-semibold text-on-surface">取消</Text>
+              </View>
+              <View
+                onClick={handleAddProject}
+                className="flex-1 py-3 rounded-xl bg-primary flex items-center justify-center"
+              >
+                <Text className="block text-sm font-semibold text-white">添加</Text>
+              </View>
             </View>
           </View>
         </View>
