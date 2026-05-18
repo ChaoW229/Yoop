@@ -97,11 +97,11 @@ export default function ProjectPage() {
   }
 
   return (
-    <View className="flex flex-col min-h-full bg-background">
+    <View className="flex flex-col min-h-full bg-white">
       {/* Header */}
-      <View style={{ paddingTop: statusBarHeight }} className="flex items-center px-4 py-2 bg-surface">
+      <View style={{ paddingTop: statusBarHeight }} className="flex items-center px-4 py-2 bg-white">
         <View onClick={goBack} className="w-8 h-8 flex items-center justify-center">
-          <ArrowLeft size={18} color="#8A8680" />
+          <ArrowLeft size={18} color="#9B9690" />
         </View>
         <Text className="block flex-1 text-center text-base font-semibold text-on-surface pr-8">项目详情</Text>
       </View>

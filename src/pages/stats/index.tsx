@@ -70,9 +70,9 @@ export default function StatsPage() {
   const totalCategory = categories.reduce((s, [, v]) => s + v, 0) || 1;
 
   return (
-    <View className="flex flex-col h-full bg-background">
+    <View className="flex flex-col h-full bg-white">
       {/* Custom header with safe area */}
-      <View style={{ paddingTop: statusBarHeight }} className="bg-surface px-4 py-3 flex items-center gap-3">
+      <View style={{ paddingTop: statusBarHeight }} className="bg-white px-4 py-3 flex items-center gap-3">
         <View onClick={goBack} className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center">
           <ArrowLeft size={20} color="#9AA5B1" />
         </View>
@@ -121,7 +121,7 @@ export default function StatsPage() {
       </View>
 
       {/* View toggle */}
-      <View className="px-4 py-3 bg-surface border-t border-outline-variant">
+      <View className="px-4 py-3 bg-white border-t border-outline-variant">
         <View className="flex rounded-xl overflow-hidden">
           <View
             onClick={() => setViewMode('chart')}

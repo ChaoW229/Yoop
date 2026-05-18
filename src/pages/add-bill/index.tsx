@@ -3,7 +3,7 @@ import Taro, { useLoad } from '@tarojs/taro';
 import { View, Text, Picker } from '@tarojs/components';
 import { Input } from '@/components/ui/input';
 import { Network } from '@/network';
-import { ArrowLeft, Car, Utensils, Bed, Gift, Ticket, MoveHorizontal, Plus, X } from 'lucide-react-taro';
+import { ArrowLeft, Car, Utensils, Bed, Gift, Ticket, MoveHorizontal, Plus, X, Calendar } from 'lucide-react-taro';
 
 const CATEGORIES = [
   { name: '交通', icon: Car },
@@ -91,31 +91,31 @@ export default function AddBillPage() {
   const onDateChange = (e: any) => setDate(e.detail.value);
 
   return (
-    <View className="flex flex-col min-h-full bg-background">
+    <View className="flex flex-col min-h-full bg-white">
       {/* Header */}
-      <View style={{ paddingTop: statusBarHeight }} className="flex items-center px-4 py-2 bg-surface">
+      <View style={{ paddingTop: statusBarHeight }} className="flex items-center px-4 py-2 bg-white">
         <View onClick={goBack} className="w-8 h-8 flex items-center justify-center">
-          <ArrowLeft size={18} color="#8A8680" />
+          <ArrowLeft size={18} color="#9B9690" />
         </View>
         <Text className="block flex-1 text-center text-base font-semibold text-on-surface pr-8">添加花费</Text>
       </View>
 
-      <View className="flex-1 px-4 pt-4 pb-4 flex flex-col gap-4">
+      <View className="flex-1 px-4 pt-4 pb-4 flex flex-col gap-3">
         {/* 花费名称 */}
         <View>
           <Text className="block text-xs text-on-surface-variant mb-2">花费名称</Text>
           <Input
-            className="bg-surface rounded-2xl text-sm text-on-surface"
+            className="bg-card rounded-2xl text-sm text-on-surface shadow-card"
             placeholder="例如：古城门票"
             value={name}
             onInput={e => setName(e.detail.value)}
           />
         </View>
 
-        {/* 金额 */}
+        {/* 金额 - 与名称输入框同样样式 */}
         <View>
           <Text className="block text-xs text-on-surface-variant mb-2">金额</Text>
-          <View className="bg-surface rounded-2xl px-4 flex items-center" style={{ height: '40px' }}>
+          <View className="bg-card rounded-2xl px-4 flex items-center shadow-card" style={{ height: '40px' }}>
             <Text className="block text-sm text-on-surface-variant mr-2">¥</Text>
             <Input
               className="flex-1 text-sm text-on-surface"
@@ -132,7 +132,7 @@ export default function AddBillPage() {
           <Text className="block text-xs text-on-surface-variant mb-2">类别</Text>
           <View
             onClick={() => setShowCategoryDrawer(true)}
-            className="bg-surface rounded-2xl px-4 py-3 flex items-center justify-between shadow-card"
+            className="bg-card rounded-2xl px-4 py-3 flex items-center justify-between shadow-card"
           >
             <Text className="block text-sm text-on-surface">{customCategory || category}</Text>
             <Text className="block text-xs text-on-surface-variant">选择 ▾</Text>
@@ -143,7 +143,8 @@ export default function AddBillPage() {
         <View>
           <Text className="block text-xs text-on-surface-variant mb-2">时间</Text>
           <Picker mode="date" value={date} onChange={onDateChange}>
-            <View className="bg-surface rounded-2xl px-4 py-3 shadow-card">
+            <View className="bg-card rounded-2xl px-4 py-3 flex items-center gap-2 shadow-card">
+              <Calendar size={14} color="#9AA5B1" />
               <Text className="block text-sm text-on-surface">{date}</Text>
             </View>
           </Picker>
@@ -157,19 +158,19 @@ export default function AddBillPage() {
               <View
                 key={p}
                 onClick={() => setPayer(p)}
-                className={`px-4 py-2 rounded-full ${payer === p ? 'bg-primary' : 'bg-surface shadow-card'}`}
+                className={`px-4 py-2 rounded-full shadow-card ${payer === p ? 'bg-primary' : 'bg-card'}`}
               >
                 <Text className={`block text-xs ${payer === p ? 'text-primary-foreground' : 'text-on-surface'}`}>{p}</Text>
               </View>
             ))}
-            <View onClick={handleAddPayer} className="w-8 h-8 rounded-full bg-surface shadow-card flex items-center justify-center">
+            <View onClick={handleAddPayer} className="w-8 h-8 rounded-full bg-card shadow-card flex items-center justify-center">
               <Plus size={14} color="#9AA5B1" />
             </View>
           </View>
         </View>
 
         {/* 请客开关 */}
-        <View className="flex items-center justify-between bg-surface rounded-2xl px-4 py-3 shadow-card">
+        <View className="flex items-center justify-between bg-card rounded-2xl px-4 py-3 shadow-card">
           <Text className="block text-sm text-on-surface">请客</Text>
           <View
             onClick={() => setIsTreat(!isTreat)}
@@ -185,25 +186,25 @@ export default function AddBillPage() {
       </View>
 
       {/* 保存按钮 */}
-      <View className="px-4 py-3 bg-surface">
-        <View onClick={handleSave} className="w-full py-3 rounded-2xl bg-primary flex items-center justify-center shadow-card">
+      <View className="px-4 py-3 bg-white">
+        <View onClick={handleSave} className="w-full py-3 rounded-2xl bg-primary flex items-center justify-center shadow-float">
           <Text className="block text-base font-semibold text-primary-foreground">保存</Text>
         </View>
       </View>
 
-      {/* 类别选择抽屉 */}
+      {/* 类别选择抽屉 - 白色半透明遮罩 */}
       {showCategoryDrawer && (
         <View className="fixed inset-0" style={{ zIndex: 100 }}>
           <View
             className="absolute inset-0"
-            style={{ backgroundColor: 'rgba(138,134,128,0.35)' }}
+            style={{ backgroundColor: 'rgba(255,255,255,0.7)' }}
             onClick={() => setShowCategoryDrawer(false)}
           />
-          <View className="absolute bottom-0 left-0 right-0 bg-surface rounded-t-3xl p-5" style={{ zIndex: 101 }}>
+          <View className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-5" style={{ zIndex: 101 }}>
             <View className="flex items-center justify-between mb-4">
               <Text className="block text-base font-semibold text-on-surface">选择类别</Text>
               <View onClick={() => setShowCategoryDrawer(false)}>
-                <X size={20} color="#8A8680" />
+                <X size={20} color="#9B9690" />
               </View>
             </View>
             <View className="grid grid-cols-3 gap-2 mb-4">
@@ -214,9 +215,9 @@ export default function AddBillPage() {
                   <View
                     key={cat.name}
                     onClick={() => { setCategory(cat.name); setCustomCategory(''); setShowCategoryDrawer(false); }}
-                    className={`flex flex-col items-center gap-2 p-3 rounded-xl ${isActive ? 'bg-primary' : 'bg-surface-container'}`}
+                    className={`flex flex-col items-center gap-2 p-3 rounded-xl shadow-card ${isActive ? 'bg-primary' : 'bg-card'}`}
                   >
-                    <Icon size={18} color={isActive ? '#FFFFFF' : '#8A8680'} />
+                    <Icon size={18} color={isActive ? '#FFFFFF' : '#9B9690'} />
                     <Text className={`block text-xs ${isActive ? 'text-primary-foreground' : 'text-on-surface'}`}>{cat.name}</Text>
                   </View>
                 );
@@ -225,7 +226,7 @@ export default function AddBillPage() {
             <View className="flex items-center gap-2">
               <Text className="block text-xs text-on-surface-variant">自定义：</Text>
               <View
-                className="flex-1 bg-surface-container rounded-xl px-3 py-2"
+                className="flex-1 bg-card rounded-xl px-3 py-2 shadow-card"
                 onClick={() => {
                   (Taro as any).showModal({
                     title: '自定义类别',

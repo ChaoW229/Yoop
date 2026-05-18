@@ -54,8 +54,8 @@ export default function ProfilePage() {
   };
 
   return (
-    <View className="flex flex-col h-full bg-background">
-      <View style={{ paddingTop: statusBarHeight }} className="flex items-center px-4 py-3 bg-surface">
+    <View className="flex flex-col h-full bg-white">
+      <View style={{ paddingTop: statusBarHeight }} className="flex items-center px-4 py-3 bg-white">
         <View onClick={goBack} className="w-10 h-10 flex items-center justify-center">
           <ArrowLeft size={20} color="#3D3B38" />
         </View>
@@ -76,7 +76,7 @@ export default function ProfilePage() {
 
       {user && (
         <>
-          <View className="mx-4 mt-4 bg-surface rounded-2xl shadow-card p-6 flex flex-col items-center">
+          <View className="mx-4 mt-4 bg-card rounded-2xl shadow-card p-6 flex flex-col items-center">
             {user.avatarUrl ? (
               <Image className="w-20 h-20 rounded-full mb-3" src={user.avatarUrl} />
             ) : (
@@ -89,7 +89,7 @@ export default function ProfilePage() {
             <Text className="block text-lg font-semibold text-on-surface">{user.nickName || '用户'}</Text>
           </View>
 
-          <View className="mx-4 mt-6 bg-surface rounded-2xl shadow-card overflow-hidden">
+          <View className="mx-4 mt-6 bg-card rounded-2xl shadow-card overflow-hidden">
             <View className="flex items-center px-4 py-4 border-b border-outline-variant">
               <User size={18} color="#8A8680" />
               <Text className="block text-sm text-on-surface ml-3 flex-1">编辑资料</Text>
