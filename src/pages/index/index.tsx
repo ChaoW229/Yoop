@@ -148,14 +148,14 @@ export default function IndexPage() {
         className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-primary flex items-center justify-center shadow-float"
         style={{ zIndex: 50 }}
       >
-        <Plus size={28} color="#fff" />
+        <Plus size={28} color="#FFFFFF" />
       </View>
 
       {/* Add project modal */}
       {showAddModal && (
         <View
           className="fixed inset-0 flex items-end justify-center"
-          style={{ zIndex: 100, backgroundColor: 'rgba(0,0,0,0.5)' }}
+          style={{ zIndex: 100, backgroundColor: 'rgba(138,134,128,0.35)' }}
         >
           <View className="w-full bg-surface rounded-t-3xl p-6">
             <View className="flex items-center justify-between mb-6">
@@ -263,7 +263,7 @@ export default function IndexPage() {
                 onClick={handleAddProject}
                 className="flex-1 py-3 rounded-xl bg-primary flex items-center justify-center"
               >
-                <Text className="block text-sm font-semibold text-white">添加</Text>
+                <Text className="block text-sm font-semibold text-primary-foreground">添加</Text>
               </View>
             </View>
           </View>

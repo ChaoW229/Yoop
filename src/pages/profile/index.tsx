@@ -69,7 +69,7 @@ export default function ProfilePage() {
           </View>
           <Text className="block text-base text-on-surface-variant mb-6">未登录</Text>
           <View onClick={handleLogin} className="w-full py-3 rounded-xl bg-primary flex items-center justify-center">
-            <Text className="block text-sm font-semibold text-white">微信登录</Text>
+            <Text className="block text-sm font-semibold text-primary-foreground">微信登录</Text>
           </View>
         </View>
       )}
@@ -119,8 +119,8 @@ export default function ProfilePage() {
               onClick={handleLogout}
               className="w-full py-4 rounded-xl bg-surface-container flex items-center justify-center"
             >
-              <LogOut size={16} color="#ef4444" />
-              <Text className="block text-sm font-semibold text-red-500 ml-2">退出登录</Text>
+              <LogOut size={16} color="#C4716B" />
+              <Text className="block text-sm font-semibold ml-2" style={{ color: '#C4716B' }}>退出登录</Text>
             </View>
           </View>
         </>

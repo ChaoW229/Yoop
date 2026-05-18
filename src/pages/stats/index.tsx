@@ -127,13 +127,13 @@ export default function StatsPage() {
             onClick={() => setViewMode('chart')}
             className={`flex-1 py-2 flex items-center justify-center ${viewMode === 'chart' ? 'bg-primary' : 'bg-surface-container'}`}
           >
-            <Text className={`block text-sm font-semibold ${viewMode === 'chart' ? 'text-white' : 'text-on-surface-variant'}`}>图表</Text>
+            <Text className={`block text-sm font-semibold ${viewMode === 'chart' ? 'text-primary-foreground' : 'text-on-surface-variant'}`}>图表</Text>
           </View>
           <View
             onClick={() => setViewMode('list')}
             className={`flex-1 py-2 flex items-center justify-center ${viewMode === 'list' ? 'bg-primary' : 'bg-surface-container'}`}
           >
-            <Text className={`block text-sm font-semibold ${viewMode === 'list' ? 'text-white' : 'text-on-surface-variant'}`}>明细</Text>
+            <Text className={`block text-sm font-semibold ${viewMode === 'list' ? 'text-primary-foreground' : 'text-on-surface-variant'}`}>明细</Text>
           </View>
         </View>
       </View>
