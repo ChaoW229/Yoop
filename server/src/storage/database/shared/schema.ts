@@ -14,6 +14,7 @@ export const projects = pgTable("projects", {
 	end_date: varchar("end_date", { length: 32 }),
 	total_amount: numeric("total_amount", { precision: 10, scale: 2 }).default("0"),
 	participants: jsonb("participants"),
+	cover_url: varchar("cover_url", { length: 512 }),
 	created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 	updated_at: timestamp("updated_at", { withTimezone: true }),
 }, (table) => [

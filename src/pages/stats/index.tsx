@@ -58,7 +58,7 @@ export default function StatsPage() {
   });
 
   const categoryColors: Record<string, string> = {
-    交通: '#9AA5B1',
+    交通: '#5B9BD5',
     餐饮: '#C4B8A8',
     住宿: '#B8C4A8',
     纪念品: '#D4B8A8',
@@ -74,7 +74,7 @@ export default function StatsPage() {
       {/* Custom header with safe area */}
       <View style={{ paddingTop: statusBarHeight }} className="bg-white px-4 py-3 flex items-center gap-3">
         <View onClick={goBack} className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center">
-          <ArrowLeft size={20} color="#9AA5B1" />
+          <ArrowLeft size={20} color="#8896A6" />
         </View>
         <Text className="block text-lg font-semibold text-on-surface">支出统计</Text>
       </View>
