@@ -47,7 +47,13 @@ function getIcon(name: string): string {
   if (n.includes('酒') || n.includes('吧')) return '\u{1F37A}';
   if (n.includes('胶')) return '\u{2708}\uFE0F';
   if (n.includes('游') || n.includes('旅')) return '\u{2708}\uFE0F';
-  return '\u{1F3D5}'; // default airplane
+  return '\u{1F3D5}';
+}
+
+/* 日期转换：年-月-日 → 年/月/日 */
+function formatDateSlash(dateStr?: string): string {
+  if (!dateStr) return '待定';
+  return dateStr.replace(/-/g, '/');
 }
 
 export default function IndexPage() {
@@ -134,55 +140,53 @@ export default function IndexPage() {
 
   return (
     <View className="flex flex-col h-full bg-white">
-      {/* Header - 最紧凑：状态栏高度 + 一行内容，无多余padding */}
-      <View className="px-4 flex items-center gap-2.5 bg-white"
+      {/* Header - 紧凑状态栏+标题 */}
+      <View className="px-4 flex items-center gap-3 bg-white"
         style={{ paddingTop: Taro.getSystemInfoSync().statusBarHeight || 0 }}
       >
         <View onClick={goStats}
-          style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F0F4F9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#F5F7FA', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
-          <ChartPie size={16} color="#6B9BD5" />
+          <ChartPie size={18} color="#6B9BD5" />
         </View>
 
-        {/* 搜索栏 - 点击展开输入 */}
+        {/* 搜索栏 - 原生输入框，无嵌套，直接用 TaroInput */}
         <View
-          onClick={() => { if (!isSearching) setIsSearching(true); }}
           style={{
-            flex: 1, height: 36, borderRadius: 20,
+            flex: 1, height: 40, borderRadius: 22,
             backgroundColor: isSearching ? '#FFFFFF' : '#F5F7FA',
             border: isSearching ? '1.5px solid #6B9BD5' : '1px solid #EAEDF2',
-            paddingLeft: 10,
-            paddingRight: 10,
+            paddingLeft: 12,
+            paddingRight: 12,
             display: 'flex', alignItems: 'center',
-            overflow: 'hidden',
           }}
         >
-          <Search size={14} color={isSearching ? '#6B9BD5' : '#A0ABB8'} />
+          <Search size={16} color={isSearching ? '#6B9BD5' : '#A0ABB8'} />
           {!isSearching ? (
             <Text className="block ml-2" style={{ color: '#A0ABB8', fontSize: 14 }}>搜索项目</Text>
           ) : (
             <UIInput
+              className="flex-1 ml-2 border-0 bg-transparent shadow-none ring-0 focus-within:ring-0 focus-within:border-0"
               placeholder="搜索项目..."
               focus={isSearching}
               value={searchText}
               onInput={(e: any) => setSearchText(e.detail.value)}
               onBlur={() => { if (!searchText) setIsSearching(false); }}
               confirmType="search"
-              className="border-0 bg-transparent shadow-none ring-0 focus-within:ring-0 focus-within:border-0"
-              style={{ flex: 1, marginLeft: 6, height: 36, lineHeight: '36px', fontSize: 14, color: '#2D3748' }}
+              style={{ height: 40, lineHeight: '40px', fontSize: 14, color: '#2D3748' }}
             />
           )}
         </View>
 
         <View onClick={goProfile}
-          style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F0F4F9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#F5F7FA', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
-          <User size={16} color="#6B9BD5" />
+          <User size={18} color="#6B9BD5" />
         </View>
       </View>
 
-      {/* 项目列表 - 紧跟搜索栏，无多余间距 */}
-      <View className="flex-1 px-4 pt-2 pb-24">
+      {/* 项目列表 - 搜索栏下方有12px间距，自然衔接 */}
+      <View className="flex-1 px-4 pt-3 pb-24">
         {loading && (
           <View className="flex items-center justify-center py-12">
             <Text className="block text-sm" style={{ color: '#A0ABB8' }}>加载中...</Text>
@@ -191,7 +195,7 @@ export default function IndexPage() {
         {filteredProjects.map((p) => {
           const cs = getCardStyle(p.id);
           const dateStr = p.start_date
-            ? (p.end_date && p.end_date !== p.start_date ? `${p.start_date} ~ ${p.end_date}` : p.start_date)
+            ? (p.end_date && p.end_date !== p.start_date ? `${formatDateSlash(p.start_date)} ~ ${formatDateSlash(p.end_date)}` : formatDateSlash(p.start_date))
             : '待定';
 
           return (
@@ -201,17 +205,17 @@ export default function IndexPage() {
               style={{
                 display: 'flex', alignItems: 'stretch',
                 backgroundColor: cs.bg,
-                border: '1px solid rgba(0,0,0,0.04)',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.05), 0 1px 4px rgba(0,0,0,0.03)',
-                marginBottom: 14,
-                height: 90,
+                borderRadius: 20,
+                boxShadow: '0 8px 30px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.03)',
+                marginBottom: 16,
+                height: 96,
                 overflow: 'hidden',
               }}
             >
-              {/* 左侧封面 - 贴紧左边缘，圆角仅右上右下 */}
+              {/* 左侧封面 - 贴紧左边缘，圆角左上左下 */}
               <View
                 style={{
-                  width: 92, minWidth: 92,
+                  width: 96, minWidth: 96,
                   backgroundColor: cs.accent,
                   opacity: p.cover_url ? undefined : 0.85,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -219,9 +223,9 @@ export default function IndexPage() {
                 }}
               >
                 {p.cover_url ? (
-                  <Image style={{ width: 92, height: 90 }} src={p.cover_url} mode="aspectFill" />
+                  <Image style={{ width: 96, height: 96 }} src={p.cover_url} mode="aspectFill" />
                 ) : (
-                  <Text style={{ fontSize: 28 }}>{getIcon(p.name)}</Text>
+                  <Text style={{ fontSize: 30 }}>{getIcon(p.name)}</Text>
                 )}
               </View>
 
@@ -229,10 +233,10 @@ export default function IndexPage() {
               <View style={{ flex: 1, paddingLeft: 16, paddingRight: 8, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                 <Text
                   style={{
-                    fontSize: 17,
-                    fontWeight: '500',
+                    fontSize: 18,
+                    fontWeight: '600',
                     color: cs.name,
-                    letterSpacing: '0.5px',
+                    letterSpacing: '0.8px',
                   }}
                   numberOfLines={1}
                 >
@@ -240,9 +244,9 @@ export default function IndexPage() {
                 </Text>
                 <Text
                   style={{
-                    fontSize: 12,
+                    fontSize: 13,
                     color: '#A0ABB8',
-                    marginTop: 4,
+                    marginTop: 5,
                   }}
                 >
                   {dateStr}
@@ -251,12 +255,12 @@ export default function IndexPage() {
 
               {/* 右侧金额 - 垂直居中 */}
               <View style={{
-                width: 64,
+                width: 72,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                paddingRight: 12,
+                paddingRight: 14,
               }}
               >
-                <Text style={{ fontSize: 17, fontWeight: '600', color: cs.amount }}>
+                <Text style={{ fontSize: 19, fontWeight: '700', color: cs.amount }}>
                   ¥{Number(p.total_amount || 0).toFixed(0)}
                 </Text>
               </View>
@@ -278,16 +282,16 @@ export default function IndexPage() {
         onClick={() => setShowAddModal(true)}
         style={{
           position: 'fixed',
-          right: 18,
+          right: 20,
           bottom: 100,
           zIndex: 50,
-          width: 56, height: 56, borderRadius: 28,
+          width: 60, height: 60, borderRadius: 30,
           background: 'linear-gradient(135deg, #6B9BD5, #8DB8E0)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 8px 32px rgba(107,155,213,0.35), 0 2px 8px rgba(107,155,213,0.15)',
+          boxShadow: '0 10px 40px rgba(107,155,213,0.35), 0 4px 12px rgba(107,155,213,0.18)',
         }}
       >
-        <Plus size={26} color="#FFFFFF" />
+        <Plus size={28} color="#FFFFFF" />
       </View>
 
       {/* 全屏新建项目 */}
