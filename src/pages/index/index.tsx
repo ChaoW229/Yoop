@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import Taro, { useLoad, useDidShow } from '@tarojs/taro';
 import { View, Text, Image, Picker, ScrollView } from '@tarojs/components';
 import { Input as UIInput } from '@/components/ui/input';
@@ -16,7 +16,7 @@ interface Project {
   cover_url?: string;
 }
 
-/* 每个卡片独立低饱和度色系 - 更丰富更高级 */
+/* 每个卡片独立低饱和度色系 */
 const CARD_COLORS = [
   { bg: '#E8F0F7', accent: '#6B9BD5', name: '#3A5A78', amount: '#5B8BC2' },
   { bg: '#EDF4EE', accent: '#7BA888', name: '#4A6850', amount: '#6A9270' },
@@ -50,7 +50,6 @@ function getIcon(name: string): string {
   return '\u{1F3D5}';
 }
 
-/* 日期转换：年-月-日 → 年/月/日 */
 function formatDateSlash(dateStr?: string): string {
   if (!dateStr) return '待定';
   return dateStr.replace(/-/g, '/');
@@ -66,6 +65,11 @@ export default function IndexPage() {
   const [newCoverTemp, setNewCoverTemp] = useState('');
   const [searchText, setSearchText] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+
+  /* 卡片堆叠：跟踪滚动方向 */
+  const [scrollState, setScrollState] = useState<'idle' | 'up' | 'down'>('idle');
+  const lastScrollTopRef = useRef(0);
+  const scrollTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   const fetchProjects = async () => {
     try {
@@ -86,6 +90,20 @@ export default function IndexPage() {
   const goStats = () => Taro.navigateTo({ url: '/pages/stats/index' });
   const goProfile = () => Taro.navigateTo({ url: '/pages/profile/index' });
   const goProject = (id: string) => Taro.navigateTo({ url: `/pages/project/index?id=${id}` });
+
+  /* 滚动监听：实现卡片堆叠动效 */
+  const handleScroll = useCallback((e: any) => {
+    const currentTop = e.detail.scrollTop;
+    const newDir: 'up' | 'down' = currentTop > lastScrollTopRef.current ? 'up' : 'down';
+    lastScrollTopRef.current = currentTop;
+
+    setScrollState(newDir);
+
+    if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
+    scrollTimerRef.current = setTimeout(() => {
+      setScrollState('idle');
+    }, 250);
+  }, []);
 
   const handleChooseCover = async () => {
     const env = Taro.getEnv();
@@ -138,75 +156,83 @@ export default function IndexPage() {
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
-  /* 获取状态栏高度 */
+  /* 问题3：顶部与胶囊按钮底部对齐 */
   const statusBarH = Taro.getSystemInfoSync().statusBarHeight || 0;
+  let capsuleBottom = statusBarH + 44;
+  try {
+    const capsule = Taro.getMenuButtonBoundingClientRect();
+    if (capsule && capsule.bottom) {
+      capsuleBottom = capsule.bottom + 6;
+    }
+  } catch (e) { /* H5 fallback */ }
 
   return (
     <View className="flex flex-col h-full bg-white">
-      {/* ===== 问题1修复：去掉标题行，搜索栏紧贴状态栏 ===== */}
-      {/* Header - 搜索栏固定在顶部，无多余空隙 */}
+      {/* Header：搜索栏与胶囊按钮底部对齐 */}
       <View
         className="bg-white z-20"
         style={{
           paddingTop: statusBarH,
-          paddingBottom: 10,
-          position: 'relative',
+          height: capsuleBottom,
+          display: 'flex',
+          alignItems: 'center',
+          paddingLeft: 14,
+          paddingRight: 14,
         }}
       >
-        <View className="px-4 flex items-center gap-3">
-          {/* 左侧统计按钮 */}
-          <View onClick={goStats}
-            style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F5F7FA', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-          >
-            <ChartPie size={16} color="#6B9BD5" />
-          </View>
+        {/* 左侧统计 */}
+        <View onClick={goStats}
+          style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#F5F7FA', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+        >
+          <ChartPie size={14} color="#6B9BD5" />
+        </View>
 
-          {/* ===== 问题3修复：搜索栏可点击搜索 ===== */}
-          <View
-            onClick={() => setIsSearching(true)}
-            style={{
-              flex: 1, height: 38, borderRadius: 19,
-              backgroundColor: isSearching ? '#FFFFFF' : '#F5F7FA',
-              border: isSearching ? '1.5px solid #6B9BD5' : '1px solid #EAEDF2',
-              paddingLeft: 14,
-              paddingRight: 14,
-              display: 'flex', alignItems: 'center',
-            }}
-          >
-            <Search size={15} color={isSearching ? '#6B9BD5' : '#A0ABB8'} />
-            {!isSearching ? (
-              <Text className="block ml-2" style={{ color: '#A0ABB8', fontSize: 13 }}>搜索项目</Text>
-            ) : (
-              <UIInput
-                className="flex-1 ml-2 border-0 bg-transparent shadow-none ring-0 focus-within:ring-0 focus-within:border-0"
-                placeholder="输入关键词搜索..."
-                focus={isSearching}
-                value={searchText}
-                onInput={(e: any) => setSearchText(e.detail.value)}
-                onBlur={() => { if (!searchText) setIsSearching(false); }}
-                confirmType="search"
-                style={{ height: 38, lineHeight: '38px', fontSize: 13, color: '#2D3748' }}
-              />
-            )}
-          </View>
+        {/* 搜索栏：原生Input，可搜索 */}
+        <View
+          onClick={() => { if (!isSearching) setIsSearching(true); }}
+          style={{
+            flex: 1, height: 34, borderRadius: 17,
+            backgroundColor: isSearching ? '#FFFFFF' : '#F5F7FA',
+            border: isSearching ? '1.5px solid #6B9BD5' : '1px solid #EAEDF2',
+            marginLeft: 10, marginRight: 10,
+            paddingLeft: 12, paddingRight: 12,
+            display: 'flex', alignItems: 'center',
+          }}
+        >
+          <Search size={14} color={isSearching ? '#6B9BD5' : '#A0ABB8'} />
+          {!isSearching ? (
+            <Text className="block ml-2" style={{ color: '#A0ABB8', fontSize: 13 }}>搜索项目</Text>
+          ) : (
+            <UIInput
+              className="ml-2 border-0 bg-transparent shadow-none ring-0 focus-within:ring-0 focus-within:border-0"
+              placeholder="输入关键词搜索..."
+              focus={isSearching}
+              value={searchText}
+              onInput={(e: any) => setSearchText(e.detail.value)}
+              onBlur={() => { if (!searchText) setIsSearching(false); }}
+              confirmType="search"
+              style={{ height: 34, lineHeight: '34px', fontSize: 13, color: '#2D3748' }}
+            />
+          )}
+        </View>
 
-          {/* 右侧个人中心 */}
-          <View onClick={goProfile}
-            style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F5F7FA', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-          >
-            <User size={16} color="#6B9BD5" />
-          </View>
+        {/* 右侧个人中心 */}
+        <View onClick={goProfile}
+          style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#F5F7FA', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+        >
+          <User size={14} color="#6B9BD5" />
         </View>
       </View>
 
-      {/* ===== 问题3修复：ScrollView让搜索栏不动，卡片堆叠+强悬浮感 ===== */}
+      {/* 卡片列表：搜索栏固定不动，滚动时卡片堆叠 */}
       <ScrollView
         className="flex-1"
         scrollY
+        onScroll={handleScroll}
         style={{
-          paddingLeft: 16,
-          paddingRight: 16,
-          paddingTop: 6,
+          paddingLeft: 10,
+          paddingRight: 10,
+          paddingTop: 2,
           paddingBottom: 90,
         }}
         enhanced
@@ -218,12 +244,26 @@ export default function IndexPage() {
           </View>
         )}
 
-        {/* ===== 问题4修复：项目名和时间水平+垂直居中 ===== */}
         {filteredProjects.map((p, index) => {
           const cs = getCardStyle(p.id);
           const dateStr = p.start_date
             ? (p.end_date && p.end_date !== p.start_date ? `${formatDateSlash(p.start_date)} ~ ${formatDateSlash(p.end_date)}` : formatDateSlash(p.start_date))
             : '待定';
+
+          /* 问题1：卡片堆叠动效
+             默认展开有间距，滑动时下压上/上压下 */
+          let marginTop = index > 0 ? 12 : 0;
+          let zIndex = filteredProjects.length - index;
+
+          if (scrollState === 'up') {
+            // 向上滑：下面的卡片盖住上面的下半部分
+            marginTop = index > 0 ? -28 : 0;
+            zIndex = index + 1;
+          } else if (scrollState === 'down') {
+            // 向下滑：上面的卡片盖住下面的上半部分
+            marginTop = index > 0 ? -28 : 0;
+            zIndex = filteredProjects.length - index;
+          }
 
           return (
             <View
@@ -231,71 +271,100 @@ export default function IndexPage() {
               onClick={() => goProject(p.id)}
               className="relative"
               style={{
-                marginTop: index > 0 ? -20 : 0,
-                zIndex: filteredProjects.length - index,
-                marginBottom: index === filteredProjects.length - 1 ? 12 : 0,
+                marginTop,
+                zIndex,
+                marginBottom: index === filteredProjects.length - 1 ? 14 : 0,
+                transition: scrollState === 'idle' ? 'margin-top 0.35s cubic-bezier(0.25,0.46,0.45,0.94)' : 'none',
               }}
             >
+              {/* 阴影外层：圆角阴影，不被overflow:hidden裁剪 */}
               <View
                 style={{
-                  display: 'flex', alignItems: 'stretch',
-                  backgroundColor: cs.bg,
-                  borderRadius: 22,
-                  /* 强悬浮感阴影 */
-                  boxShadow: '0 10px 35px rgba(0,0,0,0.09), 0 3px 10px rgba(0,0,0,0.05)',
-                  height: 100,
-                  overflow: 'hidden',
-                  border: '1px solid rgba(255,255,255,0.7)',
+                  borderRadius: 20,
+                  boxShadow: '0 8px 30px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.05)',
                 }}
               >
-                {/* 左侧封面 - 紧贴边缘 */}
+                {/* 内容层：裁剪内容到圆角 */}
                 <View
                   style={{
-                    width: 96, minWidth: 96,
-                    backgroundColor: cs.accent,
-                    opacity: p.cover_url ? undefined : 0.88,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    display: 'flex', alignItems: 'stretch',
+                    borderRadius: 20,
+                    overflow: 'hidden',
+                    height: 120,
                   }}
                 >
-                  {p.cover_url ? (
-                    <Image style={{ width: 96, height: 100 }} src={p.cover_url} mode="aspectFill" />
-                  ) : (
-                    <Text style={{ fontSize: 32 }}>{getIcon(p.name)}</Text>
-                  )}
-                </View>
-
-                {/* 中间区域 - 项目名和时间水平+垂直居中 */}
-                <View style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                  <Text
+                  {/* 左侧封面 */}
+                  <View
                     style={{
-                      fontSize: 18,
-                      fontWeight: '600',
-                      color: cs.name,
-                      letterSpacing: '1px',
-                      textAlign: 'center',
-                      fontFamily: 'Georgia, "Times New Roman", serif',
-                    }}
-                    numberOfLines={1}
-                  >
-                    {p.name}
-                  </Text>
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      color: '#A0ABB8',
-                      marginTop: 6,
-                      textAlign: 'center',
+                      width: 80, minWidth: 80,
+                      backgroundColor: cs.accent,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      overflow: 'hidden',
                     }}
                   >
-                    {dateStr}
-                  </Text>
-                </View>
+                    {p.cover_url ? (
+                      <Image style={{ width: 80, height: 120 }} src={p.cover_url} mode="aspectFill" />
+                    ) : (
+                      <Text style={{ fontSize: 30, opacity: 0.9 }}>{getIcon(p.name)}</Text>
+                    )}
+                  </View>
 
-                {/* 右侧金额 - 垂直居中 */}
-                <View style={{ width: 72, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', paddingRight: 16 }}>
-                  <Text style={{ fontSize: 20, fontWeight: '700', color: cs.amount }}>
-                    ¥{Number(p.total_amount || 0).toFixed(0)}
-                  </Text>
+                  {/* 右侧白色区域：项目名居中，时间沉底 */}
+                  <View
+                    style={{
+                      flex: 1,
+                      backgroundColor: cs.bg,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      paddingLeft: 10,
+                      paddingRight: 10,
+                      paddingTop: 10,
+                      paddingBottom: 8,
+                      position: 'relative',
+                    }}
+                  >
+                    {/* 项目名：水平+垂直居中 */}
+                    <Text
+                      style={{
+                        fontSize: 17,
+                        fontWeight: '600',
+                        color: cs.name,
+                        letterSpacing: '1px',
+                        textAlign: 'center',
+                        fontFamily: 'Georgia, "Times New Roman", serif',
+                      }}
+                      numberOfLines={1}
+                    >
+                      {p.name}
+                    </Text>
+
+                    {/* 金额：名称下方 */}
+                    <Text
+                      style={{
+                        fontSize: 22,
+                        fontWeight: '700',
+                        color: cs.amount,
+                        marginTop: 4,
+                      }}
+                    >
+                      ¥{Number(p.total_amount || 0).toFixed(0)}
+                    </Text>
+
+                    {/* 时间：沉到底部 */}
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        color: '#A0ABB8',
+                        position: 'absolute',
+                        bottom: 8,
+                        textAlign: 'center',
+                      }}
+                    >
+                      {dateStr}
+                    </Text>
+                  </View>
                 </View>
               </View>
             </View>
@@ -311,7 +380,7 @@ export default function IndexPage() {
         )}
       </ScrollView>
 
-      {/* 浮动按钮 - 强悬浮感 */}
+      {/* 浮动添加按钮 */}
       <View
         onClick={() => setShowAddModal(true)}
         style={{
@@ -322,7 +391,7 @@ export default function IndexPage() {
           width: 56, height: 56, borderRadius: 28,
           background: 'linear-gradient(135deg, #5B8DEE, #7BA8EA)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 10px 30px rgba(91,141,238,0.4), 0 4px 12px rgba(91,141,238,0.2)',
+          boxShadow: '0 10px 30px rgba(91,141,238,0.4), 0 4px 12px rgba(91,238,155,0.2)',
         }}
       >
         <Plus size={26} color="#FFFFFF" />
@@ -333,7 +402,8 @@ export default function IndexPage() {
         <View style={{ position: 'fixed', inset: 0, zIndex: 200, backgroundColor: '#FFFFFF' }}>
           <View style={{
             paddingTop: statusBarH,
-            display: 'flex', alignItems: 'center', padding: '0 16px', paddingBottom: 10,
+            height: capsuleBottom,
+            display: 'flex', alignItems: 'center', paddingLeft: 16, paddingRight: 16,
           }}
           >
             <View onClick={() => { setShowAddModal(false); setNewCoverTemp(''); }} style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -371,7 +441,7 @@ export default function IndexPage() {
               }}
               >
                 <UIInput
-                  className="w-full"
+                  className="w-full border-0 bg-transparent shadow-none ring-0 focus-within:ring-0 focus-within:border-0"
                   placeholder="例如：丽江三日游"
                   style={{ color: '#2D3748', fontSize: 15 }}
                   value={newName}

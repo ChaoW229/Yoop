@@ -55,9 +55,16 @@ export default function ProjectPage() {
   const [bills, setBills] = useState<Bill[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
 
+  /* 顶部与胶囊按钮对齐 */
   const statusBarH = Taro.getSystemInfoSync().statusBarHeight || 0;
+  let capsuleBottom = statusBarH + 44;
+  try {
+    const capsule = Taro.getMenuButtonBoundingClientRect();
+    if (capsule && capsule.bottom) {
+      capsuleBottom = capsule.bottom + 6;
+    }
+  } catch (e) { /* H5 fallback */ }
 
-  /* ===== 问题5修复：用useEffect立即加载数据，减少闪烁 ===== */
   const fetchData = async () => {
     try {
       const pages = Taro.getCurrentPages();
@@ -82,8 +89,7 @@ export default function ProjectPage() {
   }, []);
 
   useLoad(() => {
-    // 页面显示时刷新
-    setTimeout(fetchData, 100);
+    setTimeout(fetchData, 50);
   });
 
   useEffect(() => {
@@ -151,8 +157,8 @@ export default function ProjectPage() {
   const billDates = bills.map(b => b.bill_date).filter(Boolean) as string[];
   const autoStart = billDates.length > 0 ? billDates.reduce((a, b) => (a < b ? a : b)) : project?.start_date;
   const autoEnd = billDates.length > 0 ? billDates.reduce((a, b) => (a > b ? a : b)) : project?.end_date;
-  const displayStart = project?.start_date || autoStart || '待定';
-  const displayEnd = project?.end_date || autoEnd || '待定';
+  const displayStart = (project?.start_date || autoStart || '待定').replace(/-/g, '/');
+  const displayEnd = (project?.end_date || autoEnd || '待定').replace(/-/g, '/');
   const totalAmount = bills.reduce((sum, b) => sum + Number(b.amount), 0);
   const treatAmount = bills.filter(b => b.is_treat).reduce((sum, b) => sum + Number(b.amount), 0);
   const splitAmount = totalAmount - treatAmount;
@@ -168,18 +174,19 @@ export default function ProjectPage() {
 
   const cc = getCardColor(project?.id || '');
 
-  /* ===== 问题5修复：数据未加载时不闪烁，直接渲染空骨架或等待 ===== */
+  /* 数据未加载时渲染占位，避免闪烁 */
   if (!project) {
     return (
       <View className="flex flex-col min-h-full bg-white">
-        {/* 空骨架Header */}
-        <View style={{ paddingTop: statusBarH }} className="flex items-center px-4 pb-2 bg-white">
+        <View
+          style={{ paddingTop: statusBarH, height: capsuleBottom }}
+          className="flex items-center px-4"
+        >
           <View onClick={goBack} className="w-8 h-8 flex items-center justify-center">
             <ArrowLeft size={18} color="#8896A6" />
           </View>
           <Text className="block flex-1 text-center text-base font-semibold pr-8" style={{ color: '#2D3748' }}>项目详情</Text>
         </View>
-        {/* 简单加载提示 */}
         <View className="px-4 pt-4 flex items-center justify-center" style={{ height: 200 }}>
           <Text className="block text-sm" style={{ color: '#A0ABB8' }}>加载中...</Text>
         </View>
@@ -189,11 +196,11 @@ export default function ProjectPage() {
 
   return (
     <View className="flex flex-col min-h-full bg-white">
-      {/* ===== 问题2修复：Header紧贴状态栏，无重叠 ===== */}
+      {/* Header：与胶囊按钮对齐，无重叠 */}
       <View
         style={{
           paddingTop: statusBarH,
-          paddingBottom: 10,
+          height: capsuleBottom,
         }}
         className="flex items-center px-4 bg-white"
       >
@@ -209,7 +216,6 @@ export default function ProjectPage() {
           className="flex items-center rounded-2xl overflow-hidden mb-3"
           style={{
             backgroundColor: '#FFFFFF',
-            border: '1px solid #EDF2F7',
             boxShadow: '0 4px 20px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.03)',
             minHeight: 104,
           }}
@@ -238,7 +244,7 @@ export default function ProjectPage() {
               <Camera size={10} color={cc.accent} />
             </View>
           </View>
-          {/* ===== 问题4修复：信息区项目名水平居中 ===== */}
+          {/* 信息区：项目名水平居中 */}
           <View className="flex-1 p-3 flex flex-col justify-between">
             <View>
               <Text className="block text-base font-semibold" style={{ color: '#2D3748', textAlign: 'center', letterSpacing: '0.5px' }}>
@@ -290,7 +296,6 @@ export default function ProjectPage() {
                 className="flex items-center justify-between rounded-xl p-3 mb-2"
                 style={{
                   backgroundColor: '#FFFFFF',
-                  border: '1px solid #EDF2F7',
                   boxShadow: '0 4px 16px rgba(91,155,213,0.06)',
                 }}
               >
