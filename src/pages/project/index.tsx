@@ -14,18 +14,21 @@ interface Bill {
   bill_date?: string;
 }
 
-const GRADIENTS = [
-  ['#6B9FD5', '#7EB8E8'],
-  ['#6CC4A1', '#8ED8BA'],
-  ['#F2A65A', '#F5C28A'],
-  ['#E8736C', '#F09A94'],
-  ['#9B8EC4', '#BDB1D8'],
-  ['#5BBDB5', '#82D4CD'],
+/* 与首页一致的8种低饱和度色系 */
+const CARD_COLORS = [
+  { bg: '#E8F0F7', accent: '#6B9BD5' },
+  { bg: '#EDF4EE', accent: '#7BA888' },
+  { bg: '#F5EDE8', accent: '#C49A7A' },
+  { bg: '#EBE8F3', accent: '#9B8EC4' },
+  { bg: '#F0EDE8', accent: '#B8A07A' },
+  { bg: '#E5EFF1', accent: '#6BAFA5' },
+  { bg: '#F2EBEF', accent: '#B87D9A' },
+  { bg: '#EAF0E8', accent: '#8FB894' },
 ];
 
-function getGradient(id: string): string[] {
-  const idx = id ? id.charCodeAt(0) % GRADIENTS.length : 0;
-  return GRADIENTS[idx];
+function getCardColor(id: string) {
+  const idx = id ? Math.abs(id.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % CARD_COLORS.length : 0;
+  return CARD_COLORS[idx];
 }
 
 function getIcon(name: string): string {
@@ -160,46 +163,50 @@ export default function ProjectPage() {
     byDate[d].push(b);
   }
 
-  const [g1, g2] = getGradient(project?.id || '');
+  const cc = getCardColor(project?.id || '');
 
   return (
     <View className="flex flex-col min-h-full bg-white">
-      {/* Header */}
-      <View style={{ paddingTop: statusBarHeight, paddingBottom: 0 }} className="flex items-center px-4 bg-white">
+      {/* Header - 紧凑 */}
+      <View style={{ paddingTop: statusBarHeight }} className="flex items-center px-4 pb-2 bg-white">
         <View onClick={goBack} className="w-8 h-8 flex items-center justify-center">
           <ArrowLeft size={18} color="#8896A6" />
         </View>
         <Text className="block flex-1 text-center text-base font-semibold pr-8" style={{ color: '#2D3748' }}>项目详情</Text>
       </View>
 
-      <View className="flex-1 px-4 pt-2 pb-4">
+      <View className="flex-1 px-4 pt-1 pb-4">
         {/* 封面 + 信息 */}
         <View
           className="flex items-center rounded-2xl overflow-hidden mb-3"
           style={{
             backgroundColor: '#FFFFFF',
             border: '1px solid #EDF2F7',
-            boxShadow: '0 8px 30px rgba(107,159,213,0.10), 0 2px 8px rgba(0,0,0,0.04)',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.03)',
+            minHeight: 100,
           }}
         >
-          {/* 封面图 - 使用 overflow-hidden + Image mode="aspectFill" */}
+          {/* 封面图 - 贴紧左边缘，圆角 */}
           <View
             className="flex items-center justify-center flex-shrink-0 relative overflow-hidden"
             style={{
-              width: '96px',
-              height: '96px',
-              borderRadius: '12px',
-              background: project?.cover_url ? undefined : `linear-gradient(135deg, ${g1}, ${g2})`,
+              width: 96,
+              height: 96,
+              borderRadius: '16px',
+              marginLeft: 12,
+              marginTop: 8, marginBottom: 8,
+              background: project?.cover_url ? undefined : cc.accent,
+              opacity: project?.cover_url ? undefined : 0.85,
             }}
             onClick={handleChangeCover}
           >
             {project?.cover_url ? (
-              <Image style={{ width: '96px', height: '96px' }} src={project.cover_url} mode="aspectFill" />
+              <Image style={{ width: 96, height: 96 }} src={project.cover_url} mode="aspectFill" />
             ) : (
-              <Text className="block text-4xl">{getIcon(project?.name || '')}</Text>
+              <Text className="block text-3xl">{getIcon(project?.name || '')}</Text>
             )}
-            <View className="absolute bottom-1 right-1 w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.8)' }}>
-              <Camera size={10} color="#6B9FD5" />
+            <View className="absolute bottom-1 right-1 w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.85)' }}>
+              <Camera size={10} color={cc.accent} />
             </View>
           </View>
           {/* 信息区 */}
@@ -211,13 +218,13 @@ export default function ProjectPage() {
             <View className="flex items-end justify-between mt-2">
               <View>
                 <Text className="block text-xs" style={{ color: '#8896A6' }}>总金额</Text>
-                <Text className="block text-xl font-bold" style={{ color: '#6B9FD5' }}>¥{totalAmount.toFixed(0)}</Text>
+                <Text className="block text-xl font-bold" style={{ color: 'cc.accent' }}>¥{totalAmount.toFixed(0)}</Text>
               </View>
               <View
                 className="rounded-xl px-3 py-2"
                 style={{ backgroundColor: '#F0F6FC', border: '1px solid #E4EDF7' }}
               >
-                <Text className="block text-xs" style={{ color: '#6B9FD5' }}>人均 ¥{perPerson.toFixed(2)}</Text>
+                <Text className="block text-xs" style={{ color: 'cc.accent' }}>人均 ¥{perPerson.toFixed(2)}</Text>
                 {treatAmount > 0 && (
                   <Text className="block text-xs mt-1" style={{ color: '#8896A6' }}>含请客 ¥{treatAmount.toFixed(0)}</Text>
                 )}
@@ -231,8 +238,8 @@ export default function ProjectPage() {
           onClick={goAddBill}
           className="w-full rounded-2xl py-4 flex items-center justify-center gap-2 mb-3"
           style={{
-            background: 'linear-gradient(135deg, #6B9FD5, #7EB8E8)',
-            boxShadow: '0 8px 30px rgba(91,155,213,0.30), 0 2px 8px rgba(91,155,213,0.15)',
+            background: `linear-gradient(135deg, ${cc.accent}, ${cc.bg})`,
+            boxShadow: '0 6px 24px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04)',
           }}
         >
           <Plus size={18} color="#FFFFFF" />
@@ -272,10 +279,10 @@ export default function ProjectPage() {
                       className="rounded-full px-2 py-1"
                       style={{ backgroundColor: '#F0F6FC', border: '1px solid #E4EDF7' }}
                     >
-                      <Text className="block text-xs" style={{ color: '#6B9FD5' }}>请客</Text>
+                      <Text className="block text-xs" style={{ color: 'cc.accent' }}>请客</Text>
                     </View>
                   )}
-                  <Text className="block text-sm font-semibold" style={{ color: b.is_treat ? '#6B9FD5' : '#2D3748' }}>
+                  <Text className="block text-sm font-semibold" style={{ color: b.is_treat ? 'cc.accent' : '#2D3748' }}>
                     ¥{Number(b.amount).toFixed(0)}
                   </Text>
                 </View>
