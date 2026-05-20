@@ -14,7 +14,7 @@ export class ProjectsService {
     return data || [];
   }
 
-  async create(body: { name: string; destination: string; start_date?: string; end_date?: string; participants?: string[] }) {
+  async create(body: { name: string; destination: string; start_date?: string; end_date?: string; participants?: string[]; cover_url?: string }) {
     const { data, error } = await this.client
       .from('projects')
       .insert({
@@ -23,6 +23,7 @@ export class ProjectsService {
         start_date: body.start_date,
         end_date: body.end_date,
         participants: body.participants || [],
+        cover_url: body.cover_url,
       })
       .select()
       .single();

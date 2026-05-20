@@ -68,6 +68,7 @@ export default function ProjectPage() {
         Network.request({ url: `/api/projects/${id}` }),
         Network.request({ url: `/api/projects/${id}/bills` }),
       ]);
+      console.log('project detail', projRes.data);
       setProject(projRes.data?.data);
       setBills(billsRes.data?.data || []);
     } catch (e) {
@@ -88,58 +89,39 @@ export default function ProjectPage() {
 
   const handleChangeCover = async () => {
     const isMiniApp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT;
-    if (!isMiniApp) {
-      // H5 fallback: use file input
-      try {
+    try {
+      let tempFilePath = '';
+      if (isMiniApp) {
+        const res = await Taro.chooseMedia({ count: 1, mediaType: ['image'], sourceType: ['album', 'camera'] });
+        if (res.tempFiles && res.tempFiles.length > 0) {
+          tempFilePath = res.tempFiles[0].tempFilePath;
+        }
+      } else {
         const res = await Taro.chooseImage({ count: 1, sourceType: ['album', 'camera'] });
         if (res.tempFilePaths && res.tempFilePaths.length > 0) {
-          const uploadRes = await Network.uploadFile({
-            url: '/api/upload',
-            filePath: res.tempFilePaths[0],
-            name: 'file',
-          });
-          console.log('cover upload result', uploadRes.data);
-          const parsed = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data;
-          const url = parsed?.data?.url;
-          if (url && project?.id) {
-            await Network.request({
-              url: `/api/projects/${project.id}`,
-              method: 'PUT',
-              data: { cover_url: url },
-            });
-            Taro.showToast({ title: '封面已更新', icon: 'success' });
-            setRefreshKey(k => k + 1);
-          }
+          tempFilePath = res.tempFilePaths[0];
         }
-      } catch (e) {
-        console.error('choose cover error', e);
-        Taro.showToast({ title: '选择失败', icon: 'none' });
       }
-      return;
-    }
-    try {
-      const res = await Taro.chooseMedia({ count: 1, mediaType: ['image'], sourceType: ['album', 'camera'] });
-      if (res.tempFiles && res.tempFiles.length > 0) {
-        const uploadRes = await Network.uploadFile({
-          url: '/api/upload',
-          filePath: res.tempFiles[0].tempFilePath,
-          name: 'file',
+      if (!tempFilePath) return;
+      const uploadRes = await Network.uploadFile({
+        url: '/api/upload',
+        filePath: tempFilePath,
+        name: 'file',
+      });
+      console.log('cover upload result', uploadRes.data);
+      const parsed = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data;
+      const url = parsed?.data?.url;
+      if (url && project?.id) {
+        await Network.request({
+          url: `/api/projects/${project.id}`,
+          method: 'PUT',
+          data: { cover_url: url },
         });
-        console.log('cover upload result', uploadRes.data);
-        const parsed = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data;
-        const url = parsed?.data?.url;
-        if (url && project?.id) {
-          await Network.request({
-            url: `/api/projects/${project.id}`,
-            method: 'PUT',
-            data: { cover_url: url },
-          });
-          Taro.showToast({ title: '封面已更新', icon: 'success' });
-          setRefreshKey(k => k + 1);
-        }
+        Taro.showToast({ title: '封面已更新', icon: 'success' });
+        setRefreshKey(k => k + 1);
       }
     } catch (e) {
-      console.error(e);
+      console.error('choose cover error', e);
       Taro.showToast({ title: '选择失败', icon: 'none' });
     }
   };
@@ -193,23 +175,26 @@ export default function ProjectPage() {
       <View className="flex-1 px-4 pt-2 pb-4">
         {/* 封面 + 信息 */}
         <View
-          className="flex rounded-2xl overflow-hidden mb-3"
+          className="flex items-center rounded-2xl overflow-hidden mb-3"
           style={{
             backgroundColor: '#FFFFFF',
             border: '1px solid #EDF2F7',
             boxShadow: '0 8px 30px rgba(91,155,213,0.10), 0 2px 8px rgba(0,0,0,0.04)',
           }}
         >
-          {/* 封面图 */}
+          {/* 封面图 - 使用 overflow-hidden + Image mode="aspectFill" */}
           <View
-            className="w-28 h-28 flex items-center justify-center flex-shrink-0 relative"
+            className="flex items-center justify-center flex-shrink-0 relative overflow-hidden"
             style={{
+              width: '90px',
+              height: '100%',
+              minHeight: '90px',
               background: project?.cover_url ? undefined : `linear-gradient(135deg, ${g1}, ${g2})`,
             }}
             onClick={handleChangeCover}
           >
             {project?.cover_url ? (
-              <Image className="w-full h-full" src={project.cover_url} mode="aspectFill" />
+              <Image style={{ width: '90px', height: '100%', minHeight: '90px' }} src={project.cover_url} mode="aspectFill" />
             ) : (
               <Text className="block text-4xl">{getIcon(project?.name || '')}</Text>
             )}
@@ -223,7 +208,7 @@ export default function ProjectPage() {
               <Text className="block text-base font-semibold" style={{ color: '#2D3748' }}>{project?.name}</Text>
               <Text className="block text-xs mt-1" style={{ color: '#8896A6' }}>{displayStart} ~ {displayEnd}</Text>
             </View>
-            <View className="flex items-end justify-between">
+            <View className="flex items-end justify-between mt-2">
               <View>
                 <Text className="block text-xs" style={{ color: '#8896A6' }}>总金额</Text>
                 <Text className="block text-xl font-bold" style={{ color: '#5B9BD5' }}>¥{totalAmount.toFixed(0)}</Text>
@@ -255,7 +240,7 @@ export default function ProjectPage() {
         </View>
 
         {/* 账单明细 */}
-        <Text className="block text-sm font-semibold mb-3" style={{ color: '#2D3748' }}>账单明细</Text>
+        <Text className="block text-sm font-semibold mb-2" style={{ color: '#2D3748' }}>账单明细</Text>
         {Object.entries(byDate).map(([date, items]) => (
           <View key={date} className="mb-3">
             <Text className="block text-xs mb-2" style={{ color: '#8896A6' }}>{date}</Text>
@@ -298,6 +283,11 @@ export default function ProjectPage() {
             ))}
           </View>
         ))}
+        {bills.length === 0 && (
+          <View className="flex items-center justify-center py-8">
+            <Text className="block text-sm" style={{ color: '#8896A6' }}>暂无账单，点击上方添加</Text>
+          </View>
+        )}
 
         {/* 删除项目 */}
         <View

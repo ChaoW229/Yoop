@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import Taro, { useLoad } from '@tarojs/taro';
+import Taro, { useLoad, useDidShow } from '@tarojs/taro';
 import { View, Text, Image, Picker } from '@tarojs/components';
 import { Input } from '@/components/ui/input';
 import { Network } from '@/network';
-import { ChartPie, User, Search, Plus, X, Calendar } from 'lucide-react-taro';
+import { ChartPie, User, Search, Plus, X, Calendar, Camera } from 'lucide-react-taro';
 
 interface Project {
   id: string;
@@ -52,6 +52,7 @@ export default function IndexPage() {
   const [newName, setNewName] = useState('');
   const [newStart, setNewStart] = useState('');
   const [newEnd, setNewEnd] = useState('');
+  const [newCoverTemp, setNewCoverTemp] = useState('');
   const [searchText, setSearchText] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [statusBarHeight, setStatusBarHeight] = useState(0);
@@ -78,6 +79,11 @@ export default function IndexPage() {
     fetchProjects();
   });
 
+  // 每次页面显示时刷新，确保从详情页返回后图片更新
+  useDidShow(() => {
+    fetchProjects();
+  });
+
   const goStats = () => {
     Taro.navigateTo({ url: '/pages/stats/index' });
   };
@@ -88,12 +94,42 @@ export default function IndexPage() {
     Taro.navigateTo({ url: `/pages/project/index?id=${id}` });
   };
 
+  const handleChooseCover = async () => {
+    const isMiniApp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT;
+    try {
+      if (isMiniApp) {
+        const res = await Taro.chooseMedia({ count: 1, mediaType: ['image'], sourceType: ['album', 'camera'] });
+        if (res.tempFiles && res.tempFiles.length > 0) {
+          setNewCoverTemp(res.tempFiles[0].tempFilePath);
+        }
+      } else {
+        const res = await Taro.chooseImage({ count: 1, sourceType: ['album', 'camera'] });
+        if (res.tempFilePaths && res.tempFilePaths.length > 0) {
+          setNewCoverTemp(res.tempFilePaths[0]);
+        }
+      }
+    } catch (e) {
+      console.error('choose cover error', e);
+    }
+  };
+
   const handleAddProject = async () => {
     if (!newName) {
       Taro.showToast({ title: '请填写项目名', icon: 'none' });
       return;
     }
     try {
+      let coverUrl = '';
+      // 上传封面图
+      if (newCoverTemp) {
+        const uploadRes = await Network.uploadFile({
+          url: '/api/upload',
+          filePath: newCoverTemp,
+          name: 'file',
+        });
+        const parsed = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data;
+        coverUrl = parsed?.data?.url || '';
+      }
       await Network.request({
         url: '/api/projects',
         method: 'POST',
@@ -103,6 +139,7 @@ export default function IndexPage() {
           startDate: newStart || undefined,
           endDate: newEnd || undefined,
           participants: ['小明', '小红'],
+          coverUrl: coverUrl || undefined,
         },
       });
       Taro.showToast({ title: '新项目已添加', icon: 'success' });
@@ -110,6 +147,7 @@ export default function IndexPage() {
       setNewName('');
       setNewStart('');
       setNewEnd('');
+      setNewCoverTemp('');
       fetchProjects();
     } catch (e) {
       Taro.showToast({ title: '添加失败', icon: 'none' });
@@ -126,47 +164,45 @@ export default function IndexPage() {
   return (
     <View className="flex flex-col h-full bg-white">
       {/* Header */}
-      <View style={{ paddingTop: statusBarHeight }} className="px-4 pb-2 flex items-center gap-3 bg-white">
+      <View style={{ paddingTop: statusBarHeight }} className="px-4 pb-1 flex items-center gap-3 bg-white">
         <View
           onClick={goStats}
-          className="w-10 h-10 rounded-full flex items-center justify-center"
+          className="w-9 h-9 rounded-full flex items-center justify-center"
           style={{ backgroundColor: '#F0F6FC', boxShadow: '0 4px 12px rgba(91,155,213,0.15)' }}
         >
-          <ChartPie size={18} color="#5B9BD5" />
+          <ChartPie size={16} color="#5B9BD5" />
         </View>
         <View
-          className="flex-1 h-10 rounded-full flex items-center px-4"
-          style={{ backgroundColor: '#F7F9FC', border: '1px solid #EDF2F7' }}
-          onClick={() => setIsSearching(true)}
+          className="flex-1 rounded-full flex items-center"
+          style={{ backgroundColor: '#F7F9FC', border: '1px solid #EDF2F7', height: '36px', paddingLeft: '12px', paddingRight: '12px' }}
+          onClick={() => { if (!isSearching) setIsSearching(true); }}
         >
           <Search size={14} color="#8896A6" />
           {isSearching ? (
-            <View className="flex-1 ml-2">
-              <Input
-                className="border-0 bg-transparent shadow-none ring-0 focus-within:ring-0 focus-within:border-0 h-8 text-sm"
-                placeholder="搜索项目"
-                focus={isSearching}
-                value={searchText}
-                onInput={e => setSearchText(e.detail.value)}
-                onBlur={() => { if (!searchText) setIsSearching(false); }}
-              />
-            </View>
+            <Input
+              className="flex-1 ml-2 border-0 bg-transparent shadow-none ring-0 h-9 text-sm leading-9"
+              placeholder="搜索项目"
+              focus={isSearching}
+              value={searchText}
+              onInput={e => setSearchText(e.detail.value)}
+              onBlur={() => { if (!searchText) setIsSearching(false); }}
+              style={{ border: 'none', boxShadow: 'none', outline: 'none', backgroundColor: 'transparent', height: '36px', lineHeight: '36px' }}
+            />
           ) : (
-            <Text className="block text-sm ml-2" style={{ color: '#8896A6' }}>搜索项目</Text>
+            <Text className="block text-sm ml-2 leading-9" style={{ color: '#8896A6' }}>搜索项目</Text>
           )}
         </View>
         <View
           onClick={goProfile}
-          className="w-10 h-10 rounded-full flex items-center justify-center"
+          className="w-9 h-9 rounded-full flex items-center justify-center"
           style={{ backgroundColor: '#F0F6FC', boxShadow: '0 4px 12px rgba(91,155,213,0.15)' }}
         >
-          <User size={18} color="#5B9BD5" />
+          <User size={16} color="#5B9BD5" />
         </View>
       </View>
 
       {/* Project List */}
-      <View className="flex-1 px-4 pb-3">
-        <Text className="block text-lg font-semibold mb-3" style={{ color: '#2D3748' }}>我的项目</Text>
+      <View className="flex-1 px-4 pt-2 pb-3">
         {loading && (
           <View className="flex items-center justify-center py-10">
             <Text className="block text-sm" style={{ color: '#8896A6' }}>加载中...</Text>
@@ -174,54 +210,46 @@ export default function IndexPage() {
         )}
         {filteredProjects.map((p) => {
           const [g1, g2] = getGradient(p.id);
+          const dateStr = p.start_date
+            ? (p.end_date && p.end_date !== p.start_date ? `${p.start_date} ~ ${p.end_date}` : p.start_date)
+            : '待定';
           return (
             <View
               key={p.id}
               onClick={() => goProject(p.id)}
-              className="flex rounded-2xl mb-4 overflow-hidden"
+              className="flex items-center rounded-2xl mb-3 overflow-hidden"
               style={{
                 backgroundColor: '#FFFFFF',
                 border: '1px solid #EDF2F7',
                 boxShadow: '0 8px 30px rgba(91,155,213,0.10), 0 2px 8px rgba(0,0,0,0.04)',
+                height: '80px',
               }}
             >
               {/* Left: Cover */}
               <View
-                className="w-24 h-24 flex items-center justify-center flex-shrink-0"
+                className="flex items-center justify-center flex-shrink-0"
                 style={{
+                  width: '80px',
+                  height: '80px',
                   background: p.cover_url ? undefined : `linear-gradient(135deg, ${g1}, ${g2})`,
                 }}
               >
                 {p.cover_url ? (
-                  <Image className="w-full h-full" src={p.cover_url} mode="aspectFill" />
+                  <Image style={{ width: '80px', height: '80px' }} src={p.cover_url} mode="aspectFill" />
                 ) : (
                   <Text className="block text-3xl">{getIcon(p.name)}</Text>
                 )}
               </View>
-              {/* Right: Info */}
-              <View className="flex-1 p-3 flex flex-col justify-between">
-                <View>
-                  <Text className="block text-base font-semibold" style={{ color: '#2D3748' }}>{p.name}</Text>
-                  <Text className="block text-xs mt-1" style={{ color: '#8896A6' }}>
-                    {p.start_date || '待定'} ~ {p.end_date || '待定'}
-                  </Text>
-                </View>
-                <View className="flex items-center justify-between">
-                  <View className="flex gap-1">
-                    {(p.participants || []).slice(0, 3).map((name, i) => (
-                      <View
-                        key={i}
-                        className="w-5 h-5 rounded-full flex items-center justify-center"
-                        style={{ backgroundColor: '#F0F6FC' }}
-                      >
-                        <Text className="block text-xs" style={{ color: '#5B9BD5' }}>{name[0]}</Text>
-                      </View>
-                    ))}
-                  </View>
-                  <Text className="block text-base font-bold" style={{ color: '#5B9BD5' }}>
-                    ¥{Number(p.total_amount || 0).toFixed(0)}
-                  </Text>
-                </View>
+              {/* Center: Name + Date */}
+              <View className="flex-1 px-4 flex flex-col justify-center">
+                <Text className="block text-lg font-semibold" style={{ color: '#2D3748', fontFamily: 'system-ui' }}>{p.name}</Text>
+                <Text className="block text-xs mt-1" style={{ color: '#8896A6' }}>{dateStr}</Text>
+              </View>
+              {/* Right: Amount */}
+              <View className="flex-shrink-0 pr-4 flex items-center justify-center">
+                <Text className="block text-lg font-bold" style={{ color: '#5B9BD5' }}>
+                  ¥{Number(p.total_amount || 0).toFixed(0)}
+                </Text>
               </View>
             </View>
           );
@@ -255,13 +283,36 @@ export default function IndexPage() {
       {showAddModal && (
         <View className="fixed inset-0" style={{ zIndex: 100, backgroundColor: '#FFFFFF' }}>
           <View style={{ paddingTop: statusBarHeight }} className="flex items-center px-4 py-2">
-            <View onClick={() => setShowAddModal(false)} className="w-8 h-8 flex items-center justify-center">
+            <View onClick={() => { setShowAddModal(false); setNewCoverTemp(''); }} className="w-8 h-8 flex items-center justify-center">
               <X size={20} color="#8896A6" />
             </View>
             <Text className="block flex-1 text-center text-base font-semibold pr-8" style={{ color: '#2D3748' }}>添加新项目</Text>
           </View>
 
-          <View className="px-5 pt-6 flex flex-col gap-5">
+          <View className="px-5 pt-4 flex flex-col gap-4">
+            {/* 封面图选择 */}
+            <View>
+              <Text className="block text-xs mb-2" style={{ color: '#8896A6' }}>封面图片</Text>
+              <View onClick={handleChooseCover} className="flex items-center gap-3">
+                <View
+                  className="flex items-center justify-center flex-shrink-0 rounded-xl overflow-hidden"
+                  style={{
+                    width: '64px',
+                    height: '64px',
+                    background: newCoverTemp ? undefined : '#F7F9FC',
+                    border: '1px dashed #CDD5E0',
+                  }}
+                >
+                  {newCoverTemp ? (
+                    <Image style={{ width: '64px', height: '64px' }} src={newCoverTemp} mode="aspectFill" />
+                  ) : (
+                    <Camera size={20} color="#8896A6" />
+                  )}
+                </View>
+                <Text className="block text-xs" style={{ color: '#8896A6' }}>点击选择图片，不选则自动生成</Text>
+              </View>
+            </View>
+
             <View>
               <Text className="block text-xs mb-2" style={{ color: '#8896A6' }}>项目名</Text>
               <View

@@ -12,13 +12,14 @@ export class ProjectsController {
   }
 
   @Post()
-  async create(@Body() body: { name: string; destination: string; startDate?: string; endDate?: string; participants?: string[] }) {
+  async create(@Body() body: { name: string; destination: string; startDate?: string; endDate?: string; participants?: string[]; coverUrl?: string }) {
     const data = await this.service.create({
       name: body.name,
       destination: body.destination,
       start_date: body.startDate,
       end_date: body.endDate,
       participants: body.participants,
+      cover_url: body.coverUrl,
     });
     return { code: 200, msg: 'ok', data };
   }
