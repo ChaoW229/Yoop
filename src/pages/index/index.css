@@ -1,1 +1,24 @@
-/* 优先使用 tailwindcss，如无必要请不要使用css */
+/* Yoop 首页样式 */
+
+.search-placeholder {
+  color: #A0ABB8;
+  font-size: 14px;
+}
+
+/* ===== 卡片丝滑渐入动画 ===== */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 卡片触摸反馈 */
+.project-card:active {
+  transform: scale(0.98) !important;
+  transition: transform 0.15s ease-out !important;
+}
