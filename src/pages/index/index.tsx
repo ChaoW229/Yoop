@@ -223,20 +223,18 @@ export default function IndexPage() {
                     )}
                   </View>
 
-                  {/* 右侧内容区：项目名居中 + 时间沉底 + 金额右中 */}
-                  <View style={{ flex: 1, padding: 10, paddingLeft: 14, paddingRight: 12, position: 'relative' }}>
-                    {/* 项目名 - 正中间（水平+垂直居中） */}
-                    <View style={{ position: 'absolute', top: '50%', left: 14, right: 72, transform: 'translateY(-50%)' }}>
+                  {/* 右侧内容区：flex列布局 */}
+                  <View style={{ flex: 1, padding: 10, paddingLeft: 14, paddingRight: 12, display: 'flex', flexDirection: 'column', position: 'relative' }}>
+                    {/* 中间弹性区域：项目名水平+垂直居中 */}
+                    <View style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 56 }}>
                       <Text style={{ fontSize: 17, fontWeight: '600', color: cs.name, textAlign: 'center' }}>{p.name}</Text>
                     </View>
 
-                    {/* 金额 - 右侧垂直居中 */}
-                    <View style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)' }}>
+                    {/* 底部行：时间左 + 金额右 */}
+                    <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4 }}>
+                      <Text style={{ fontSize: 11, color: '#A0ABB8', flexShrink: 1 }}>{dateStr}</Text>
                       <Text style={{ fontSize: 19, fontWeight: '700', color: cs.amount }}>¥{Number(p.total_amount || 0).toFixed(0)}</Text>
                     </View>
-
-                    {/* 时间 - 卡片底部 */}
-                    <Text style={{ fontSize: 11, color: '#A0ABB8', position: 'absolute', bottom: 8, left: 14, right: 72, textAlign: 'center' }}>{dateStr}</Text>
                   </View>
                 </View>
               </View>
