@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import Taro, { useLoad, useDidShow } from '@tarojs/taro';
-import { View, Text, Image, Picker } from '@tarojs/components';
+import { View, Text, Image, Picker, ScrollView } from '@tarojs/components';
 import { Input as UIInput } from '@/components/ui/input';
 import { Network } from '@/network';
 import { ChartPie, User, Search, Plus, X, Calendar, Camera } from 'lucide-react-taro';
@@ -18,14 +18,14 @@ interface Project {
 
 /* 每个卡片独立低饱和度色系 - 更丰富更高级 */
 const CARD_COLORS = [
-  { bg: '#E8F0F7', accent: '#6B9BD5', name: '#3A5A78', amount: '#5B8BC2' },   // 雾蓝灰
-  { bg: '#EDF4EE', accent: '#7BA888', name: '#4A6850', amount: '#6A9270' },     // 薄荷绿
-  { bg: '#F5EDE8', accent: '#C49A7A', name: '#7A5840', amount: '#B08860' },     // 奶茶棕
-  { bg: '#EBE8F3', accent: '#9B8EC4', name: '#5C5070', amount: '#8678AA' },     // 薰衣紫
-  { bg: '#F0EDE8', accent: '#B8A07A', name: '#605440', amount: '#9A8860' },     // 暖杏
-  { bg: '#E5EFF1', accent: '#6BAFA5', name: '#406860', amount: '#5A9890' },     // 薄荷青
-  { bg: '#F2EBEF', accent: '#B87D9A', name: '#6A4858', amount: '#A06880' },     // 烟霞粉
-  { bg: '#EAF0E8', accent: '#8FB894', name: '#506850', amount: '#70A076' },     // 鼠尾草绿
+  { bg: '#E8F0F7', accent: '#6B9BD5', name: '#3A5A78', amount: '#5B8BC2' },
+  { bg: '#EDF4EE', accent: '#7BA888', name: '#4A6850', amount: '#6A9270' },
+  { bg: '#F5EDE8', accent: '#C49A7A', name: '#7A5840', amount: '#B08860' },
+  { bg: '#EBE8F3', accent: '#9B8EC4', name: '#5C5070', amount: '#8678AA' },
+  { bg: '#F0EDE8', accent: '#B8A07A', name: '#605440', amount: '#9A8860' },
+  { bg: '#E5EFF1', accent: '#6BAFA5', name: '#406860', amount: '#5A9890' },
+  { bg: '#F2EBEF', accent: '#B87D9A', name: '#6A4858', amount: '#A06880' },
+  { bg: '#EAF0E8', accent: '#8FB894', name: '#506850', amount: '#70A076' },
 ];
 
 function getCardStyle(id: string) {
@@ -138,61 +138,88 @@ export default function IndexPage() {
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
+  /* 获取状态栏高度 */
+  const statusBarH = Taro.getSystemInfoSync().statusBarHeight || 0;
+
   return (
     <View className="flex flex-col h-full bg-white">
-      {/* Header - 紧凑状态栏+标题 */}
-      <View className="px-4 flex items-center gap-3 bg-white"
-        style={{ paddingTop: Taro.getSystemInfoSync().statusBarHeight || 0 }}
+      {/* ===== 问题1修复：去掉标题行，搜索栏紧贴状态栏 ===== */}
+      {/* Header - 搜索栏固定在顶部，无多余空隙 */}
+      <View
+        className="bg-white z-20"
+        style={{
+          paddingTop: statusBarH,
+          paddingBottom: 10,
+          position: 'relative',
+        }}
       >
-        <View onClick={goStats}
-          style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#F5F7FA', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <ChartPie size={18} color="#6B9BD5" />
-        </View>
+        <View className="px-4 flex items-center gap-3">
+          {/* 左侧统计按钮 */}
+          <View onClick={goStats}
+            style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F5F7FA', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+          >
+            <ChartPie size={16} color="#6B9BD5" />
+          </View>
 
-        {/* 搜索栏 - 原生输入框，无嵌套，直接用 TaroInput */}
-        <View
-          style={{
-            flex: 1, height: 40, borderRadius: 22,
-            backgroundColor: isSearching ? '#FFFFFF' : '#F5F7FA',
-            border: isSearching ? '1.5px solid #6B9BD5' : '1px solid #EAEDF2',
-            paddingLeft: 12,
-            paddingRight: 12,
-            display: 'flex', alignItems: 'center',
-          }}
-        >
-          <Search size={16} color={isSearching ? '#6B9BD5' : '#A0ABB8'} />
-          {!isSearching ? (
-            <Text className="block ml-2" style={{ color: '#A0ABB8', fontSize: 14 }}>搜索项目</Text>
-          ) : (
-            <UIInput
-              className="flex-1 ml-2 border-0 bg-transparent shadow-none ring-0 focus-within:ring-0 focus-within:border-0"
-              placeholder="搜索项目..."
-              focus={isSearching}
-              value={searchText}
-              onInput={(e: any) => setSearchText(e.detail.value)}
-              onBlur={() => { if (!searchText) setIsSearching(false); }}
-              confirmType="search"
-              style={{ height: 40, lineHeight: '40px', fontSize: 14, color: '#2D3748' }}
-            />
-          )}
-        </View>
+          {/* ===== 问题3修复：搜索栏可点击搜索 ===== */}
+          <View
+            onClick={() => setIsSearching(true)}
+            style={{
+              flex: 1, height: 38, borderRadius: 19,
+              backgroundColor: isSearching ? '#FFFFFF' : '#F5F7FA',
+              border: isSearching ? '1.5px solid #6B9BD5' : '1px solid #EAEDF2',
+              paddingLeft: 14,
+              paddingRight: 14,
+              display: 'flex', alignItems: 'center',
+            }}
+          >
+            <Search size={15} color={isSearching ? '#6B9BD5' : '#A0ABB8'} />
+            {!isSearching ? (
+              <Text className="block ml-2" style={{ color: '#A0ABB8', fontSize: 13 }}>搜索项目</Text>
+            ) : (
+              <UIInput
+                className="flex-1 ml-2 border-0 bg-transparent shadow-none ring-0 focus-within:ring-0 focus-within:border-0"
+                placeholder="输入关键词搜索..."
+                focus={isSearching}
+                value={searchText}
+                onInput={(e: any) => setSearchText(e.detail.value)}
+                onBlur={() => { if (!searchText) setIsSearching(false); }}
+                confirmType="search"
+                style={{ height: 38, lineHeight: '38px', fontSize: 13, color: '#2D3748' }}
+              />
+            )}
+          </View>
 
-        <View onClick={goProfile}
-          style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#F5F7FA', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <User size={18} color="#6B9BD5" />
+          {/* 右侧个人中心 */}
+          <View onClick={goProfile}
+            style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F5F7FA', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+          >
+            <User size={16} color="#6B9BD5" />
+          </View>
         </View>
       </View>
 
-      {/* 项目列表 - 搜索栏下方有12px间距，自然衔接 */}
-      <View className="flex-1 px-4 pt-3 pb-24">
+      {/* ===== 问题3修复：ScrollView让搜索栏不动，卡片堆叠+强悬浮感 ===== */}
+      <ScrollView
+        className="flex-1"
+        scrollY
+        style={{
+          paddingLeft: 16,
+          paddingRight: 16,
+          paddingTop: 6,
+          paddingBottom: 90,
+        }}
+        enhanced
+        showScrollbar={false}
+      >
         {loading && (
           <View className="flex items-center justify-center py-12">
             <Text className="block text-sm" style={{ color: '#A0ABB8' }}>加载中...</Text>
           </View>
         )}
-        {filteredProjects.map((p) => {
+
+        {/* ===== 问题4修复：项目名和时间水平+垂直居中 ===== */}
+        {filteredProjects.map((p, index) => {
           const cs = getCardStyle(p.id);
           const dateStr = p.start_date
             ? (p.end_date && p.end_date !== p.start_date ? `${formatDateSlash(p.start_date)} ~ ${formatDateSlash(p.end_date)}` : formatDateSlash(p.start_date))
@@ -202,67 +229,74 @@ export default function IndexPage() {
             <View
               key={p.id}
               onClick={() => goProject(p.id)}
+              className="relative"
               style={{
-                display: 'flex', alignItems: 'stretch',
-                backgroundColor: cs.bg,
-                borderRadius: 20,
-                boxShadow: '0 8px 30px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.03)',
-                marginBottom: 16,
-                height: 96,
-                overflow: 'hidden',
+                marginTop: index > 0 ? -20 : 0,
+                zIndex: filteredProjects.length - index,
+                marginBottom: index === filteredProjects.length - 1 ? 12 : 0,
               }}
             >
-              {/* 左侧封面 - 贴紧左边缘，圆角左上左下 */}
               <View
                 style={{
-                  width: 96, minWidth: 96,
-                  backgroundColor: cs.accent,
-                  opacity: p.cover_url ? undefined : 0.85,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  position: 'relative',
+                  display: 'flex', alignItems: 'stretch',
+                  backgroundColor: cs.bg,
+                  borderRadius: 22,
+                  /* 强悬浮感阴影 */
+                  boxShadow: '0 10px 35px rgba(0,0,0,0.09), 0 3px 10px rgba(0,0,0,0.05)',
+                  height: 100,
+                  overflow: 'hidden',
+                  border: '1px solid rgba(255,255,255,0.7)',
                 }}
               >
-                {p.cover_url ? (
-                  <Image style={{ width: 96, height: 96 }} src={p.cover_url} mode="aspectFill" />
-                ) : (
-                  <Text style={{ fontSize: 30 }}>{getIcon(p.name)}</Text>
-                )}
-              </View>
-
-              {/* 中间区域 - 项目名垂直居中 + 时间 */}
-              <View style={{ flex: 1, paddingLeft: 16, paddingRight: 8, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <Text
+                {/* 左侧封面 - 紧贴边缘 */}
+                <View
                   style={{
-                    fontSize: 18,
-                    fontWeight: '600',
-                    color: cs.name,
-                    letterSpacing: '0.8px',
-                  }}
-                  numberOfLines={1}
-                >
-                  {p.name}
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 13,
-                    color: '#A0ABB8',
-                    marginTop: 5,
+                    width: 96, minWidth: 96,
+                    backgroundColor: cs.accent,
+                    opacity: p.cover_url ? undefined : 0.88,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}
                 >
-                  {dateStr}
-                </Text>
-              </View>
+                  {p.cover_url ? (
+                    <Image style={{ width: 96, height: 100 }} src={p.cover_url} mode="aspectFill" />
+                  ) : (
+                    <Text style={{ fontSize: 32 }}>{getIcon(p.name)}</Text>
+                  )}
+                </View>
 
-              {/* 右侧金额 - 垂直居中 */}
-              <View style={{
-                width: 72,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                paddingRight: 14,
-              }}
-              >
-                <Text style={{ fontSize: 19, fontWeight: '700', color: cs.amount }}>
-                  ¥{Number(p.total_amount || 0).toFixed(0)}
-                </Text>
+                {/* 中间区域 - 项目名和时间水平+垂直居中 */}
+                <View style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text
+                    style={{
+                      fontSize: 18,
+                      fontWeight: '600',
+                      color: cs.name,
+                      letterSpacing: '1px',
+                      textAlign: 'center',
+                      fontFamily: 'Georgia, "Times New Roman", serif',
+                    }}
+                    numberOfLines={1}
+                  >
+                    {p.name}
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      color: '#A0ABB8',
+                      marginTop: 6,
+                      textAlign: 'center',
+                    }}
+                  >
+                    {dateStr}
+                  </Text>
+                </View>
+
+                {/* 右侧金额 - 垂直居中 */}
+                <View style={{ width: 72, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', paddingRight: 16 }}>
+                  <Text style={{ fontSize: 20, fontWeight: '700', color: cs.amount }}>
+                    ¥{Number(p.total_amount || 0).toFixed(0)}
+                  </Text>
+                </View>
               </View>
             </View>
           );
@@ -275,31 +309,31 @@ export default function IndexPage() {
             </Text>
           </View>
         )}
-      </View>
+      </ScrollView>
 
-      {/* 浮动按钮 */}
+      {/* 浮动按钮 - 强悬浮感 */}
       <View
         onClick={() => setShowAddModal(true)}
         style={{
           position: 'fixed',
-          right: 20,
-          bottom: 100,
-          zIndex: 50,
-          width: 60, height: 60, borderRadius: 30,
-          background: 'linear-gradient(135deg, #6B9BD5, #8DB8E0)',
+          right: 18,
+          bottom: 28,
+          zIndex: 999,
+          width: 56, height: 56, borderRadius: 28,
+          background: 'linear-gradient(135deg, #5B8DEE, #7BA8EA)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 10px 40px rgba(107,155,213,0.35), 0 4px 12px rgba(107,155,213,0.18)',
+          boxShadow: '0 10px 30px rgba(91,141,238,0.4), 0 4px 12px rgba(91,141,238,0.2)',
         }}
       >
-        <Plus size={28} color="#FFFFFF" />
+        <Plus size={26} color="#FFFFFF" />
       </View>
 
       {/* 全屏新建项目 */}
       {showAddModal && (
-        <View style={{ position: 'fixed', inset: 0, zIndex: 100, backgroundColor: '#FFFFFF' }}>
+        <View style={{ position: 'fixed', inset: 0, zIndex: 200, backgroundColor: '#FFFFFF' }}>
           <View style={{
-            paddingTop: Taro.getSystemInfoSync().statusBarHeight || 0,
-            display: 'flex', alignItems: 'center', padding: '0 16px',
+            paddingTop: statusBarH,
+            display: 'flex', alignItems: 'center', padding: '0 16px', paddingBottom: 10,
           }}
           >
             <View onClick={() => { setShowAddModal(false); setNewCoverTemp(''); }} style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -391,9 +425,9 @@ export default function IndexPage() {
               onClick={handleAddProject}
               style={{
                 width: '100%', paddingTop: 14, paddingBottom: 14, borderRadius: 14,
-                background: 'linear-gradient(135deg, #6B9BD5, #8DB8E0)',
+                background: 'linear-gradient(135deg, #5B8DEE, #7BA8EA)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 6px 24px rgba(107,159,213,0.25)',
+                boxShadow: '0 6px 24px rgba(91,141,238,0.3)',
               }}
             >
               <Text style={{ fontSize: 15, fontWeight: '600', color: '#FFFFFF' }}>添加</Text>

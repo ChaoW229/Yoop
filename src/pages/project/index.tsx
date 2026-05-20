@@ -33,40 +33,38 @@ function getCardColor(id: string) {
 
 function getIcon(name: string): string {
   const n = (name || '').toLowerCase();
-  if (n.includes('海') || n.includes('滩') || n.includes('岛')) return '🏖';
-  if (n.includes('山') || n.includes('峰') || n.includes('岭')) return '🏔';
-  if (n.includes('湖') || n.includes('水')) return '💧';
-  if (n.includes('城') || n.includes('京') || n.includes('都')) return '🏙';
-  if (n.includes('古镇') || n.includes('丽江') || n.includes('巷')) return '🏮';
-  if (n.includes('雪') || n.includes('冰')) return '❄';
-  if (n.includes('花') || n.includes('园')) return '🌸';
-  if (n.includes('森') || n.includes('林') || n.includes('木')) return '🌲';
-  if (n.includes('食') || n.includes('吃') || n.includes('味')) return '🍜';
-  if (n.includes('酒') || n.includes('吧')) return '🍸';
-  return '✈';
+  if (n.includes('海') || n.includes('滩') || n.includes('岛')) return '\u{1F3D6}';
+  if (n.includes('山') || n.includes('峰') || n.includes('岭')) return '\u{1F3D4}';
+  if (n.includes('湖') || n.includes('水')) return '\u{1F4A7}';
+  if (n.includes('城') || n.includes('京') || n.includes('都')) return '\u{1F3D9}';
+  if (n.includes('古镇') || n.includes('丽江') || n.includes('巷')) return '\u{1F3EF}';
+  if (n.includes('雪') || n.includes('冰')) return '\u{2744}\uFE0F';
+  if (n.includes('花') || n.includes('园')) return '\u{1F338}';
+  if (n.includes('森') || n.includes('林') || n.includes('木')) return '\u{1F332}';
+  if (n.includes('食') || n.includes('吃') || n.includes('味')) return '\u{1F35C}';
+  if (n.includes('酒') || n.includes('吧')) return '\u{1F37A}';
+  return '\u{2708}\uFE0F';
 }
 
 const CATEGORY_ICONS: Record<string, string> = {
-  '交通': '🚗', '餐饮': '🍽', '住宿': '🏨', '纪念品': '🎁', '门票': '🎫', '其他': '📌',
+  '交通': '\uD83D\uDE97', '餐饮': '\uD83C\uDF7D', '住宿': '\uD83C\uDFE8', '纪念品': '\uD83C\uDF81', '门票': '\uD83C\uDFAB', '其他': '\uD83D\uDCCC',
 };
 
 export default function ProjectPage() {
   const [project, setProject] = useState<any>(null);
   const [bills, setBills] = useState<Bill[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [statusBarHeight, setStatusBarHeight] = useState(0);
 
-  useEffect(() => {
-    const info = Taro.getSystemInfoSync();
-    setStatusBarHeight(info.statusBarHeight || 0);
-  }, []);
+  const statusBarH = Taro.getSystemInfoSync().statusBarHeight || 0;
 
+  /* ===== 问题5修复：用useEffect立即加载数据，减少闪烁 ===== */
   const fetchData = async () => {
-    const pages = Taro.getCurrentPages();
-    const current = pages[pages.length - 1];
-    const id = current.options?.id;
-    if (!id) return;
     try {
+      const pages = Taro.getCurrentPages();
+      const current = pages[pages.length - 1];
+      const id = current.options?.id;
+      if (!id) return;
+
       const [projRes, billsRes] = await Promise.all([
         Network.request({ url: `/api/projects/${id}` }),
         Network.request({ url: `/api/projects/${id}/bills` }),
@@ -79,8 +77,13 @@ export default function ProjectPage() {
     }
   };
 
-  useLoad(() => {
+  useEffect(() => {
     fetchData();
+  }, []);
+
+  useLoad(() => {
+    // 页面显示时刷新
+    setTimeout(fetchData, 100);
   });
 
   useEffect(() => {
@@ -165,17 +168,42 @@ export default function ProjectPage() {
 
   const cc = getCardColor(project?.id || '');
 
+  /* ===== 问题5修复：数据未加载时不闪烁，直接渲染空骨架或等待 ===== */
+  if (!project) {
+    return (
+      <View className="flex flex-col min-h-full bg-white">
+        {/* 空骨架Header */}
+        <View style={{ paddingTop: statusBarH }} className="flex items-center px-4 pb-2 bg-white">
+          <View onClick={goBack} className="w-8 h-8 flex items-center justify-center">
+            <ArrowLeft size={18} color="#8896A6" />
+          </View>
+          <Text className="block flex-1 text-center text-base font-semibold pr-8" style={{ color: '#2D3748' }}>项目详情</Text>
+        </View>
+        {/* 简单加载提示 */}
+        <View className="px-4 pt-4 flex items-center justify-center" style={{ height: 200 }}>
+          <Text className="block text-sm" style={{ color: '#A0ABB8' }}>加载中...</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View className="flex flex-col min-h-full bg-white">
-      {/* Header - 紧凑 */}
-      <View style={{ paddingTop: statusBarHeight }} className="flex items-center px-4 pb-2 bg-white">
+      {/* ===== 问题2修复：Header紧贴状态栏，无重叠 ===== */}
+      <View
+        style={{
+          paddingTop: statusBarH,
+          paddingBottom: 10,
+        }}
+        className="flex items-center px-4 bg-white"
+      >
         <View onClick={goBack} className="w-8 h-8 flex items-center justify-center">
           <ArrowLeft size={18} color="#8896A6" />
         </View>
         <Text className="block flex-1 text-center text-base font-semibold pr-8" style={{ color: '#2D3748' }}>项目详情</Text>
       </View>
 
-      <View className="flex-1 px-4 pt-1 pb-4">
+      <View className="flex-1 px-4 pb-4" style={{ paddingTop: 4 }}>
         {/* 封面 + 信息 */}
         <View
           className="flex items-center rounded-2xl overflow-hidden mb-3"
@@ -183,10 +211,10 @@ export default function ProjectPage() {
             backgroundColor: '#FFFFFF',
             border: '1px solid #EDF2F7',
             boxShadow: '0 4px 20px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.03)',
-            minHeight: 100,
+            minHeight: 104,
           }}
         >
-          {/* 封面图 - 贴紧左边缘，圆角 */}
+          {/* 封面图 */}
           <View
             className="flex items-center justify-center flex-shrink-0 relative overflow-hidden"
             style={{
@@ -194,7 +222,8 @@ export default function ProjectPage() {
               height: 96,
               borderRadius: '16px',
               marginLeft: 12,
-              marginTop: 8, marginBottom: 8,
+              marginTop: 4,
+              marginBottom: 4,
               background: project?.cover_url ? undefined : cc.accent,
               opacity: project?.cover_url ? undefined : 0.85,
             }}
@@ -209,22 +238,26 @@ export default function ProjectPage() {
               <Camera size={10} color={cc.accent} />
             </View>
           </View>
-          {/* 信息区 */}
+          {/* ===== 问题4修复：信息区项目名水平居中 ===== */}
           <View className="flex-1 p-3 flex flex-col justify-between">
             <View>
-              <Text className="block text-base font-semibold" style={{ color: '#2D3748' }}>{project?.name}</Text>
-              <Text className="block text-xs mt-1" style={{ color: '#8896A6' }}>{displayStart} ~ {displayEnd}</Text>
+              <Text className="block text-base font-semibold" style={{ color: '#2D3748', textAlign: 'center', letterSpacing: '0.5px' }}>
+                {project?.name}
+              </Text>
+              <Text className="block text-xs mt-1" style={{ color: '#8896A6', textAlign: 'center' }}>
+                {displayStart} ~ {displayEnd}
+              </Text>
             </View>
             <View className="flex items-end justify-between mt-2">
               <View>
                 <Text className="block text-xs" style={{ color: '#8896A6' }}>总金额</Text>
-                <Text className="block text-xl font-bold" style={{ color: 'cc.accent' }}>¥{totalAmount.toFixed(0)}</Text>
+                <Text className="block text-xl font-bold" style={{ color: cc.accent }}>¥{totalAmount.toFixed(0)}</Text>
               </View>
               <View
                 className="rounded-xl px-3 py-2"
                 style={{ backgroundColor: '#F0F6FC', border: '1px solid #E4EDF7' }}
               >
-                <Text className="block text-xs" style={{ color: 'cc.accent' }}>人均 ¥{perPerson.toFixed(2)}</Text>
+                <Text className="block text-xs" style={{ color: cc.accent }}>人均 ¥{perPerson.toFixed(2)}</Text>
                 {treatAmount > 0 && (
                   <Text className="block text-xs mt-1" style={{ color: '#8896A6' }}>含请客 ¥{treatAmount.toFixed(0)}</Text>
                 )}
@@ -266,7 +299,7 @@ export default function ProjectPage() {
                     className="w-8 h-8 rounded-lg flex items-center justify-center"
                     style={{ backgroundColor: '#F0F6FC' }}
                   >
-                    <Text className="block text-sm">{CATEGORY_ICONS[b.category] || '📌'}</Text>
+                    <Text className="block text-sm">{CATEGORY_ICONS[b.category] || '\uD83D\uDCCC'}</Text>
                   </View>
                   <View>
                     <Text className="block text-sm" style={{ color: '#2D3748' }}>{b.name}</Text>
@@ -279,10 +312,10 @@ export default function ProjectPage() {
                       className="rounded-full px-2 py-1"
                       style={{ backgroundColor: '#F0F6FC', border: '1px solid #E4EDF7' }}
                     >
-                      <Text className="block text-xs" style={{ color: 'cc.accent' }}>请客</Text>
+                      <Text className="block text-xs" style={{ color: cc.accent }}>请客</Text>
                     </View>
                   )}
-                  <Text className="block text-sm font-semibold" style={{ color: b.is_treat ? 'cc.accent' : '#2D3748' }}>
+                  <Text className="block text-sm font-semibold" style={{ color: b.is_treat ? cc.accent : '#2D3748' }}>
                     ¥{Number(b.amount).toFixed(0)}
                   </Text>
                 </View>
