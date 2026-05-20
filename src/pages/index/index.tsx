@@ -17,12 +17,14 @@ interface Project {
 }
 
 const GRADIENTS = [
-  ['#5B9BD5', '#7EB8E8'],
+  ['#6B9FD5', '#8DB8E0'],
   ['#6CC4A1', '#8ED8BA'],
-  ['#F2A65A', '#F5C28A'],
-  ['#E8736C', '#F09A94'],
+  ['#E8B06C', '#F0CFA0'],
+  ['#D4877E', '#E4A8A0'],
   ['#9B8EC4', '#BDB1D8'],
   ['#5BBDB5', '#82D4CD'],
+  ['#C4A06C', '#D4BA90'],
+  ['#7EA8C4', '#9DC0D6'],
 ];
 
 function getGradient(id: string): string[] {
@@ -79,7 +81,6 @@ export default function IndexPage() {
     fetchProjects();
   });
 
-  // 每次页面显示时刷新，确保从详情页返回后图片更新
   useDidShow(() => {
     fetchProjects();
   });
@@ -120,7 +121,6 @@ export default function IndexPage() {
     }
     try {
       let coverUrl = '';
-      // 上传封面图
       if (newCoverTemp) {
         const uploadRes = await Network.uploadFile({
           url: '/api/upload',
@@ -163,41 +163,44 @@ export default function IndexPage() {
 
   return (
     <View className="flex flex-col h-full bg-white">
-      {/* Header */}
-      <View style={{ paddingTop: statusBarHeight }} className="px-4 pb-1 flex items-center gap-3 bg-white">
+      {/* Header - 紧凑布局 */}
+      <View style={{ paddingTop: statusBarHeight, paddingBottom: 0 }} className="px-4 flex items-center gap-3 bg-white">
         <View
           onClick={goStats}
           className="w-9 h-9 rounded-full flex items-center justify-center"
-          style={{ backgroundColor: '#F0F6FC', boxShadow: '0 4px 12px rgba(91,155,213,0.15)' }}
+          style={{ backgroundColor: '#F0F6FC', boxShadow: '0 2px 8px rgba(107,159,213,0.15)' }}
         >
-          <ChartPie size={16} color="#5B9BD5" />
+          <ChartPie size={16} color="#6B9FD5" />
         </View>
+        {/* 搜索栏 */}
         <View
-          className="flex-1 rounded-full flex items-center"
-          style={{ backgroundColor: '#F7F9FC', border: '1px solid #EDF2F7', height: '36px', paddingLeft: '12px', paddingRight: '12px' }}
+          className="flex-1 rounded-full flex items-center overflow-hidden"
+          style={{ backgroundColor: '#F7F9FC', border: '1px solid #EDF2F7', height: '36px', paddingLeft: '10px' }}
           onClick={() => { if (!isSearching) setIsSearching(true); }}
         >
-          <Search size={14} color="#8896A6" />
+          <Search size={14} color="#8896A6" style={{ flexShrink: 0 }} />
           {isSearching ? (
-            <Input
-              className="flex-1 ml-2 border-0 bg-transparent shadow-none ring-0 h-9 text-sm leading-9"
-              placeholder="搜索项目"
-              focus={isSearching}
-              value={searchText}
-              onInput={e => setSearchText(e.detail.value)}
-              onBlur={() => { if (!searchText) setIsSearching(false); }}
-              style={{ border: 'none', boxShadow: 'none', outline: 'none', backgroundColor: 'transparent', height: '36px', lineHeight: '36px' }}
-            />
+            <View className="flex-1 ml-1" style={{ height: '36px' }}>
+              <Input
+                placeholder="搜索项目"
+                focus={isSearching}
+                value={searchText}
+                onInput={e => setSearchText(e.detail.value)}
+                onBlur={() => { if (!searchText) setIsSearching(false); }}
+                className="border-0 bg-transparent shadow-none ring-0 focus-within:ring-0 focus-within:border-0 h-9 px-0 py-0"
+                style={{ height: '36px' }}
+              />
+            </View>
           ) : (
-            <Text className="block text-sm ml-2 leading-9" style={{ color: '#8896A6' }}>搜索项目</Text>
+            <Text className="block text-sm ml-1" style={{ color: '#8896A6', lineHeight: '36px' }}>搜索项目</Text>
           )}
         </View>
         <View
           onClick={goProfile}
           className="w-9 h-9 rounded-full flex items-center justify-center"
-          style={{ backgroundColor: '#F0F6FC', boxShadow: '0 4px 12px rgba(91,155,213,0.15)' }}
+          style={{ backgroundColor: '#F0F6FC', boxShadow: '0 2px 8px rgba(107,159,213,0.15)' }}
         >
-          <User size={16} color="#5B9BD5" />
+          <User size={16} color="#6B9FD5" />
         </View>
       </View>
 
@@ -221,33 +224,40 @@ export default function IndexPage() {
               style={{
                 backgroundColor: '#FFFFFF',
                 border: '1px solid #EDF2F7',
-                boxShadow: '0 8px 30px rgba(91,155,213,0.10), 0 2px 8px rgba(0,0,0,0.04)',
-                height: '80px',
+                boxShadow: '0 8px 30px rgba(107,159,213,0.08), 0 2px 10px rgba(0,0,0,0.03)',
+                height: '84px',
               }}
             >
               {/* Left: Cover */}
               <View
                 className="flex items-center justify-center flex-shrink-0"
                 style={{
-                  width: '80px',
-                  height: '80px',
+                  width: '84px',
+                  height: '84px',
+                  borderRadius: '12px',
+                  marginLeft: '6px',
                   background: p.cover_url ? undefined : `linear-gradient(135deg, ${g1}, ${g2})`,
                 }}
               >
                 {p.cover_url ? (
-                  <Image style={{ width: '80px', height: '80px' }} src={p.cover_url} mode="aspectFill" />
+                  <Image style={{ width: '84px', height: '84px', borderRadius: '12px' }} src={p.cover_url} mode="aspectFill" />
                 ) : (
                   <Text className="block text-3xl">{getIcon(p.name)}</Text>
                 )}
               </View>
               {/* Center: Name + Date */}
               <View className="flex-1 px-4 flex flex-col justify-center">
-                <Text className="block text-lg font-semibold" style={{ color: '#2D3748', fontFamily: 'system-ui' }}>{p.name}</Text>
+                <Text
+                  className="block text-lg tracking-wider"
+                  style={{ color: '#2D3748', fontWeight: '600', letterSpacing: '1.5px' }}
+                >
+                  {p.name}
+                </Text>
                 <Text className="block text-xs mt-1" style={{ color: '#8896A6' }}>{dateStr}</Text>
               </View>
               {/* Right: Amount */}
               <View className="flex-shrink-0 pr-4 flex items-center justify-center">
-                <Text className="block text-lg font-bold" style={{ color: '#5B9BD5' }}>
+                <Text className="block text-lg font-bold" style={{ color: '#6B9FD5' }}>
                   ¥{Number(p.total_amount || 0).toFixed(0)}
                 </Text>
               </View>
@@ -272,8 +282,8 @@ export default function IndexPage() {
           bottom: 80,
           width: 54,
           height: 54,
-          background: 'linear-gradient(135deg, #5B9BD5, #7EB8E8)',
-          boxShadow: '0 10px 40px rgba(91,155,213,0.40), 0 4px 12px rgba(91,155,213,0.20)',
+          background: 'linear-gradient(135deg, #6B9FD5, #8DB8E0)',
+          boxShadow: '0 10px 40px rgba(107,159,213,0.40), 0 4px 12px rgba(107,159,213,0.20)',
         }}
       >
         <Plus size={26} color="#FFFFFF" />
@@ -337,7 +347,7 @@ export default function IndexPage() {
                     className="rounded-2xl px-4 py-3 flex items-center gap-2"
                     style={{ backgroundColor: '#F7F9FC', border: '1px solid #EDF2F7' }}
                   >
-                    <Calendar size={14} color="#5B9BD5" />
+                    <Calendar size={14} color="#6B9FD5" />
                     <Text className="block text-sm" style={{ color: '#2D3748' }}>{newStart || '选择日期'}</Text>
                   </View>
                 </Picker>
@@ -349,7 +359,7 @@ export default function IndexPage() {
                     className="rounded-2xl px-4 py-3 flex items-center gap-2"
                     style={{ backgroundColor: '#F7F9FC', border: '1px solid #EDF2F7' }}
                   >
-                    <Calendar size={14} color="#5B9BD5" />
+                    <Calendar size={14} color="#6B9FD5" />
                     <Text className="block text-sm" style={{ color: '#2D3748' }}>{newEnd || '选择日期'}</Text>
                   </View>
                 </Picker>
@@ -360,7 +370,7 @@ export default function IndexPage() {
               className="rounded-2xl px-4 py-3"
               style={{ backgroundColor: '#F0F6FC', border: '1px solid #E4EDF7' }}
             >
-              <Text className="block text-xs" style={{ color: '#5B9BD5' }}>
+              <Text className="block text-xs" style={{ color: '#6B9FD5' }}>
                 添加账单后，起止日期将根据账单时间自动填充
               </Text>
             </View>
@@ -369,8 +379,8 @@ export default function IndexPage() {
               onClick={handleAddProject}
               className="w-full py-4 rounded-2xl flex items-center justify-center"
               style={{
-                background: 'linear-gradient(135deg, #5B9BD5, #7EB8E8)',
-                boxShadow: '0 8px 30px rgba(91,155,213,0.30)',
+                background: 'linear-gradient(135deg, #6B9FD5, #8DB8E0)',
+                boxShadow: '0 8px 30px rgba(107,159,213,0.30)',
               }}
             >
               <Text className="block text-base font-semibold text-white">添加</Text>

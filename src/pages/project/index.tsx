@@ -15,7 +15,7 @@ interface Bill {
 }
 
 const GRADIENTS = [
-  ['#5B9BD5', '#7EB8E8'],
+  ['#6B9FD5', '#7EB8E8'],
   ['#6CC4A1', '#8ED8BA'],
   ['#F2A65A', '#F5C28A'],
   ['#E8736C', '#F09A94'],
@@ -165,7 +165,7 @@ export default function ProjectPage() {
   return (
     <View className="flex flex-col min-h-full bg-white">
       {/* Header */}
-      <View style={{ paddingTop: statusBarHeight }} className="flex items-center px-4 py-2 bg-white">
+      <View style={{ paddingTop: statusBarHeight, paddingBottom: 0 }} className="flex items-center px-4 bg-white">
         <View onClick={goBack} className="w-8 h-8 flex items-center justify-center">
           <ArrowLeft size={18} color="#8896A6" />
         </View>
@@ -179,27 +179,27 @@ export default function ProjectPage() {
           style={{
             backgroundColor: '#FFFFFF',
             border: '1px solid #EDF2F7',
-            boxShadow: '0 8px 30px rgba(91,155,213,0.10), 0 2px 8px rgba(0,0,0,0.04)',
+            boxShadow: '0 8px 30px rgba(107,159,213,0.10), 0 2px 8px rgba(0,0,0,0.04)',
           }}
         >
           {/* 封面图 - 使用 overflow-hidden + Image mode="aspectFill" */}
           <View
             className="flex items-center justify-center flex-shrink-0 relative overflow-hidden"
             style={{
-              width: '90px',
-              height: '100%',
-              minHeight: '90px',
+              width: '96px',
+              height: '96px',
+              borderRadius: '12px',
               background: project?.cover_url ? undefined : `linear-gradient(135deg, ${g1}, ${g2})`,
             }}
             onClick={handleChangeCover}
           >
             {project?.cover_url ? (
-              <Image style={{ width: '90px', height: '100%', minHeight: '90px' }} src={project.cover_url} mode="aspectFill" />
+              <Image style={{ width: '96px', height: '96px' }} src={project.cover_url} mode="aspectFill" />
             ) : (
               <Text className="block text-4xl">{getIcon(project?.name || '')}</Text>
             )}
             <View className="absolute bottom-1 right-1 w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.8)' }}>
-              <Camera size={10} color="#5B9BD5" />
+              <Camera size={10} color="#6B9FD5" />
             </View>
           </View>
           {/* 信息区 */}
@@ -211,13 +211,13 @@ export default function ProjectPage() {
             <View className="flex items-end justify-between mt-2">
               <View>
                 <Text className="block text-xs" style={{ color: '#8896A6' }}>总金额</Text>
-                <Text className="block text-xl font-bold" style={{ color: '#5B9BD5' }}>¥{totalAmount.toFixed(0)}</Text>
+                <Text className="block text-xl font-bold" style={{ color: '#6B9FD5' }}>¥{totalAmount.toFixed(0)}</Text>
               </View>
               <View
                 className="rounded-xl px-3 py-2"
                 style={{ backgroundColor: '#F0F6FC', border: '1px solid #E4EDF7' }}
               >
-                <Text className="block text-xs" style={{ color: '#5B9BD5' }}>人均 ¥{perPerson.toFixed(2)}</Text>
+                <Text className="block text-xs" style={{ color: '#6B9FD5' }}>人均 ¥{perPerson.toFixed(2)}</Text>
                 {treatAmount > 0 && (
                   <Text className="block text-xs mt-1" style={{ color: '#8896A6' }}>含请客 ¥{treatAmount.toFixed(0)}</Text>
                 )}
@@ -231,7 +231,7 @@ export default function ProjectPage() {
           onClick={goAddBill}
           className="w-full rounded-2xl py-4 flex items-center justify-center gap-2 mb-3"
           style={{
-            background: 'linear-gradient(135deg, #5B9BD5, #7EB8E8)',
+            background: 'linear-gradient(135deg, #6B9FD5, #7EB8E8)',
             boxShadow: '0 8px 30px rgba(91,155,213,0.30), 0 2px 8px rgba(91,155,213,0.15)',
           }}
         >
@@ -272,10 +272,10 @@ export default function ProjectPage() {
                       className="rounded-full px-2 py-1"
                       style={{ backgroundColor: '#F0F6FC', border: '1px solid #E4EDF7' }}
                     >
-                      <Text className="block text-xs" style={{ color: '#5B9BD5' }}>请客</Text>
+                      <Text className="block text-xs" style={{ color: '#6B9FD5' }}>请客</Text>
                     </View>
                   )}
-                  <Text className="block text-sm font-semibold" style={{ color: b.is_treat ? '#5B9BD5' : '#2D3748' }}>
+                  <Text className="block text-sm font-semibold" style={{ color: b.is_treat ? '#6B9FD5' : '#2D3748' }}>
                     ¥{Number(b.amount).toFixed(0)}
                   </Text>
                 </View>

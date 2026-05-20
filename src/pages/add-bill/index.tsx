@@ -179,8 +179,8 @@ export default function AddBillPage() {
                 onClick={() => setPayer(p)}
                 className="px-4 py-2 rounded-full"
                 style={{
-                  backgroundColor: payer === p ? '#5B9BD5' : '#F0F6FC',
-                  border: payer === p ? '1px solid #5B9BD5' : '1px solid #EDF2F7',
+                  backgroundColor: payer === p ? '#6B9FD5' : '#F0F6FC',
+                  border: payer === p ? '1px solid #6B9FD5' : '1px solid #EDF2F7',
                   boxShadow: payer === p ? '0 4px 12px rgba(91,155,213,0.25)' : 'none',
                 }}
               >
@@ -192,7 +192,7 @@ export default function AddBillPage() {
               className="w-9 h-9 rounded-full flex items-center justify-center"
               style={{ backgroundColor: '#F0F6FC', border: '1px solid #EDF2F7' }}
             >
-              <Plus size={14} color="#5B9BD5" />
+              <Plus size={14} color="#6B9FD5" />
             </View>
           </View>
         </View>
@@ -210,7 +210,7 @@ export default function AddBillPage() {
               width: 44,
               height: 24,
               borderRadius: 12,
-              backgroundColor: isTreat ? '#5B9BD5' : '#E2E8F0',
+              backgroundColor: isTreat ? '#6B9FD5' : '#E2E8F0',
               boxShadow: isTreat ? '0 2px 8px rgba(91,155,213,0.30)' : 'none',
               transition: 'all 0.3s',
             }}
@@ -238,7 +238,7 @@ export default function AddBillPage() {
           onClick={handleSave}
           className="w-full py-4 rounded-2xl flex items-center justify-center"
           style={{
-            background: 'linear-gradient(135deg, #5B9BD5, #7EB8E8)',
+            background: 'linear-gradient(135deg, #6B9FD5, #7EB8E8)',
             boxShadow: '0 8px 30px rgba(91,155,213,0.30)',
           }}
         >
@@ -273,8 +273,8 @@ export default function AddBillPage() {
                     onClick={() => { setCategory(cat.name); setCustomCategory(''); setShowCategoryDrawer(false); }}
                     className="flex flex-col items-center gap-2 py-3 rounded-2xl"
                     style={{
-                      backgroundColor: isActive ? '#5B9BD5' : '#F7F9FC',
-                      border: isActive ? '1px solid #5B9BD5' : '1px solid #EDF2F7',
+                      backgroundColor: isActive ? '#6B9FD5' : '#F7F9FC',
+                      border: isActive ? '1px solid #6B9FD5' : '1px solid #EDF2F7',
                       boxShadow: isActive ? '0 4px 12px rgba(91,155,213,0.25)' : 'none',
                     }}
                   >

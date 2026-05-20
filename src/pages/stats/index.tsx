@@ -58,7 +58,7 @@ export default function StatsPage() {
   });
 
   const categoryColors: Record<string, string> = {
-    交通: '#5B9BD5',
+    交通: '#6B9FD5',
     餐饮: '#C4B8A8',
     住宿: '#B8C4A8',
     纪念品: '#D4B8A8',
