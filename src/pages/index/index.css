@@ -9,7 +9,7 @@
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(24px);
   }
   to {
     opacity: 1;
@@ -17,8 +17,23 @@
   }
 }
 
+/* 卡片基础动画 */
+.project-card {
+  animation: fadeInUp 0.4s ease-out both;
+}
+
+/* 卡片动画延迟 - 每张卡片依次延迟出现 */
+.card-delay-0 { animation-delay: 0s; }
+.card-delay-1 { animation-delay: 0.06s; }
+.card-delay-2 { animation-delay: 0.12s; }
+.card-delay-3 { animation-delay: 0.18s; }
+.card-delay-4 { animation-delay: 0.24s; }
+.card-delay-5 { animation-delay: 0.30s; }
+.card-delay-6 { animation-delay: 0.36s; }
+.card-delay-7 { animation-delay: 0.42s; }
+
 /* 卡片触摸反馈 */
 .project-card:active {
-  transform: scale(0.98) !important;
+  transform: scale(0.97) !important;
   transition: transform 0.15s ease-out !important;
 }

@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import Taro, { useLoad, useDidShow } from '@tarojs/taro';
 /* eslint-disable no-restricted-syntax */
-import { View, Text, Image, Input, ScrollView, Picker } from '@tarojs/components';
+import { View, Text, Image, Input, ScrollView } from '@tarojs/components';
 /* eslint-enable no-restricted-syntax */
 import { Network } from '@/network';
-import { ChartPie, User, Search, Plus, X, Calendar, Camera } from 'lucide-react-taro';
+import { ChartPie, User, Search, Plus, X, Camera } from 'lucide-react-taro';
 
 interface Project {
   id: string;
@@ -194,7 +194,7 @@ export default function IndexPage() {
       <ScrollView scrollY enhanced showScrollbar={false} style={{ flex: 1 }} className="bg-white px-4">
         <View style={{ paddingTop: 12, paddingBottom: 120, display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-          {filteredProjects.map((p) => {
+          {filteredProjects.map((p, index) => {
             const cs = getCardStyle(p.id);
             const dateStr = p.start_date ? `${formatDateSlash(p.start_date)}${p.end_date ? ` ~ ${formatDateSlash(p.end_date)}` : ''}` : '待定';
 
@@ -206,6 +206,9 @@ export default function IndexPage() {
                   overflow: 'hidden',
                   boxShadow: '0 6px 24px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)',
                 }}
+                /* eslint-disable */
+                className={`project-card card-delay-${index % 8}`}
+                /* eslint-enable */
               >
                 {/* 内部背景色 */}
                 <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'stretch', minHeight: 112, backgroundColor: cs.bg }}>
@@ -215,30 +218,25 @@ export default function IndexPage() {
                       <Image src={p.cover_url} mode="aspectFill" style={{ width: '100%', height: '100%' }} lazyLoad />
                     ) : (
                       <View style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: cs.accent, opacity: 0.75 }}>
-                        <Text style={{ fontSize: 32 }}>{getIcon(p.name)}</Text>
+                          <Text style={{ fontSize: 32 }}>{getIcon(p.name)}</Text>
                       </View>
                     )}
-                    {/* 图片编辑图标 */}
-                    <View onClick={(e) => { e.stopPropagation(); goProject(p.id); }}
-                      style={{ position: 'absolute', right: 6, bottom: 6, width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(255,255,255,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    >
-                      <Camera size={11} color="#666" />
-                    </View>
                   </View>
 
                   {/* 右侧内容区：项目名居中 + 时间沉底 + 金额右中 */}
                   <View style={{ flex: 1, padding: 10, paddingLeft: 14, paddingRight: 12, position: 'relative' }}>
-                    {/* 项目名 - 正中间 */}
+                    {/* 项目名 - 正中间（水平+垂直居中） */}
                     <View style={{ position: 'absolute', top: '50%', left: 14, right: 72, transform: 'translateY(-50%)' }}>
-                      <Text style={{ fontSize: 17, fontWeight: '600', color: cs.name, fontFamily: 'serif' }}>{p.name}</Text>
-                      {/* 时间 - 在项目名下方 */}
-                      <Text style={{ fontSize: 11, color: '#A0ABB8', marginTop: 6 }}>{dateStr}</Text>
+                      <Text style={{ fontSize: 17, fontWeight: '600', color: cs.name, textAlign: 'center' }}>{p.name}</Text>
                     </View>
 
                     {/* 金额 - 右侧垂直居中 */}
                     <View style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)' }}>
                       <Text style={{ fontSize: 19, fontWeight: '700', color: cs.amount }}>¥{Number(p.total_amount || 0).toFixed(0)}</Text>
                     </View>
+
+                    {/* 时间 - 卡片底部 */}
+                    <Text style={{ fontSize: 11, color: '#A0ABB8', position: 'absolute', bottom: 8, left: 14, right: 72, textAlign: 'center' }}>{dateStr}</Text>
                   </View>
                 </View>
               </View>
@@ -255,7 +253,8 @@ export default function IndexPage() {
         </View>
       </ScrollView>
 
-      {/* ===== 浮动按钮：强悬浮感 ===== */}
+      {/* ===== 浮动按钮：强悬浮感（弹窗打开时不显示） ===== */}
+      {!showAddModal && (
       <View
         onClick={() => setShowAddModal(true)}
         style={{
@@ -268,6 +267,7 @@ export default function IndexPage() {
       >
         <Plus size={26} color="#FFFFFF" />
       </View>
+      )}
 
       {/* ===== 新建项目弹窗 ===== */}
       {showAddModal && (
@@ -283,6 +283,11 @@ export default function IndexPage() {
 
           <View style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
             <View>
+              <Text style={{ fontSize: 12, color: '#A0ABB8', marginBottom: 6, display: 'block' }}>项目名称 *</Text>
+              <Input value={newName} onInput={(e) => setNewName(e.detail.value)} placeholder="例如：云南之旅" style={{ height: 44, borderRadius: 10, backgroundColor: '#F8FAFC', padding: '0 14px', fontSize: 14, border: '1px solid #E2E8F0' }} />
+            </View>
+
+            <View>
               <Text style={{ fontSize: 12, color: '#A0ABB8', marginBottom: 6, display: 'block' }}>封面图片（可选）</Text>
               <View onClick={handleChooseCover} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 {newCoverTemp ? (
@@ -296,34 +301,7 @@ export default function IndexPage() {
               </View>
             </View>
 
-            <View>
-              <Text style={{ fontSize: 12, color: '#A0ABB8', marginBottom: 6, display: 'block' }}>项目名称 *</Text>
-              <Input value={newName} onInput={(e) => setNewName(e.detail.value)} placeholder="例如：云南之旅" style={{ height: 44, borderRadius: 10, backgroundColor: '#F8FAFC', padding: '0 14px', fontSize: 14, border: '1px solid #E2E8F0' }} />
-            </View>
-
-            <View style={{ display: 'flex', flexDirection: 'row', gap: 12 }}>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 12, color: '#A0ABB8', marginBottom: 6, display: 'block' }}>开始日期</Text>
-                <View style={{ height: 44, borderRadius: 10, backgroundColor: '#F8FAFC', padding: '0 14px', display: 'flex', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' }}>
-                  <Calendar size={14} color="#A0ABB8" style={{ marginRight: 8 }} />
-                  <Picker mode="date" value={newStart || ''} onChange={(e) => setNewStart(e.detail.value)}>
-                    <Text style={{ fontSize: 14, color: newStart ? '#2D3748' : '#A0ABB8' }}>{newStart || '选择日期'}</Text>
-                  </Picker>
-                </View>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 12, color: '#A0ABB8', marginBottom: 6, display: 'block' }}>结束日期</Text>
-                <View style={{ height: 44, borderRadius: 10, backgroundColor: '#F8FAFC', padding: '0 14px', display: 'flex', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' }}>
-                  <Calendar size={14} color="#A0ABB8" style={{ marginRight: 8 }} />
-                  <Picker mode="date" value={newEnd || ''} onChange={(e) => setNewEnd(e.detail.value)}>
-                    <Text style={{ fontSize: 14, color: newEnd ? '#2D3748' : '#A0ABB8' }}>{newEnd || '选择日期'}</Text>
-                  </Picker>
-                </View>
-              </View>
-            </View>
-
             <View onClick={handleAddProject} style={{ height: 46, borderRadius: 10, background: 'linear-gradient(135deg, #5B8DEE, #7BA8EA)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 8 }}>
-              <Plus size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
               <Text style={{ fontSize: 15, fontWeight: '600', color: '#FFFFFF' }}>创建项目</Text>
             </View>
           </View>
