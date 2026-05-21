@@ -152,7 +152,7 @@ export default function IndexPage() {
   return (
     <View className="flex flex-col h-full" style={{ backgroundColor: '#F7F9FC' }}>
       {/* ===== Header：紧贴胶囊按钮底部 ===== */}
-      <View className="z-20" style={{ paddingTop: menuTop + menuHeight + 10, paddingBottom: 8, backgroundColor: '#FFFFFF' }}>
+      <View className="z-20" style={{ paddingTop: menuTop + menuHeight, backgroundColor: '#FFFFFF' }}>
         <View className="px-4 flex items-center gap-3">
           {/* 左侧统计按钮 */}
           <View onClick={goStats}
