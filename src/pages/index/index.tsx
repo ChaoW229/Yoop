@@ -51,7 +51,6 @@ function getIcon(name: string): string {
   return '\u{1F3D5}';
 }
 
-/* 日期格式：年/月/日 */
 function formatDateSlash(dateStr?: string): string {
   if (!dateStr) return '待定';
   return dateStr.replace(/-/g, '/');
@@ -62,17 +61,26 @@ export default function IndexPage() {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newName, setNewName] = useState('');
-  const [newStart, setNewStart] = useState('');
-  const [newEnd, setNewEnd] = useState('');
   const [newCoverTemp, setNewCoverTemp] = useState('');
   const [searchText, setSearchText] = useState('');
+  /* 卡片动画可见状态 - 用JS控制，确保小程序端兼容 */
+  const [cardVisible, setCardVisible] = useState<Record<string, boolean>>({});
+  /* 触摸反馈 - 用state替代CSS :active */
+  const [pressedId, setPressedId] = useState<string | null>(null);
 
   const fetchProjects = async () => {
     try {
       setLoading(true);
       const res = await Network.request({ url: '/api/projects' });
       console.log('projects res', res.data);
-      setProjects(res.data?.data || []);
+      const list: Project[] = res.data?.data || [];
+      setProjects(list);
+      /* 依次显示卡片，模拟渐入效果 */
+      list.forEach((p, i) => {
+        setTimeout(() => {
+          setCardVisible(prev => ({ ...prev, [p.id]: true }));
+        }, i * 80);
+      });
     } catch (e) {
       console.error('fetch projects error', e);
     } finally {
@@ -87,7 +95,6 @@ export default function IndexPage() {
   const goProfile = () => Taro.navigateTo({ url: '/pages/profile/index' });
   const goProject = (id: string) => Taro.navigateTo({ url: `/pages/project/index?id=${id}` });
 
-  /* 选择封面图片 */
   const handleChooseCover = async () => {
     const env = Taro.getEnv();
     try {
@@ -101,7 +108,6 @@ export default function IndexPage() {
     } catch (e) { /* cancelled */ }
   };
 
-  /* 添加新项目 */
   const handleAddProject = async () => {
     if (!newName) { Taro.showToast({ title: '请填写项目名', icon: 'none' }); return; }
     try {
@@ -114,33 +120,24 @@ export default function IndexPage() {
       await Network.request({
         url: '/api/projects',
         method: 'POST',
-        data: {
-          name: newName,
-          destination: newName,
-          startDate: newStart || undefined,
-          endDate: newEnd || undefined,
-          participants: ['小明', '小红'],
-          coverUrl: coverUrl || undefined,
-        },
+        data: { name: newName, destination: newName, participants: ['小明', '小红'], coverUrl: coverUrl || undefined },
       });
       Taro.showToast({ title: '新项目已添加', icon: 'success' });
       setShowAddModal(false);
-      setNewName(''); setNewStart(''); setNewEnd(''); setNewCoverTemp('');
+      setNewName(''); setNewCoverTemp('');
       fetchProjects();
     } catch (e) { Taro.showToast({ title: '添加失败', icon: 'none' }); }
   };
 
-  /* 过滤 */
   const filteredProjects = searchText
     ? projects.filter(p => p.name?.includes(searchText) || p.destination?.includes(searchText))
     : projects;
 
-  /* 系统信息 */
+  /* 系统信息 - 兼容H5和小程序 */
   const sysInfo = Taro.getSystemInfoSync();
   const statusBarH = sysInfo.statusBarHeight || 20;
   let menuTop = statusBarH + 4;
   let menuHeight = 32;
-  // getMenuButtonBoundingClientRect 仅在微信小程序中支持，H5/抖音会报错
   const isWeapp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP;
   if (isWeapp) {
     try {
@@ -153,19 +150,19 @@ export default function IndexPage() {
   }
 
   return (
-    <View className="flex flex-col h-full bg-white">
+    <View className="flex flex-col h-full" style={{ backgroundColor: '#F7F9FC' }}>
       {/* ===== Header：紧贴胶囊按钮底部 ===== */}
-      <View className="bg-white z-20" style={{ paddingTop: menuTop + menuHeight + 12, paddingBottom: 10 }}>
+      <View className="z-20" style={{ paddingTop: menuTop + menuHeight + 10, paddingBottom: 8, backgroundColor: '#FFFFFF' }}>
         <View className="px-4 flex items-center gap-3">
           {/* 左侧统计按钮 */}
           <View onClick={goStats}
-            style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F5F7FA', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+            style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F0F4F8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
           >
             <ChartPie size={16} color="#6B9BD5" />
           </View>
 
-          {/* ===== 搜索栏：原生Input，可正常输入和搜索 ===== */}
-          <View style={{ flex: 1, height: 38, borderRadius: 19, backgroundColor: '#F5F7FA', display: 'flex', alignItems: 'center', padding: '0 14px' }}>
+          {/* 搜索栏 */}
+          <View style={{ flex: 1, height: 38, borderRadius: 19, backgroundColor: '#F0F4F8', display: 'flex', alignItems: 'center', padding: '0 14px' }}>
             <Search size={15} color="#A0ABB8" style={{ marginRight: 8 }} />
             <Input
               value={searchText}
@@ -181,63 +178,77 @@ export default function IndexPage() {
                 backgroundColor: 'transparent',
                 border: 'none',
                 outline: 'none',
-                padding: '0 14px',
+                padding: '0 12px',
               }}
             />
           </View>
           {/* 右侧个人中心按钮 */}
           <View onClick={goProfile}
-            style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F5F7FA', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+            style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F0F4F8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
           >
             <User size={16} color="#6B9BD5" />
           </View>
         </View>
       </View>
 
-      {/* ===== 项目列表：统一间距 + 圆角阴影卡片 ===== */}
-      <ScrollView scrollY enhanced showScrollbar={false} style={{ flex: 1 }} className="bg-white px-4">
-        <View style={{ paddingTop: 12, paddingBottom: 120, display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* ===== 项目列表 ===== */}
+      <ScrollView scrollY enhanced showScrollbar={false} style={{ flex: 1 }}>
+        <View style={{ padding: '12px 16px 140px', display: 'flex', flexDirection: 'column', gap: 12 }}>
 
-          {filteredProjects.map((p, index) => {
+          {filteredProjects.map((p) => {
             const cs = getCardStyle(p.id);
             const dateStr = p.start_date ? `${formatDateSlash(p.start_date)}${p.end_date ? ` ~ ${formatDateSlash(p.end_date)}` : ''}` : '待定';
+            const isVisible = cardVisible[p.id] !== false; // 默认可见，首次加载时由定时器控制
 
             return (
-              /* 卡片容器 - 圆角阴影，overflow:hidden让阴影也变圆角 */
-              <View key={p.id} onClick={() => goProject(p.id)}
+              <View key={p.id}
+                onClick={() => goProject(p.id)}
+                /* 触摸事件 - JS方式实现按压反馈 */
+                onTouchStart={() => setPressedId(p.id)}
+                onTouchEnd={() => setPressedId(null)}
+                onTouchCancel={() => setPressedId(null)}
                 style={{
-                  borderRadius: 18,
+                  borderRadius: 16,
                   overflow: 'hidden',
-                  boxShadow: '0 6px 24px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)',
+                  boxShadow: pressedId === p.id
+                    ? '0 2px 8px rgba(0,0,0,0.06)'
+                    : '0 8px 28px rgba(0,0,0,0.08), 0 3px 10px rgba(0,0,0,0.04)',
+                  transform: pressedId === p.id ? 'scale(0.97)' : 'scale(1)',
+                  transition: 'transform 0.15s ease-out, box-shadow 0.15s ease-out',
+                  opacity: isVisible ? 1 : 0,
+                  transformOrigin: 'center bottom',
                 }}
-                /* eslint-disable */
-                className={`project-card card-delay-${index % 8}`}
-                /* eslint-enable */
               >
-                {/* 内部背景色 */}
-                <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'stretch', minHeight: 112, backgroundColor: cs.bg }}>
-                  {/* 左侧图片 1:1 */}
-                  <View style={{ width: 110, minWidth: 110, position: 'relative', overflow: 'hidden' }}>
+                <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'stretch', minHeight: 110, backgroundColor: cs.bg }}>
+                  {/* 左侧图片 1:1 - 无相机图标 */}
+                  <View style={{ width: 108, minWidth: 108, position: 'relative', overflow: 'hidden' }}>
                     {p.cover_url ? (
                       <Image src={p.cover_url} mode="aspectFill" style={{ width: '100%', height: '100%' }} lazyLoad />
                     ) : (
                       <View style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: cs.accent, opacity: 0.75 }}>
-                          <Text style={{ fontSize: 32 }}>{getIcon(p.name)}</Text>
+                        <Text style={{ fontSize: 30 }}>{getIcon(p.name)}</Text>
                       </View>
                     )}
                   </View>
 
-                  {/* 右侧内容区：flex列布局 */}
-                  <View style={{ flex: 1, padding: 10, paddingLeft: 14, paddingRight: 12, display: 'flex', flexDirection: 'column', position: 'relative' }}>
-                    {/* 中间弹性区域：项目名水平+垂直居中 */}
-                    <View style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 56 }}>
-                      <Text style={{ fontSize: 17, fontWeight: '600', color: cs.name, textAlign: 'center' }}>{p.name}</Text>
+                  {/* 右侧内容区 */}
+                  <View style={{ flex: 1, padding: 8, paddingLeft: 12, paddingRight: 10, display: 'flex', flexDirection: 'column' }}>
+                    {/* 中间区域：项目名居中 */}
+                    <View style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 50 }}>
+                      <Text
+                        style={{
+                          fontSize: 17,
+                          fontWeight: '600',
+                          color: cs.name,
+                          textAlign: 'center',
+                          fontFamily: '-apple-system, "SF Pro Display", "Helvetica Neue", sans-serif',
+                        }}
+                      >{p.name}</Text>
                     </View>
-
-                    {/* 底部行：时间左 + 金额右 */}
-                    <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4 }}>
-                      <Text style={{ fontSize: 11, color: '#A0ABB8', flexShrink: 1 }}>{dateStr}</Text>
-                      <Text style={{ fontSize: 19, fontWeight: '700', color: cs.amount }}>¥{Number(p.total_amount || 0).toFixed(0)}</Text>
+                    {/* 底部行：时间一行 + 金额 */}
+                    <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 2, paddingBottom: 2 }}>
+                      <Text style={{ fontSize: 11, color: '#94A3B8', flexShrink: 1 }}>{dateStr}</Text>
+                      <Text style={{ fontSize: 18, fontWeight: '700', color: cs.amount }}>¥{Number(p.total_amount || 0).toFixed(0)}</Text>
                     </View>
                   </View>
                 </View>
@@ -247,7 +258,7 @@ export default function IndexPage() {
 
           {!loading && filteredProjects.length === 0 && (
             <View className="flex flex-col items-center justify-center py-16">
-              <Text className="block text-sm" style={{ color: '#A0ABB8' }}>
+              <Text className="block text-sm" style={{ color: '#94A3B8' }}>
                 {searchText ? '未找到匹配项目' : '暂无项目，点击右下角添加'}
               </Text>
             </View>
@@ -255,56 +266,61 @@ export default function IndexPage() {
         </View>
       </ScrollView>
 
-      {/* ===== 浮动按钮：强悬浮感（弹窗打开时不显示） ===== */}
+      {/* ===== 浮动按钮（弹窗打开时不显示） ===== */}
       {!showAddModal && (
-      <View
-        onClick={() => setShowAddModal(true)}
-        style={{
-          position: 'fixed', right: 18, bottom: 28, zIndex: 999,
-          width: 56, height: 56, borderRadius: 28,
-          background: 'linear-gradient(135deg, #5B8DEE, #7BA8EA)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 10px 30px rgba(91,141,238,0.4), 0 4px 12px rgba(91,141,238,0.2)',
-        }}
-      >
-        <Plus size={26} color="#FFFFFF" />
-      </View>
+        <View
+          onClick={() => setShowAddModal(true)}
+          style={{
+            position: 'fixed', right: 20, bottom: 30, zIndex: 999,
+            width: 56, height: 56, borderRadius: 28,
+            background: 'linear-gradient(135deg, #5B8DEE, #7BA8EA)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 8px 28px rgba(91,141,238,0.35), 0 3px 10px rgba(91,141,238,0.2)',
+          }}
+        >
+          <Plus size={26} color="#FFFFFF" />
+        </View>
       )}
 
       {/* ===== 新建项目弹窗 ===== */}
       {showAddModal && (
         <View style={{ position: 'fixed', inset: 0, zIndex: 200, backgroundColor: '#FFFFFF' }}>
-          <View style={{ paddingTop: statusBarH, display: 'flex', alignItems: 'center', padding: '0 16px', paddingBottom: 10 }}>
+          <View style={{ paddingTop: statusBarH + 6, display: 'flex', alignItems: 'center', padding: '0 16px', paddingBottom: 12 }}>
             <View onClick={() => { setShowAddModal(false); setNewCoverTemp(''); }}
               style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
-              <X size={20} color="#A0ABB8" />
+              <X size={20} color="#94A3B8" />
             </View>
-            <Text style={{ flex: 1, textAlign: 'center', fontSize: 16, fontWeight: '600', color: '#2D3748', paddingRight: 28 }}>添加新项目</Text>
+            <Text style={{ flex: 1, textAlign: 'center', fontSize: 16, fontWeight: '600', color: '#1E293B', paddingRight: 28 }}>添加新项目</Text>
           </View>
 
-          <View style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <View style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+            {/* 第一项：项目名称 */}
             <View>
-              <Text style={{ fontSize: 12, color: '#A0ABB8', marginBottom: 6, display: 'block' }}>项目名称 *</Text>
-              <Input value={newName} onInput={(e) => setNewName(e.detail.value)} placeholder="例如：云南之旅" style={{ height: 44, borderRadius: 10, backgroundColor: '#F8FAFC', padding: '0 14px', fontSize: 14, border: '1px solid #E2E8F0' }} />
+              <Text style={{ fontSize: 13, color: '#94A3B8', marginBottom: 8, display: 'block', fontWeight: '500' }}>项目名称</Text>
+              <Input value={newName} onInput={(e) => setNewName(e.detail.value)} placeholder="例如：云南之旅"
+                style={{ height: 46, borderRadius: 12, backgroundColor: '#F8FAFC', padding: '0 14px', fontSize: 15, borderWidth: 1, borderColor: '#E2E8F0', borderStyle: 'solid' }}
+              />
             </View>
 
+            {/* 第二项：封面图片 */}
             <View>
-              <Text style={{ fontSize: 12, color: '#A0ABB8', marginBottom: 6, display: 'block' }}>封面图片（可选）</Text>
+              <Text style={{ fontSize: 13, color: '#94A3B8', marginBottom: 8, display: 'block', fontWeight: '500' }}>封面图片（可选）</Text>
               <View onClick={handleChooseCover} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 {newCoverTemp ? (
-                  <Image src={newCoverTemp} mode="aspectFill" style={{ width: 64, height: 64, borderRadius: 12 }} />
+                  <Image src={newCoverTemp} mode="aspectFill" style={{ width: 68, height: 68, borderRadius: 14 }} />
                 ) : (
-                  <View style={{ width: 64, height: 64, borderRadius: 12, backgroundColor: '#F5F7FA', display: 'flex', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E2E8F0', borderStyle: 'dashed' }}>
-                    <Camera size={22} color="#A0ABB8" />
+                  <View style={{ width: 68, height: 68, borderRadius: 14, backgroundColor: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#E2E8F0', borderStyle: 'dashed' }}>
+                    <Camera size={24} color="#94A3B8" />
                   </View>
                 )}
-                <Text style={{ fontSize: 13, color: '#64748B' }}>点击选择或拍摄封面</Text>
+                <Text style={{ fontSize: 14, color: '#64748B' }}>点击选择或拍摄封面</Text>
               </View>
             </View>
 
-            <View onClick={handleAddProject} style={{ height: 46, borderRadius: 10, background: 'linear-gradient(135deg, #5B8DEE, #7BA8EA)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 8 }}>
-              <Text style={{ fontSize: 15, fontWeight: '600', color: '#FFFFFF' }}>创建项目</Text>
+            {/* 创建按钮 - 无+号 */}
+            <View onClick={handleAddProject} style={{ height: 48, borderRadius: 14, background: 'linear-gradient(135deg, #5B8DEE, #7BA8EA)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 6 }}>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: '#FFFFFF', letterSpacing: '2px' }}>创建项目</Text>
             </View>
           </View>
         </View>
