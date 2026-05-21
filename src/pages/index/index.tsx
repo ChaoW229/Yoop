@@ -1,15 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import Taro from '@tarojs/taro';
-/* 搜索栏需要使用原生Input组件，UI组件在小程序中输入文字会下移 */
-import { View, Text, Image, ScrollView } from '@tarojs/components';
+/* 搜索栏使用原生Input避免H5端文字下移，UI组件包裹View导致此问题 */
+// eslint-disable-next-line no-restricted-syntax
+import { View, Text, Image, ScrollView, Input } from '@tarojs/components';
 import { Network } from '@/network';
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import {
   Search, User, ChartPie, Plus, X
 } from 'lucide-react-taro';
 /* eslint-enable @typescript-eslint/no-unused-vars */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any, import/no-commonjs
-const Input: any = require('@tarojs/components').Input;
 
 interface Project {
   id: string;
@@ -185,6 +184,7 @@ export default function IndexPage() {
           {/* 搜索框 */}
           <View style={{ flex: 1, height: 38, borderRadius: 19, backgroundColor: '#F0F4F8', display: 'flex', alignItems: 'center', padding: '0 14px' }}>
             <Search size={14} color="#A0ABB8" style={{ marginRight: 7 }} />
+            {/* eslint-disable-next-line no-restricted-syntax */}
             <Input
               value={searchText}
               onInput={(e) => setSearchText(e.detail.value)}
@@ -321,6 +321,7 @@ export default function IndexPage() {
             {/* 第一项：项目名称 */}
             <View>
               <Text style={{ fontSize: 13, color: '#94A3B8', marginBottom: 8, display: 'block', fontWeight: '500' }}>项目名称</Text>
+              {/* eslint-disable-next-line no-restricted-syntax */}
               <Input value={newName} onInput={(e) => setNewName(e.detail.value)} placeholder="例如：云南之旅"
                 style={{ height: 46, borderRadius: 12, backgroundColor: '#F8FAFC', padding: '0 14px', fontSize: 15, borderWidth: 1, borderColor: '#E2E8F0', borderStyle: 'solid' }}
               />
