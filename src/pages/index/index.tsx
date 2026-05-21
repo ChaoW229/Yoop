@@ -1,13 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Taro from '@tarojs/taro';
-/* 搜索栏使用原生Input避免H5端文字下移，UI组件包裹View导致此问题 */
+/* 搜索栏使用原生Input避免H5端文字下移 */
 // eslint-disable-next-line no-restricted-syntax
 import { View, Text, Image, ScrollView, Input } from '@tarojs/components';
 import { Network } from '@/network';
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import {
-  Search, User, ChartPie, Plus, X
-} from 'lucide-react-taro';
+import { Search, User, ChartPie, Plus, X } from 'lucide-react-taro';
 /* eslint-enable @typescript-eslint/no-unused-vars */
 
 interface Project {
@@ -19,7 +17,7 @@ interface Project {
   end_date: string;
 }
 
-/* 卡片多彩配色（低饱和度高级感） */
+/* 与项目详情页/添加花费页一致的8种低饱和度配色 */
 const CARD_COLORS = [
   { bg: '#EDE7D9', name: '#6B5E4A', amount: '#A89068', accent: '#D4C4A0' },
   { bg: '#DDBEC8', name: '#6B4555', amount: '#B87A92', accent: '#C8A0AC' },
@@ -67,30 +65,25 @@ export default function IndexPage() {
   /* 动画状态 */
   const [cardVisible, setCardVisible] = useState<Record<string, boolean>>({});
   const [pressedId, setPressedId] = useState<string | null>(null);
-  /* 滚动动效 */
-  const scrollYRef = useRef(0);
 
-  /* 系统信息 */
+  /* 系统信息 - 与其他页面一致的对齐方式 */
   const sysInfo = Taro.getSystemInfoSync();
   const statusBarH = sysInfo.statusBarHeight || 20;
 
-  let menuBtnTop = statusBarH + 4;
-  let menuBtnHeight = 32;
+  let capsuleBottom = statusBarH + 44;
   const isWeapp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT;
   if (isWeapp) {
     try {
       const mb = Taro.getMenuButtonBoundingClientRect();
-      if (mb && mb.top > 0) { menuBtnTop = mb.top; menuBtnHeight = mb.height; }
-    } catch (_) { /* H5 fallback */ }
+      if (mb && mb.bottom > 0) capsuleBottom = mb.bottom + 4;
+    } catch (_) {}
   }
-  const capsuleBottom = menuBtnTop + menuBtnHeight; // 胶囊底部
 
   useEffect(() => {
     fetchProjects();
   }, []);
 
   useEffect(() => {
-    // 渐入动画：依次显示卡片
     projects.forEach((p, i) => {
       setTimeout(() => setCardVisible(prev => ({ ...prev, [p.id]: true })), i * 80);
     });
@@ -150,31 +143,37 @@ export default function IndexPage() {
     } catch (e) { console.error('choose error', e); }
   };
 
-  const onScroll = (e: any) => {
-    scrollYRef.current = e.detail.scrollTop || 0;
-  };
-
   return (
     <View className="flex flex-col h-full" style={{ backgroundColor: '#F7F9FC' }}>
-      {/* ===== 固定 Header：Yoop 标题 + 搜索栏，不随内容滚动 ===== */}
+      {/* ===== 导航栏区域：Yoop 标题与胶囊对齐 ===== */}
       <View
-        className="z-30"
         style={{
-          paddingTop: capsuleBottom + 10,
-          background: 'linear-gradient(180deg, #FFFFFF 0%, #F7F9FC 100%)',
-          paddingBottom: 12,
+          paddingTop: statusBarH,
+          height: capsuleBottom,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
           paddingLeft: 16, paddingRight: 16,
-          position: 'fixed',
-          left: 0, right: 0, top: 0,
+          backgroundColor: '#FFFFFF',
+          position: 'relative',
+          zIndex: 30,
         }}
       >
-        {/* Yoop 标题行 */}
-        <View style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', paddingBottom: 10 }}>
-          <Text style={{ fontSize: 20, fontWeight: '700', color: '#1E293B', fontFamily: '-apple-system, "SF Pro Display", sans-serif', letterSpacing: 1 }}>Yoop</Text>
-        </View>
-        {/* 搜索栏 */}
+        <Text style={{ fontSize: 18, fontWeight: '700', color: '#1E293B', fontFamily: '-apple-system, "SF Pro Display", sans-serif', letterSpacing: 2 }}>Yoop</Text>
+      </View>
+
+      {/* ===== 搜索栏行 - 固定不滚动 ===== */}
+      <View
+        style={{
+          padding: '10px 16px 14px',
+          background: 'linear-gradient(180deg, #FFFFFF 20%, #F7F9FC 100%)',
+          position: 'sticky',
+          top: 0,
+          zIndex: 25,
+        }}
+      >
         <View style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {/* 左侧统计按钮 */}
+          {/* 左侧统计 */}
           <View onClick={goStats}
             style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F0F4F8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
           >
@@ -204,20 +203,16 @@ export default function IndexPage() {
         </View>
       </View>
 
-      {/* ===== 占位：防止被固定 Header 遮挡 ===== */}
-      <View style={{ height: capsuleBottom + 10 + 44 + 12 }} />
-
       {/* ===== 项目列表（可滚动） ===== */}
       <ScrollView
         scrollY
         enhanced
         showScrollbar={false}
-        onScroll={onScroll}
         style={{ flex: 1 }}
       >
         <View style={{ padding: '0 16px 140px', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-          {filteredProjects.map((p, _index) => {
+          {filteredProjects.map((p) => {
             const cs = getCardStyle(p.id);
             const dateStr = p.start_date ? `${formatDateSlash(p.start_date)}${p.end_date ? ` ~ ${formatDateSlash(p.end_date)}` : ''}` : '待定';
             const isVisible = cardVisible[p.id] !== false;
@@ -269,7 +264,7 @@ export default function IndexPage() {
                         }}
                       >{p.name}</Text>
                     </View>
-                    {/* 时间：居中，项目名下方 */}
+                    {/* 时间：居中，底部一行 */}
                     <View style={{ display: 'flex', justifyContent: 'center', paddingTop: 2 }}>
                       <Text style={{ fontSize: 11, color: '#94A3B8', textAlign: 'center' }}>{dateStr}</Text>
                     </View>
