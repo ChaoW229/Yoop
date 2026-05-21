@@ -140,13 +140,17 @@ export default function IndexPage() {
   const statusBarH = sysInfo.statusBarHeight || 20;
   let menuTop = statusBarH + 4;
   let menuHeight = 32;
-  try {
-    const menuBtn = Taro.getMenuButtonBoundingClientRect();
-    if (menuBtn && menuBtn.top > 0) {
-      menuTop = menuBtn.top;
-      menuHeight = menuBtn.height;
-    }
-  } catch (e) { /* fallback */ }
+  // getMenuButtonBoundingClientRect 仅在微信小程序中支持，H5/抖音会报错
+  const isWeapp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP;
+  if (isWeapp) {
+    try {
+      const menuBtn = Taro.getMenuButtonBoundingClientRect();
+      if (menuBtn && menuBtn.top > 0) {
+        menuTop = menuBtn.top;
+        menuHeight = menuBtn.height;
+      }
+    } catch (e) { /* fallback */ }
+  }
 
   return (
     <View className="flex flex-col h-full bg-white">

@@ -58,12 +58,15 @@ export default function ProjectPage() {
   /* 顶部与胶囊按钮对齐 */
   const statusBarH = Taro.getSystemInfoSync().statusBarHeight || 0;
   let capsuleBottom = statusBarH + 44;
-  try {
-    const capsule = Taro.getMenuButtonBoundingClientRect();
-    if (capsule && capsule.bottom) {
-      capsuleBottom = capsule.bottom + 6;
-    }
-  } catch (e) { /* H5 fallback */ }
+  const isWeapp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP;
+  if (isWeapp) {
+    try {
+      const capsule = Taro.getMenuButtonBoundingClientRect();
+      if (capsule && capsule.bottom) {
+        capsuleBottom = capsule.bottom + 6;
+      }
+    } catch (e) { /* H5 fallback */ }
+  }
 
   const fetchData = async () => {
     try {
