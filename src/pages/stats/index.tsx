@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Taro, { useLoad } from '@tarojs/taro';
 import { View, Text } from '@tarojs/components';
 import { Network } from '@/network';
@@ -10,12 +10,15 @@ export default function StatsPage() {
   const [categoryData, setCategoryData] = useState<Record<string, number>>({});
   const [dateData, setDateData] = useState<Record<string, any[]>>({});
   const [, setLoading] = useState(true);
-  const [statusBarHeight, setStatusBarHeight] = useState(0);
 
-  useEffect(() => {
-    const info = Taro.getSystemInfoSync();
-    setStatusBarHeight(info.statusBarHeight || 0);
-  }, []);
+  /* 胶囊按钮对齐 */
+  const sysInfo = Taro.getSystemInfoSync();
+  const statusBarH = sysInfo.statusBarHeight || 20;
+  let capsuleBottom = statusBarH + 44;
+  const isWeapp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT;
+  if (isWeapp) {
+    try { const mb = Taro.getMenuButtonBoundingClientRect(); if (mb && mb.bottom) capsuleBottom = mb.bottom + 4; } catch (_) {}
+  }
 
   const goBack = () => Taro.navigateBack();
 
@@ -71,12 +74,12 @@ export default function StatsPage() {
 
   return (
     <View className="flex flex-col h-full bg-white">
-      {/* Custom header with safe area */}
-      <View style={{ paddingTop: statusBarHeight }} className="bg-white px-4 py-3 flex items-center gap-3">
-        <View onClick={goBack} className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center">
-          <ArrowLeft size={20} color="#8896A6" />
+      {/* 自定义导航栏：与胶囊对齐 */}
+      <View style={{ paddingTop: capsuleBottom + 2, paddingLeft: 12, paddingRight: 12 }} className="bg-white flex items-center">
+        <View onClick={goBack} style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <ArrowLeft size={16} color="#8896A6" />
         </View>
-        <Text className="block text-lg font-semibold text-on-surface">支出统计</Text>
+        <Text className="block text-base font-semibold" style={{ flex: 1, textAlign: 'center', color: '#1E293B', paddingRight: 28 }}>支出统计</Text>
       </View>
 
       <View className="flex-1 px-4 py-4">

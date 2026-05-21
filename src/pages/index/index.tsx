@@ -1,141 +1,80 @@
-import { useState } from 'react';
-import Taro, { useLoad, useDidShow } from '@tarojs/taro';
-/* eslint-disable no-restricted-syntax */
-import { View, Text, Image, Input, ScrollView } from '@tarojs/components';
-/* eslint-enable no-restricted-syntax */
+import { useState, useEffect, useRef } from 'react';
+import Taro from '@tarojs/taro';
+/* 搜索栏需要使用原生Input组件，UI组件在小程序中输入文字会下移 */
+import { View, Text, Image, ScrollView } from '@tarojs/components';
 import { Network } from '@/network';
-import { ChartPie, User, Search, Plus, X, Camera } from 'lucide-react-taro';
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import {
+  Search, User, ChartPie, Plus, X
+} from 'lucide-react-taro';
+/* eslint-enable @typescript-eslint/no-unused-vars */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any, import/no-commonjs
+const Input: any = require('@tarojs/components').Input;
 
 interface Project {
   id: string;
   name: string;
-  destination: string;
-  start_date?: string;
-  end_date?: string;
-  total_amount: string;
-  participants?: string[];
-  cover_url?: string;
+  total_amount: number | string;
+  cover_url: string;
+  start_date: string;
+  end_date: string;
 }
 
-/* 低饱和度多彩色系 */
+/* 卡片多彩配色（低饱和度高级感） */
 const CARD_COLORS = [
-  { bg: '#E8F0F7', accent: '#6B9BD5', name: '#3A5A78', amount: '#5B8BC2' },
-  { bg: '#EDF4EE', accent: '#7BA888', name: '#4A6850', amount: '#6A9270' },
-  { bg: '#F5EDE8', accent: '#C49A7A', name: '#7A5840', amount: '#B08860' },
-  { bg: '#EBE8F3', accent: '#9B8EC4', name: '#5C5070', amount: '#8678AA' },
-  { bg: '#F0EDE8', accent: '#B8A07A', name: '#605440', amount: '#9A8860' },
-  { bg: '#E5EFF1', accent: '#6BAFA5', name: '#406860', amount: '#5A9890' },
-  { bg: '#F2EBEF', accent: '#B87D9A', name: '#6A4858', amount: '#A06880' },
-  { bg: '#EAF0E8', accent: '#8FB894', name: '#506850', amount: '#70A076' },
+  { bg: '#EDE7D9', name: '#6B5E4A', amount: '#A89068', accent: '#D4C4A0' },
+  { bg: '#DDBEC8', name: '#6B4555', amount: '#B87A92', accent: '#C8A0AC' },
+  { bg: '#C8DAE2', name: '#3D5A66', amount: '#6B99B0', accent: '#98C0D4' },
+  { bg: '#DFDCC8', name: '#5A5638', amount: '#99905A', accent: '#C8C498' },
+  { bg: '#D9D4E8', name: '#50486B', amount: '#8880AA', accent: '#B8B0D0' },
+  { bg: '#E0DDD1', name: '#565342', amount: '#8E8968', accent: '#C4BF9E' },
+  { bg: '#D4E2DD', name: '#3D554F', amount: '#6B9288', accent: '#98C8BC' },
+  { bg: '#E2DCD8', name: '#584842', amount: '#987870', accent: '#C8B8AE' },
 ];
 
 function getCardStyle(id: string) {
-  const idx = id ? Math.abs(id.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % CARD_COLORS.length : 0;
+  const idx = Math.abs(id.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % CARD_COLORS.length;
   return CARD_COLORS[idx];
 }
 
 function getIcon(name: string): string {
-  const n = (name || '').toLowerCase();
-  if (n.includes('海') || n.includes('滩') || n.includes('岛')) return '\u{1F3D6}';
-  if (n.includes('山') || n.includes('峰') || n.includes('岭')) return '\u{1F3D4}';
-  if (n.includes('湖') || n.includes('水')) return '\u{1F4A7}';
-  if (n.includes('城') || n.includes('京') || n.includes('都')) return '\u{1F3D9}';
-  if (n.includes('古镇') || n.includes('丽江') || n.includes('巷')) return '\u{1F3EF}';
-  if (n.includes('雪') || n.includes('冰')) return '\u{2744}\uFE0F';
-  if (n.includes('花') || n.includes('园')) return '\u{1F338}';
-  if (n.includes('森') || n.includes('林') || n.includes('木')) return '\u{1F332}';
-  if (n.includes('食') || n.includes('吃') || n.includes('味')) return '\u{1F35C}';
-  if (n.includes('酒') || n.includes('吧')) return '\u{1F37A}';
-  if (n.includes('胶')) return '\u{2708}\uFE0F';
-  if (n.includes('游') || n.includes('旅')) return '\u{2708}\uFE0F';
-  return '\u{1F3D5}';
+  if (!name || name === '') return '?';
+  const icons = ['🏕️', '🏖️', '🌅', '⛰️', '🎐', '🏔️', '🌊', '🍜', '🚗', '✨'];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = ((hash << 5) - hash) + name.charCodeAt(i);
+  return icons[Math.abs(hash) % icons.length] || icons[0];
 }
 
-function formatDateSlash(dateStr?: string): string {
-  if (!dateStr) return '待定';
-  return dateStr.replace(/-/g, '/');
+function formatDateSlash(dateStr: string) {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr);
+    if (Number.isNaN(d.getTime())) return dateStr;
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}/${m}/${day}`;
+  } catch (_) { return dateStr; }
 }
 
 export default function IndexPage() {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [searchText, setSearchText] = useState('');
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newName, setNewName] = useState('');
   const [newCoverTemp, setNewCoverTemp] = useState('');
-  const [searchText, setSearchText] = useState('');
-  /* 卡片动画可见状态 - 用JS控制，确保小程序端兼容 */
+
+  /* 动画状态 */
   const [cardVisible, setCardVisible] = useState<Record<string, boolean>>({});
-  /* 触摸反馈 - 用state替代CSS :active */
   const [pressedId, setPressedId] = useState<string | null>(null);
+  /* 滚动动效 */
+  const scrollYRef = useRef(0);
 
-  const fetchProjects = async () => {
-    try {
-      setLoading(true);
-      const res = await Network.request({ url: '/api/projects' });
-      console.log('projects res', res.data);
-      const list: Project[] = res.data?.data || [];
-      setProjects(list);
-      /* 依次显示卡片，模拟渐入效果 */
-      list.forEach((p, i) => {
-        setTimeout(() => {
-          setCardVisible(prev => ({ ...prev, [p.id]: true }));
-        }, i * 80);
-      });
-    } catch (e) {
-      console.error('fetch projects error', e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useLoad(() => { fetchProjects(); });
-  useDidShow(() => { fetchProjects(); });
-
-  const goStats = () => Taro.navigateTo({ url: '/pages/stats/index' });
-  const goProfile = () => Taro.navigateTo({ url: '/pages/profile/index' });
-  const goProject = (id: string) => Taro.navigateTo({ url: `/pages/project/index?id=${id}` });
-
-  const handleChooseCover = async () => {
-    const env = Taro.getEnv();
-    try {
-      if ([Taro.ENV_TYPE.WEAPP, Taro.ENV_TYPE.TT].includes(env as any)) {
-        const res = await Taro.chooseMedia({ count: 1, mediaType: ['image'], sourceType: ['album', 'camera'] });
-        if (res.tempFiles && res.tempFiles.length > 0) setNewCoverTemp(res.tempFiles[0].tempFilePath);
-      } else {
-        const res = await Taro.chooseImage({ count: 1, sourceType: ['album', 'camera'] });
-        if (res.tempFilePaths && res.tempFilePaths.length > 0) setNewCoverTemp(res.tempFilePaths[0]);
-      }
-    } catch (e) { /* cancelled */ }
-  };
-
-  const handleAddProject = async () => {
-    if (!newName) { Taro.showToast({ title: '请填写项目名', icon: 'none' }); return; }
-    try {
-      let coverUrl = '';
-      if (newCoverTemp) {
-        const uploadRes = await Network.uploadFile({ url: '/api/upload', filePath: newCoverTemp, name: 'file' });
-        const parsed = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data;
-        coverUrl = parsed?.data?.url || '';
-      }
-      await Network.request({
-        url: '/api/projects',
-        method: 'POST',
-        data: { name: newName, destination: newName, participants: ['小明', '小红'], coverUrl: coverUrl || undefined },
-      });
-      Taro.showToast({ title: '新项目已添加', icon: 'success' });
-      setShowAddModal(false);
-      setNewName(''); setNewCoverTemp('');
-      fetchProjects();
-    } catch (e) { Taro.showToast({ title: '添加失败', icon: 'none' }); }
-  };
-
-  const filteredProjects = searchText
-    ? projects.filter(p => p.name?.includes(searchText) || p.destination?.includes(searchText))
-    : projects;
-
-  /* 系统信息 - 兼容H5和小程序 */
+  /* 系统信息 */
   const sysInfo = Taro.getSystemInfoSync();
   const statusBarH = sysInfo.statusBarHeight || 20;
+
   let menuBtnTop = statusBarH + 4;
   let menuBtnHeight = 32;
   const isWeapp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT;
@@ -145,63 +84,147 @@ export default function IndexPage() {
       if (mb && mb.top > 0) { menuBtnTop = mb.top; menuBtnHeight = mb.height; }
     } catch (_) { /* H5 fallback */ }
   }
+  const capsuleBottom = menuBtnTop + menuBtnHeight; // 胶囊底部
+
+  useEffect(() => {
+    fetchProjects();
+  }, []);
+
+  useEffect(() => {
+    // 渐入动画：依次显示卡片
+    projects.forEach((p, i) => {
+      setTimeout(() => setCardVisible(prev => ({ ...prev, [p.id]: true })), i * 80);
+    });
+  }, [projects]);
+
+  const fetchProjects = async () => {
+    try {
+      setLoading(true);
+      const res = await Network.request({ url: '/api/projects' });
+      console.log('首页项目数据:', res.data?.data);
+      setProjects(res.data?.data || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const goStats = () => Taro.navigateTo({ url: '/pages/stats/index' });
+  const goProfile = () => Taro.navigateTo({ url: '/pages/profile/index' });
+  const goProject = (id: string) => Taro.navigateTo({ url: `/pages/project/index?id=${id}` });
+
+  const filteredProjects = projects.filter(p =>
+    !searchText || p.name.toLowerCase().includes(searchText.toLowerCase())
+  );
+
+  const handleCreateProject = async () => {
+    if (!newName.trim()) { Taro.showToast({ title: '请输入名称', icon: 'none' }); return; }
+    try {
+      await Network.request({
+        url: '/api/projects',
+        method: 'POST',
+        data: { name: newName.trim(), cover_url: newCoverTemp },
+      });
+      setShowAddModal(false); setNewName(''); setNewCoverTemp('');
+      fetchProjects();
+      Taro.showToast({ title: '创建成功', icon: 'success' });
+    } catch (e) { Taro.showToast({ title: '创建失败', icon: 'none' }); }
+  };
+
+  const handleChooseCover = async () => {
+    const isMiniApp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT;
+    try {
+      let tempFilePath = '';
+      if (isMiniApp) {
+        const res = await Taro.chooseMedia({ count: 1, mediaType: ['image'], sourceType: ['album', 'camera'] });
+        if (res.tempFiles && res.tempFiles.length > 0) tempFilePath = res.tempFiles[0].tempFilePath;
+      } else {
+        const res = await Taro.chooseImage({ count: 1, sourceType: ['album', 'camera'] });
+        if (res.tempFilePaths && res.tempFilePaths.length > 0) tempFilePath = res.tempFilePaths[0];
+      }
+      if (!tempFilePath) return;
+      const uploadRes = await Network.uploadFile({ url: '/api/upload', filePath: tempFilePath, name: 'file' });
+      const parsed = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data;
+      const url = parsed?.data?.url;
+      if (url) setNewCoverTemp(url);
+    } catch (e) { console.error('choose error', e); }
+  };
+
+  const onScroll = (e: any) => {
+    scrollYRef.current = e.detail.scrollTop || 0;
+  };
 
   return (
     <View className="flex flex-col h-full" style={{ backgroundColor: '#F7F9FC' }}>
-      {/* ===== Header：自定义导航栏，渐变过渡 ===== */}
-      <View className="z-20" style={{ paddingTop: menuBtnTop + menuBtnHeight + 8, background: 'linear-gradient(180deg, #FFFFFF 0%, #F7F9FC 100%)' }}>
-        <View className="flex items-center gap-3 px-4 py-2">
+      {/* ===== 固定 Header：Yoop 标题 + 搜索栏，不随内容滚动 ===== */}
+      <View
+        className="z-30"
+        style={{
+          paddingTop: capsuleBottom + 10,
+          background: 'linear-gradient(180deg, #FFFFFF 0%, #F7F9FC 100%)',
+          paddingBottom: 12,
+          paddingLeft: 16, paddingRight: 16,
+          position: 'fixed',
+          left: 0, right: 0, top: 0,
+        }}
+      >
+        {/* Yoop 标题行 */}
+        <View style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', paddingBottom: 10 }}>
+          <Text style={{ fontSize: 20, fontWeight: '700', color: '#1E293B', fontFamily: '-apple-system, "SF Pro Display", sans-serif', letterSpacing: 1 }}>Yoop</Text>
+        </View>
+        {/* 搜索栏 */}
+        <View style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {/* 左侧统计按钮 */}
           <View onClick={goStats}
             style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F0F4F8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
           >
-            <ChartPie size={16} color="#6B9BD5" />
+            <ChartPie size={15} color="#6B9BD5" />
           </View>
 
-          {/* 搜索栏 */}
+          {/* 搜索框 */}
           <View style={{ flex: 1, height: 38, borderRadius: 19, backgroundColor: '#F0F4F8', display: 'flex', alignItems: 'center', padding: '0 14px' }}>
-            <Search size={15} color="#A0ABB8" style={{ marginRight: 8 }} />
+            <Search size={14} color="#A0ABB8" style={{ marginRight: 7 }} />
             <Input
               value={searchText}
               onInput={(e) => setSearchText(e.detail.value)}
               placeholder="搜索项目"
               placeholderClass="search-placeholder"
               confirmType="search"
-              style={{
-                flex: 1,
-                fontSize: 14,
-                lineHeight: '38px',
-                height: '100%',
-                backgroundColor: 'transparent',
-                border: 'none',
-                outline: 'none',
-                padding: '0 12px',
-              }}
+              style={{ flex: 1, fontSize: 13, lineHeight: '38px', height: '100%', backgroundColor: 'transparent', border: 'none', outline: 'none', padding: '0 8px' }}
             />
           </View>
-          {/* 右侧个人中心按钮 */}
+
+          {/* 右侧个人中心 */}
           <View onClick={goProfile}
             style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F0F4F8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
           >
-            <User size={16} color="#6B9BD5" />
+            <User size={15} color="#6B9BD5" />
           </View>
         </View>
       </View>
 
-      {/* ===== 项目列表 ===== */}
-      <ScrollView scrollY enhanced showScrollbar={false} style={{ flex: 1 }}>
-        {/* 搜索栏与项目列表的间距 */}
-        <View style={{ padding: '16px 16px 140px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* ===== 占位：防止被固定 Header 遮挡 ===== */}
+      <View style={{ height: capsuleBottom + 10 + 44 + 12 }} />
 
-          {filteredProjects.map((p) => {
+      {/* ===== 项目列表（可滚动） ===== */}
+      <ScrollView
+        scrollY
+        enhanced
+        showScrollbar={false}
+        onScroll={onScroll}
+        style={{ flex: 1 }}
+      >
+        <View style={{ padding: '0 16px 140px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+          {filteredProjects.map((p, _index) => {
             const cs = getCardStyle(p.id);
             const dateStr = p.start_date ? `${formatDateSlash(p.start_date)}${p.end_date ? ` ~ ${formatDateSlash(p.end_date)}` : ''}` : '待定';
-            const isVisible = cardVisible[p.id] !== false; // 默认可见，首次加载时由定时器控制
+            const isVisible = cardVisible[p.id] !== false;
 
             return (
               <View key={p.id}
                 onClick={() => goProject(p.id)}
-                /* 触摸事件 - JS方式实现按压反馈 */
                 onTouchStart={() => setPressedId(p.id)}
                 onTouchEnd={() => setPressedId(null)}
                 onTouchCancel={() => setPressedId(null)}
@@ -214,11 +237,10 @@ export default function IndexPage() {
                   transform: pressedId === p.id ? 'scale(0.97)' : 'scale(1)',
                   transition: 'transform 0.15s ease-out, box-shadow 0.15s ease-out',
                   opacity: isVisible ? 1 : 0,
-                  transformOrigin: 'center bottom',
                 }}
               >
                 <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'stretch', minHeight: 110, backgroundColor: cs.bg }}>
-                  {/* 左侧图片 1:1 - 无相机图标 */}
+                  {/* 左侧图片 1:1 */}
                   <View style={{ width: 108, minWidth: 108, position: 'relative', overflow: 'hidden' }}>
                     {p.cover_url ? (
                       <Image src={p.cover_url} mode="aspectFill" style={{ width: '100%', height: '100%' }} lazyLoad />
@@ -230,13 +252,13 @@ export default function IndexPage() {
                   </View>
 
                   {/* 右侧内容区 */}
-                  <View style={{ flex: 1, padding: '8px 12px 10px', display: 'flex', flexDirection: 'column' }}>
+                  <View style={{ flex: 1, padding: '10px 12px 8px', display: 'flex', flexDirection: 'column' }}>
                     {/* 金额 - 右上 */}
-                    <View style={{ display: 'flex', justifyContent: 'flex-end', paddingBottom: 2 }}>
-                      <Text style={{ fontSize: 18, fontWeight: '700', color: cs.amount }}>¥{Number(p.total_amount || 0).toFixed(0)}</Text>
+                    <View style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <Text style={{ fontSize: 17, fontWeight: '700', color: cs.amount }}>¥{Number(p.total_amount || 0).toFixed(0)}</Text>
                     </View>
-                    {/* 项目名：居中（占据金额和中间空间） */}
-                    <View style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {/* 项目名：居中 */}
+                    <View style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 32 }}>
                       <Text
                         style={{
                           fontSize: 17,
@@ -247,9 +269,9 @@ export default function IndexPage() {
                         }}
                       >{p.name}</Text>
                     </View>
-                    {/* 时间：底部一行 */}
-                    <View style={{ paddingTop: 4 }}>
-                      <Text style={{ fontSize: 11, color: '#94A3B8' }}>{dateStr}</Text>
+                    {/* 时间：居中，项目名下方 */}
+                    <View style={{ display: 'flex', justifyContent: 'center', paddingTop: 2 }}>
+                      <Text style={{ fontSize: 11, color: '#94A3B8', textAlign: 'center' }}>{dateStr}</Text>
                     </View>
                   </View>
                 </View>
@@ -267,7 +289,7 @@ export default function IndexPage() {
         </View>
       </ScrollView>
 
-      {/* ===== 浮动按钮（弹窗打开时不显示） ===== */}
+      {/* 浮动按钮 */}
       {!showAddModal && (
         <View
           onClick={() => setShowAddModal(true)}
@@ -283,7 +305,7 @@ export default function IndexPage() {
         </View>
       )}
 
-      {/* ===== 新建项目弹窗 ===== */}
+      {/* 新建项目弹窗 */}
       {showAddModal && (
         <View style={{ position: 'fixed', inset: 0, zIndex: 200, backgroundColor: '#FFFFFF' }}>
           <View style={{ paddingTop: statusBarH + 6, display: 'flex', alignItems: 'center', padding: '0 16px', paddingBottom: 12 }}>
@@ -312,16 +334,22 @@ export default function IndexPage() {
                   <Image src={newCoverTemp} mode="aspectFill" style={{ width: 68, height: 68, borderRadius: 14 }} />
                 ) : (
                   <View style={{ width: 68, height: 68, borderRadius: 14, backgroundColor: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#E2E8F0', borderStyle: 'dashed' }}>
-                    <Camera size={24} color="#94A3B8" />
+                    <Text style={{ fontSize: 24, opacity: 0.4 }}>+</Text>
                   </View>
                 )}
-                <Text style={{ fontSize: 14, color: '#64748B' }}>点击选择或拍摄封面</Text>
+                <Text style={{ fontSize: 13, color: '#8896A6' }}>{newCoverTemp ? '点击更换图片' : '点击选择封面'}</Text>
               </View>
             </View>
 
-            {/* 创建按钮 - 无+号 */}
-            <View onClick={handleAddProject} style={{ height: 48, borderRadius: 14, background: 'linear-gradient(135deg, #5B8DEE, #7BA8EA)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 6 }}>
-              <Text style={{ fontSize: 16, fontWeight: '600', color: '#FFFFFF', letterSpacing: '2px' }}>创建项目</Text>
+            {/* 创建按钮 */}
+            <View onClick={handleCreateProject}
+              style={{
+                marginTop: 8, height: 48, borderRadius: 14,
+                background: 'linear-gradient(135deg, #5B8DEE, #7BA8EA)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '600' }}>创建项目</Text>
             </View>
           </View>
         </View>

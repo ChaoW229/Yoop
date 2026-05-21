@@ -1,9 +1,9 @@
 export default typeof definePageConfig === 'function'
-  ? definePageConfig({ 
-      navigationBarTitleText: 'Yoop',
+  ? definePageConfig({
       navigationStyle: 'custom',
+      navigationBarTitleText: '',
     })
-  : { 
-      navigationBarTitleText: 'Yoop',
+  : {
       navigationStyle: 'custom',
+      navigationBarTitleText: '',
     }
