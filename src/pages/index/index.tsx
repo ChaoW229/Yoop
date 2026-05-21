@@ -136,12 +136,21 @@ export default function IndexPage() {
   /* 系统信息 - 兼容H5和小程序 */
   const sysInfo = Taro.getSystemInfoSync();
   const statusBarH = sysInfo.statusBarHeight || 20;
+  let menuBtnTop = statusBarH + 4;
+  let menuBtnHeight = 32;
+  const isWeapp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT;
+  if (isWeapp) {
+    try {
+      const mb = Taro.getMenuButtonBoundingClientRect();
+      if (mb && mb.top > 0) { menuBtnTop = mb.top; menuBtnHeight = mb.height; }
+    } catch (_) { /* H5 fallback */ }
+  }
 
   return (
     <View className="flex flex-col h-full" style={{ backgroundColor: '#F7F9FC' }}>
-      {/* ===== Header：与状态栏对齐 ===== */}
-      <View className="z-20" style={{ paddingTop: statusBarH, backgroundColor: '#FFFFFF' }}>
-        <View className="flex items-center gap-3 px-4 py-3">
+      {/* ===== Header：自定义导航栏，渐变过渡 ===== */}
+      <View className="z-20" style={{ paddingTop: menuBtnTop + menuBtnHeight + 8, background: 'linear-gradient(180deg, #FFFFFF 0%, #F7F9FC 100%)' }}>
+        <View className="flex items-center gap-3 px-4 py-2">
           {/* 左侧统计按钮 */}
           <View onClick={goStats}
             style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F0F4F8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
@@ -221,9 +230,13 @@ export default function IndexPage() {
                   </View>
 
                   {/* 右侧内容区 */}
-                  <View style={{ flex: 1, padding: 8, paddingLeft: 12, paddingRight: 10, display: 'flex', flexDirection: 'column' }}>
-                    {/* 中间区域：项目名居中 */}
-                    <View style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 50 }}>
+                  <View style={{ flex: 1, padding: '8px 12px 10px', display: 'flex', flexDirection: 'column' }}>
+                    {/* 金额 - 右上 */}
+                    <View style={{ display: 'flex', justifyContent: 'flex-end', paddingBottom: 2 }}>
+                      <Text style={{ fontSize: 18, fontWeight: '700', color: cs.amount }}>¥{Number(p.total_amount || 0).toFixed(0)}</Text>
+                    </View>
+                    {/* 项目名：居中（占据金额和中间空间） */}
+                    <View style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Text
                         style={{
                           fontSize: 17,
@@ -234,10 +247,9 @@ export default function IndexPage() {
                         }}
                       >{p.name}</Text>
                     </View>
-                    {/* 底部行：时间一行 + 金额 */}
-                    <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 2, paddingBottom: 2 }}>
-                      <Text style={{ fontSize: 11, color: '#94A3B8', flexShrink: 1 }}>{dateStr}</Text>
-                      <Text style={{ fontSize: 18, fontWeight: '700', color: cs.amount }}>¥{Number(p.total_amount || 0).toFixed(0)}</Text>
+                    {/* 时间：底部一行 */}
+                    <View style={{ paddingTop: 4 }}>
+                      <Text style={{ fontSize: 11, color: '#94A3B8' }}>{dateStr}</Text>
                     </View>
                   </View>
                 </View>
