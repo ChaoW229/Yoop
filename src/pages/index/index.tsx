@@ -136,24 +136,12 @@ export default function IndexPage() {
   /* 系统信息 - 兼容H5和小程序 */
   const sysInfo = Taro.getSystemInfoSync();
   const statusBarH = sysInfo.statusBarHeight || 20;
-  let menuTop = statusBarH + 4;
-  let menuHeight = 32;
-  const isWeapp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP;
-  if (isWeapp) {
-    try {
-      const menuBtn = Taro.getMenuButtonBoundingClientRect();
-      if (menuBtn && menuBtn.top > 0) {
-        menuTop = menuBtn.top;
-        menuHeight = menuBtn.height;
-      }
-    } catch (e) { /* fallback */ }
-  }
 
   return (
     <View className="flex flex-col h-full" style={{ backgroundColor: '#F7F9FC' }}>
-      {/* ===== Header：紧贴胶囊按钮底部 ===== */}
-      <View className="z-20" style={{ paddingTop: menuTop + menuHeight, backgroundColor: '#FFFFFF' }}>
-        <View className="px-4 flex items-center gap-3">
+      {/* ===== Header：与状态栏对齐 ===== */}
+      <View className="z-20" style={{ paddingTop: statusBarH, backgroundColor: '#FFFFFF' }}>
+        <View className="flex items-center gap-3 px-4 py-3">
           {/* 左侧统计按钮 */}
           <View onClick={goStats}
             style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F0F4F8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
@@ -193,7 +181,8 @@ export default function IndexPage() {
 
       {/* ===== 项目列表 ===== */}
       <ScrollView scrollY enhanced showScrollbar={false} style={{ flex: 1 }}>
-        <View style={{ padding: '12px 16px 140px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {/* 搜索栏与项目列表的间距 */}
+        <View style={{ padding: '16px 16px 140px', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
           {filteredProjects.map((p) => {
             const cs = getCardStyle(p.id);
