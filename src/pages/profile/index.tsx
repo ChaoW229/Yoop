@@ -1,17 +1,27 @@
 import { useState, useEffect } from 'react';
 import Taro, { useLoad } from '@tarojs/taro';
-import { View, Text, Image } from '@tarojs/components';
+import { View, Text, Image, ScrollView } from '@tarojs/components';
 
 import { Network } from '@/network';
 import { ArrowLeft, User, LogOut, Settings, Map, Wallet } from 'lucide-react-taro';
 
 export default function ProfilePage() {
   const [user, setUser] = useState<any>(null);
-  const [statusBarHeight, setStatusBarHeight] = useState(0);
+  const [capsuleBottom, setCapsuleBottom] = useState(0);
 
   useEffect(() => {
-    const info = Taro.getSystemInfoSync();
-    setStatusBarHeight(info.statusBarHeight || 0);
+    if (Taro.getEnv() === Taro.ENV_TYPE.WEAPP) {
+      try {
+        const menuBtn = Taro.getMenuButtonBoundingClientRect();
+        setCapsuleBottom(menuBtn.bottom + 4);
+      } catch {
+        const sysInfo = Taro.getSystemInfoSync();
+        setCapsuleBottom((sysInfo.statusBarHeight || 0) + 44);
+      }
+    } else {
+      const sysInfo = Taro.getSystemInfoSync();
+      setCapsuleBottom((sysInfo.statusBarHeight || 0) + 48);
+    }
   }, []);
 
   useLoad(() => {
@@ -55,14 +65,20 @@ export default function ProfilePage() {
 
   return (
     <View className="flex flex-col h-full bg-white">
-      <View style={{ paddingTop: statusBarHeight }} className="flex items-center px-4 py-3 bg-white">
+      {/* 固定导航栏 - 与其他页面一致 */}
+      <View
+        style={{ position: 'fixed', top: 0, left: 0, right: 0, paddingTop: capsuleBottom, backgroundColor: '#FFFFFF', zIndex: 100 }}
+        className="flex items-center px-4"
+      >
         <View onClick={goBack} className="w-10 h-10 flex items-center justify-center">
-          <ArrowLeft size={20} color="#8896A6" />
+          <ArrowLeft size={16} color="#8896A6" />
         </View>
-        <Text className="block flex-1 text-center text-base font-semibold text-on-surface pr-10">个人信息</Text>
+        <Text className="block flex-1 text-center pr-10" style={{ fontSize: 17, fontWeight: '600', letterSpacing: '1px', fontFamily: '-apple-system, "SF Pro Display", "PingFang SC", sans-serif' }}>个人信息</Text>
       </View>
 
-      {!user && (
+      {/* 内容区 - 留出导航栏高度 */}
+      <ScrollView scrollY className="flex-1" style={{ paddingTop: capsuleBottom + 44 }}>
+        {!user && (
         <View className="flex-1 flex flex-col items-center justify-center px-6">
           <View className="w-20 h-20 rounded-full bg-surface-container flex items-center justify-center mb-4">
             <User size={36} color="#C4BFB8" />
@@ -125,6 +141,7 @@ export default function ProfilePage() {
           </View>
         </>
       )}
+    </ScrollView>
     </View>
   );
 }

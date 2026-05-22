@@ -132,15 +132,17 @@ export default function AddBillPage() {
 
   return (
     <View className="flex flex-col min-h-full bg-white">
-      {/* Header - 与胶囊按钮对齐，和项目详情页一致 */}
-      <View style={{ paddingTop: capsuleBottom, paddingLeft: 12, paddingRight: 12 }} className="bg-white flex items-center">
-        <View onClick={goBack} style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <ArrowLeft size={16} color={theme.name} />
+      {/* Header - 与胶囊按钮对齐，固定不动 */}
+      <View style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, backgroundColor: '#FFFFFF' }}>
+        <View style={{ paddingTop: capsuleBottom + 4, paddingLeft: 12, paddingRight: 12 }} className="bg-white flex items-center">
+          <View onClick={goBack} style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <ArrowLeft size={16} color="#8896A6" />
+          </View>
+          <Text className="block text-lg font-bold flex-1 text-center pr-8" style={{ color: theme.name }}>添加花费</Text>
         </View>
-        <Text className="block flex-1 text-center text-base font-semibold pr-8" style={{ color: theme.name }}>添加花费</Text>
       </View>
 
-      <View className="flex-1 px-5 pt-4 pb-4 flex flex-col gap-4">
+      <View className="flex-1 px-5 pt-4 pb-4 flex flex-col gap-4" style={{ paddingTop: capsuleBottom + 48 }}>
         {/* 花费名称 */}
         <View>
           <Text className="block text-xs mb-2" style={{ color: theme.accent }}>花费名称</Text>

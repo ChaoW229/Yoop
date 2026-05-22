@@ -173,7 +173,7 @@ export default function IndexPage() {
             paddingRight: 16,
           }}
         >
-          <Text style={{ fontSize: 18, fontWeight: '700', color: '#1E293B', fontFamily: '-apple-system, "SF Pro Display", sans-serif', letterSpacing: 2 }}>Yoop</Text>
+          <Text className="block text-lg font-bold" style={{ color: '#1E293B' }}>Yoop</Text>
         </View>
 
         {/* 搜索栏行 */}

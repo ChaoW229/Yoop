@@ -74,15 +74,17 @@ export default function StatsPage() {
 
   return (
     <View className="flex flex-col h-full bg-white">
-      {/* 自定义导航栏：与胶囊对齐 */}
-      <View style={{ paddingTop: capsuleBottom + 2, paddingLeft: 12, paddingRight: 12 }} className="bg-white flex items-center">
-        <View onClick={goBack} style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <ArrowLeft size={16} color="#8896A6" />
+      {/* 自定义导航栏：与胶囊对齐，固定不动 */}
+      <View style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, backgroundColor: '#FFFFFF' }}>
+        <View style={{ paddingTop: capsuleBottom + 4, paddingLeft: 12, paddingRight: 12 }} className="bg-white flex items-center">
+          <View onClick={goBack} style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <ArrowLeft size={16} color="#8896A6" />
+          </View>
+          <Text className="block text-lg font-bold flex-1 text-center pr-8" style={{ color: '#1E293B' }}>支出统计</Text>
         </View>
-        <Text className="block text-base font-semibold" style={{ flex: 1, textAlign: 'center', color: '#1E293B', paddingRight: 28 }}>支出统计</Text>
       </View>
 
-      <View className="flex-1 px-4 py-4">
+      <View className="flex-1 px-4 py-4" style={{ paddingTop: capsuleBottom + 48 }}>
         <Text className="block text-2xl font-bold text-primary">¥{total.toFixed(0)}</Text>
         <Text className="block text-sm text-on-surface-variant mt-1">总支出</Text>
 
