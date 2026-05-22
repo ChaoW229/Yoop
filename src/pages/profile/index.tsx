@@ -77,7 +77,7 @@ export default function ProfilePage() {
       </View>
 
       {/* 内容区 - 留出导航栏高度 */}
-      <ScrollView scrollY className="flex-1" style={{ paddingTop: capsuleBottom + 44 }}>
+      <ScrollView scrollY className="flex-1" style={{ paddingTop: capsuleBottom + 8 }}>
         {!user && (
         <View className="flex-1 flex flex-col items-center justify-center px-6">
           <View className="w-20 h-20 rounded-full bg-surface-container flex items-center justify-center mb-4">

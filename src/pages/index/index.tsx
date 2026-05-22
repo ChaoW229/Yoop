@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import Taro from '@tarojs/taro';
-/* 搜索栏使用原生Input避免H5端文字下移 */
-// eslint-disable-next-line no-restricted-syntax
+/* eslint-disable-next-line no-restricted-syntax */
 import { View, Text, Image, ScrollView, Input } from '@tarojs/components';
 import { Network } from '@/network';
 /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -66,11 +65,9 @@ export default function IndexPage() {
   const [cardVisible, setCardVisible] = useState<Record<string, boolean>>({});
   const [pressedId, setPressedId] = useState<string | null>(null);
 
-  /* 系统信息 - 与其他页面完全一致的 Header 对齐方式 */
-  const sysInfo = Taro.getSystemInfoSync();
-  const statusBarH = sysInfo.statusBarHeight || 20;
+  /* 系统信息 - 与项目详情页完全一致 */
+  const statusBarH = Taro.getSystemInfoSync().statusBarHeight || 20;
 
-  // 胶囊按钮底部位置（与项目详情页一致）
   let capsuleBottom = statusBarH + 44;
   const isWeapp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT;
   if (isWeapp) {
@@ -79,10 +76,6 @@ export default function IndexPage() {
       if (mb && mb.bottom > 0) capsuleBottom = mb.bottom + 6;
     } catch (_) {}
   }
-
-  /* 固定 Header 总高度 = 导航栏(胶囊对齐) + 搜索栏 */
-  const searchRowHeight = 52;
-  const fixedHeaderTotalH = capsuleBottom + searchRowHeight;
 
   useEffect(() => {
     fetchProjects();
@@ -148,74 +141,71 @@ export default function IndexPage() {
     } catch (e) { console.error('choose error', e); }
   };
 
+  /* 统一标题字体样式 */
+  const titleStyle: React.CSSProperties = {
+    fontSize: 18,
+    fontWeight: '600',
+    fontFamily: '-apple-system, "SF Pro Display", "Helvetica Neue", sans-serif',
+    letterSpacing: 2,
+    color: '#1E293B',
+  };
+
   return (
     <View className="flex flex-col h-full" style={{ backgroundColor: '#F7F9FC' }}>
-      {/* ===== 固定 Header 区域：导航栏 + 搜索栏 ===== */}
+      {/* ===== 导航栏：Yoop 标题与胶囊对齐 ===== */}
       <View
         style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 100,
+          paddingTop: statusBarH,
+          height: capsuleBottom,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
           backgroundColor: '#FFFFFF',
+          paddingLeft: 16,
+          paddingRight: 16,
         }}
       >
-        {/* 导航栏行：Yoop 标题与胶囊按钮对齐 */}
-        <View
-          style={{
-            paddingTop: statusBarH,
-            height: capsuleBottom,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            paddingLeft: 16,
-            paddingRight: 16,
-          }}
-        >
-          <Text className="block text-lg font-bold" style={{ color: '#1E293B' }}>Yoop</Text>
-        </View>
+        <Text className="block" style={titleStyle}>Yoop</Text>
+      </View>
 
-        {/* 搜索栏行 */}
-        <View style={{ padding: '8px 16px 12px' }}>
-          <View style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            {/* 左侧统计按钮 */}
-            <View onClick={goStats}
-              style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F0F4F8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-            >
-              <ChartPie size={15} color="#6B9BD5" />
-            </View>
+      {/* ===== 搜索栏行 ===== */}
+      <View style={{ padding: '8px 16px 12px', backgroundColor: '#FFFFFF' }}>
+        <View style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* 左侧统计按钮 */}
+          <View onClick={goStats}
+            style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F0F4F8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+          >
+            <ChartPie size={15} color="#6B9BD5" />
+          </View>
 
-            {/* 搜索框 */}
-            <View style={{ flex: 1, height: 38, borderRadius: 19, backgroundColor: '#F0F4F8', display: 'flex', alignItems: 'center', padding: '0 14px' }}>
-              <Search size={14} color="#A0ABB8" style={{ marginRight: 7 }} />
-              {/* eslint-disable-next-line no-restricted-syntax */}
-              <Input
-                value={searchText}
-                onInput={(e) => setSearchText(e.detail.value)}
-                placeholder="搜索项目"
-                placeholderClass="search-placeholder"
-                confirmType="search"
-                style={{ flex: 1, fontSize: 13, lineHeight: '38px', height: '100%', backgroundColor: 'transparent', border: 'none', outline: 'none', padding: '0 8px' }}
-              />
-            </View>
+          {/* 搜索框 */}
+          <View style={{ flex: 1, height: 38, borderRadius: 19, backgroundColor: '#F0F4F8', display: 'flex', alignItems: 'center', padding: '0 14px' }}>
+            <Search size={14} color="#A0ABB8" style={{ marginRight: 7 }} />
+            {/* eslint-disable-next-line no-restricted-syntax */}
+            <Input
+              value={searchText}
+              onInput={(e) => setSearchText(e.detail.value)}
+              placeholder="搜索项目"
+              confirmType="search"
+              style={{ flex: 1, fontSize: 13, lineHeight: '38px', height: '100%', backgroundColor: 'transparent', border: 'none', outline: 'none', padding: '0 8px' }}
+            />
+          </View>
 
-            {/* 右侧个人中心按钮 */}
-            <View onClick={goProfile}
-              style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F0F4F8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-            >
-              <User size={15} color="#6B9BD5" />
-            </View>
+          {/* 右侧个人中心按钮 */}
+          <View onClick={goProfile}
+            style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F0F4F8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+          >
+            <User size={15} color="#6B9BD5" />
           </View>
         </View>
       </View>
 
-      {/* ===== 项目列表（可滚动，paddingTop 等于固定 Header 总高） ===== */}
+      {/* ===== 项目列表 ===== */}
       <ScrollView
         scrollY
         enhanced
         showScrollbar={false}
-        style={{ flex: 1, marginTop: fixedHeaderTotalH }}
+        style={{ flex: 1 }}
       >
         <View style={{ padding: '12px 16px 140px', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
@@ -271,7 +261,7 @@ export default function IndexPage() {
                         }}
                       >{p.name}</Text>
                     </View>
-                    {/* 时间：居中，底部一行 */}
+                    {/* 时间：底部居中 */}
                     <View style={{ display: 'flex', justifyContent: 'center', paddingTop: 2 }}>
                       <Text style={{ fontSize: 11, color: '#94A3B8', textAlign: 'center' }}>{dateStr}</Text>
                     </View>
@@ -316,11 +306,10 @@ export default function IndexPage() {
             >
               <X size={20} color="#94A3B8" />
             </View>
-            <Text style={{ flex: 1, textAlign: 'center', fontSize: 16, fontWeight: '600', color: '#1E293B', paddingRight: 28 }}>添加新项目</Text>
+            <Text style={{ flex: 1, textAlign: 'center', ...titleStyle, paddingRight: 28 }}>添加新项目</Text>
           </View>
 
           <View style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 18 }}>
-            {/* 第一项：项目名称 */}
             <View>
               <Text style={{ fontSize: 13, color: '#94A3B8', marginBottom: 8, display: 'block', fontWeight: '500' }}>项目名称</Text>
               {/* eslint-disable-next-line no-restricted-syntax */}
@@ -329,7 +318,6 @@ export default function IndexPage() {
               />
             </View>
 
-            {/* 第二项：封面图片 */}
             <View>
               <Text style={{ fontSize: 13, color: '#94A3B8', marginBottom: 8, display: 'block', fontWeight: '500' }}>封面图片（可选）</Text>
               <View onClick={handleChooseCover} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -344,7 +332,6 @@ export default function IndexPage() {
               </View>
             </View>
 
-            {/* 创建按钮 */}
             <View onClick={handleCreateProject}
               style={{
                 marginTop: 8, height: 48, borderRadius: 14,

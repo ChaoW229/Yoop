@@ -142,7 +142,7 @@ export default function AddBillPage() {
         </View>
       </View>
 
-      <View className="flex-1 px-5 pt-4 pb-4 flex flex-col gap-4" style={{ paddingTop: capsuleBottom + 48 }}>
+      <View className="flex-1 px-5 pt-4 pb-4 flex flex-col gap-4" style={{ paddingTop: capsuleBottom + 6 }}>
         {/* 花费名称 */}
         <View>
           <Text className="block text-xs mb-2" style={{ color: theme.accent }}>花费名称</Text>
