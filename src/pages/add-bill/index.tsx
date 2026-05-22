@@ -132,8 +132,8 @@ export default function AddBillPage() {
 
   return (
     <View className="flex flex-col min-h-full bg-white">
-      {/* Header - 与胶囊对齐 */}
-      <View style={{ paddingTop: capsuleBottom + 2, paddingLeft: 12, paddingRight: 12 }} className="bg-white flex items-center">
+      {/* Header - 与胶囊按钮对齐，和项目详情页一致 */}
+      <View style={{ paddingTop: capsuleBottom, paddingLeft: 12, paddingRight: 12 }} className="bg-white flex items-center">
         <View onClick={goBack} style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <ArrowLeft size={16} color={theme.name} />
         </View>
