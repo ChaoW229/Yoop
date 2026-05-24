@@ -15,19 +15,20 @@ interface Bill {
 }
 
 /* 与首页一致的8种低饱和度色系 */
+/* 与首页/添加花费页一致的8种低饱和度配色 */
 const CARD_COLORS = [
-  { bg: '#E8F0F7', accent: '#6B9BD5' },
-  { bg: '#EDF4EE', accent: '#7BA888' },
-  { bg: '#F5EDE8', accent: '#C49A7A' },
-  { bg: '#EBE8F3', accent: '#9B8EC4' },
-  { bg: '#F0EDE8', accent: '#B8A07A' },
-  { bg: '#E5EFF1', accent: '#6BAFA5' },
-  { bg: '#F2EBEF', accent: '#B87D9A' },
-  { bg: '#EAF0E8', accent: '#8FB894' },
+  { bg: '#EDE7D9', name: '#6B5E4A', amount: '#A89068', accent: '#D4C4A0' },
+  { bg: '#DDBEC8', name: '#6B4555', amount: '#B87A92', accent: '#C8A0AC' },
+  { bg: '#C8DAE2', name: '#3D5A66', amount: '#6B99B0', accent: '#98C0D4' },
+  { bg: '#DFDCC8', name: '#5A5638', amount: '#99905A', accent: '#C8C498' },
+  { bg: '#D9D4E8', name: '#50486B', amount: '#8880AA', accent: '#B8B0D0' },
+  { bg: '#E0DDD1', name: '#565342', amount: '#8E8968', accent: '#C4BF9E' },
+  { bg: '#D4E2DD', name: '#3D554F', amount: '#6B9288', accent: '#98C8BC' },
+  { bg: '#E2DCD8', name: '#584842', amount: '#987870', accent: '#C8B8AE' },
 ];
 
-function getCardColor(id: string) {
-  const idx = id ? Math.abs(id.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % CARD_COLORS.length : 0;
+function getCardStyle(id: string) {
+  const idx = Math.abs(id.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % CARD_COLORS.length;
   return CARD_COLORS[idx];
 }
 
@@ -175,7 +176,7 @@ export default function ProjectPage() {
     byDate[d].push(b);
   }
 
-  const cc = getCardColor(project?.id || '');
+  const cc = getCardStyle(project?.id || '');
 
   /* 数据未加载时渲染占位，避免闪烁 */
   if (!project) {
@@ -235,7 +236,7 @@ export default function ProjectPage() {
               marginLeft: 12,
               marginTop: 4,
               marginBottom: 4,
-              background: project?.cover_url ? undefined : cc.accent,
+              background: project?.cover_url ? undefined : cc.name,
               opacity: project?.cover_url ? undefined : 0.85,
             }}
             onClick={handleChangeCover}
@@ -246,7 +247,7 @@ export default function ProjectPage() {
               <Text className="block text-3xl">{getIcon(project?.name || '')}</Text>
             )}
             <View className="absolute bottom-1 right-1 w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.85)' }}>
-              <Camera size={10} color={cc.accent} />
+              <Camera size={10} color={cc.name} />
             </View>
           </View>
           {/* 信息区：项目名水平居中 */}
@@ -262,13 +263,13 @@ export default function ProjectPage() {
             <View className="flex items-end justify-between mt-2">
               <View>
                 <Text className="block text-xs" style={{ color: '#8896A6' }}>总金额</Text>
-                <Text className="block text-xl font-bold" style={{ color: cc.accent }}>¥{totalAmount.toFixed(0)}</Text>
+                <Text className="block text-xl font-bold" style={{ color: cc.name }}>¥{totalAmount.toFixed(0)}</Text>
               </View>
               <View
                 className="rounded-xl px-3 py-2"
                 style={{ backgroundColor: '#F0F6FC', border: '1px solid #E4EDF7' }}
               >
-                <Text className="block text-xs" style={{ color: cc.accent }}>人均 ¥{perPerson.toFixed(2)}</Text>
+                <Text className="block text-xs" style={{ color: cc.name }}>人均 ¥{perPerson.toFixed(2)}</Text>
                 {treatAmount > 0 && (
                   <Text className="block text-xs mt-1" style={{ color: '#8896A6' }}>含请客 ¥{treatAmount.toFixed(0)}</Text>
                 )}
@@ -282,7 +283,7 @@ export default function ProjectPage() {
           onClick={goAddBill}
           className="w-full rounded-2xl py-4 flex items-center justify-center gap-2 mb-3"
           style={{
-            background: `linear-gradient(135deg, ${cc.accent}, ${cc.bg})`,
+            background: `linear-gradient(135deg, ${cc.name}, ${cc.bg})`,
             boxShadow: '0 6px 24px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04)',
           }}
         >
@@ -322,10 +323,10 @@ export default function ProjectPage() {
                       className="rounded-full px-2 py-1"
                       style={{ backgroundColor: '#F0F6FC', border: '1px solid #E4EDF7' }}
                     >
-                      <Text className="block text-xs" style={{ color: cc.accent }}>请客</Text>
+                      <Text className="block text-xs" style={{ color: cc.name }}>请客</Text>
                     </View>
                   )}
-                  <Text className="block text-sm font-semibold" style={{ color: b.is_treat ? cc.accent : '#2D3748' }}>
+                  <Text className="block text-sm font-semibold" style={{ color: b.is_treat ? cc.name : '#2D3748' }}>
                     ¥{Number(b.amount).toFixed(0)}
                   </Text>
                 </View>

@@ -67,7 +67,7 @@ export default function ProfilePage() {
     <View className="flex flex-col h-full bg-white">
       {/* 固定导航栏 - 与其他页面一致 */}
       <View
-        style={{ position: 'fixed', top: 0, left: 0, right: 0, paddingTop: capsuleBottom, backgroundColor: '#FFFFFF', zIndex: 100 }}
+        style={{ position: 'fixed', top: 0, left: 0, right: 0, height: capsuleBottom + 44, paddingTop: capsuleBottom, backgroundColor: '#FFFFFF', zIndex: 100 }}
         className="flex items-center px-4"
       >
         <View onClick={goBack} className="w-10 h-10 flex items-center justify-center">
