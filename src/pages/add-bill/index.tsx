@@ -136,13 +136,24 @@ export default function AddBillPage() {
 
   return (
     <View className="flex flex-col min-h-full bg-white">
-      {/* Header - 与胶囊按钮对齐，固定不动 */}
+      {/* Header - 与胶囊按钮同行，固定不动 */}
       <View style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, backgroundColor: '#FFFFFF' }}>
-        <View style={{ paddingTop: capsuleBottom, paddingLeft: 12, paddingRight: 12 }} className="bg-white flex items-center">
+        <View
+          style={{
+            paddingTop: statusBarH,
+            height: capsuleBottom,
+            display: 'flex',
+            alignItems: 'center',
+            paddingLeft: 16,
+            paddingRight: 16,
+          }}
+        >
           <View onClick={goBack} style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <ArrowLeft size={16} color="#8896A6" />
           </View>
-          <Text className="block text-lg font-bold flex-1 text-center pr-8" style={{ color: theme.name }}>添加花费</Text>
+          <View style={{ flex: 1, display: 'flex', justifyContent: 'center' }} className="pr-8">
+            <Text className="block" style={{ fontSize: 17, fontWeight: '600', fontFamily: '-apple-system, "SF Pro Display", "PingFang SC", sans-serif', color: '#1E293B', letterSpacing: 1 }}>添加花费</Text>
+          </View>
         </View>
       </View>
 
@@ -285,7 +296,7 @@ export default function AddBillPage() {
           onClick={handleSave}
           className="w-full py-4 rounded-2xl flex items-center justify-center"
           style={{
-            background: `linear-gradient(135deg, ${theme.name}, ${theme.accent})`,
+            background: `linear-gradient(135deg, ${theme.accent}88, ${theme.bg})`,
             boxShadow: `0 8px 30px ${theme.name}40`,
           }}
         >

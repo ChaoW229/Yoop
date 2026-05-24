@@ -283,7 +283,7 @@ export default function ProjectPage() {
           onClick={goAddBill}
           className="w-full rounded-2xl py-4 flex items-center justify-center gap-2 mb-3"
           style={{
-            background: `linear-gradient(135deg, ${cc.name}, ${cc.bg})`,
+            background: `linear-gradient(135deg, ${cc.amount}CC, ${cc.bg})`,
             boxShadow: '0 6px 24px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04)',
           }}
         >

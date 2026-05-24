@@ -8,6 +8,7 @@ import { ArrowLeft, User, LogOut, Settings, Map, Wallet } from 'lucide-react-tar
 export default function ProfilePage() {
   const [user, setUser] = useState<any>(null);
   const [capsuleBottom, setCapsuleBottom] = useState(0);
+  const statusBarH = Taro.getSystemInfoSync().statusBarHeight || 20;
 
   useEffect(() => {
     if (Taro.getEnv() === Taro.ENV_TYPE.WEAPP) {
@@ -65,19 +66,31 @@ export default function ProfilePage() {
 
   return (
     <View className="flex flex-col h-full bg-white">
-      {/* 固定导航栏 - 与其他页面一致 */}
+      {/* 固定导航栏 - 与胶囊按钮同行 */}
       <View
-        style={{ position: 'fixed', top: 0, left: 0, right: 0, height: capsuleBottom + 44, paddingTop: capsuleBottom, backgroundColor: '#FFFFFF', zIndex: 100 }}
-        className="flex items-center px-4"
+        style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, backgroundColor: '#FFFFFF' }}
       >
-        <View onClick={goBack} className="w-10 h-10 flex items-center justify-center">
-          <ArrowLeft size={16} color="#8896A6" />
+        <View
+          style={{
+            paddingTop: statusBarH,
+            height: capsuleBottom,
+            display: 'flex',
+            alignItems: 'center',
+            paddingLeft: 16,
+            paddingRight: 16,
+          }}
+        >
+          <View onClick={goBack} className="w-10 h-10 flex items-center justify-center">
+            <ArrowLeft size={16} color="#8896A6" />
+          </View>
+          <View style={{ flex: 1, display: 'flex', justifyContent: 'center' }} className="pr-10">
+            <Text className="block" style={{ fontSize: 17, fontWeight: '600', letterSpacing: '1px', fontFamily: '-apple-system, "SF Pro Display", "PingFang SC", sans-serif' }}>个人信息</Text>
+          </View>
         </View>
-        <Text className="block flex-1 text-center pr-10" style={{ fontSize: 17, fontWeight: '600', letterSpacing: '1px', fontFamily: '-apple-system, "SF Pro Display", "PingFang SC", sans-serif' }}>个人信息</Text>
       </View>
 
       {/* 内容区 - 留出导航栏高度 */}
-      <ScrollView scrollY className="flex-1" style={{ paddingTop: capsuleBottom + 8 }}>
+      <ScrollView scrollY className="flex-1" style={{ paddingTop: capsuleBottom + 10 }}>
         {!user && (
         <View className="flex-1 flex flex-col items-center justify-center px-6">
           <View className="w-20 h-20 rounded-full bg-surface-container flex items-center justify-center mb-4">
