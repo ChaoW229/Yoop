@@ -77,6 +77,11 @@ export default function IndexPage() {
     } catch (_) {}
   }
 
+  /* Header 总高度：导航栏(标题) + 搜索栏行 */
+  const navBarHeight = capsuleBottom;
+  const searchBarRowHeight = 52;
+  const headerTotalH = navBarHeight + searchBarRowHeight;
+
   useEffect(() => {
     fetchProjects();
   }, []);
@@ -143,69 +148,74 @@ export default function IndexPage() {
 
   /* 统一标题字体样式 */
   const titleStyle: React.CSSProperties = {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '600',
-    fontFamily: '-apple-system, "SF Pro Display", "Helvetica Neue", sans-serif',
-    letterSpacing: 2,
+    fontFamily: '-apple-system, "SF Pro Display", "PingFang SC", sans-serif',
     color: '#1E293B',
   };
 
   return (
     <View className="flex flex-col h-full" style={{ backgroundColor: '#F7F9FC' }}>
-      {/* ===== 导航栏：Yoop 标题与胶囊对齐 ===== */}
+      {/* ===== 固定头部：导航栏(Yoop) + 搜索栏 ===== */}
       <View
         style={{
-          paddingTop: statusBarH,
-          height: capsuleBottom,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 100,
           backgroundColor: '#FFFFFF',
-          paddingLeft: 16,
-          paddingRight: 16,
         }}
       >
-        <Text className="block" style={titleStyle}>Yoop</Text>
-      </View>
+        {/* 导航栏：Yoop 标题 */}
+        <View
+          style={{
+            paddingTop: statusBarH,
+            height: capsuleBottom,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingLeft: 16,
+            paddingRight: 16,
+          }}
+        >
+          <Text className="block" style={titleStyle}>Yoop</Text>
+        </View>
 
-      {/* ===== 搜索栏行 ===== */}
-      <View style={{ padding: '8px 16px 12px', backgroundColor: '#FFFFFF' }}>
-        <View style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {/* 左侧统计按钮 */}
-          <View onClick={goStats}
-            style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F0F4F8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-          >
-            <ChartPie size={15} color="#6B9BD5" />
-          </View>
-
-          {/* 搜索框 */}
-          <View style={{ flex: 1, height: 38, borderRadius: 19, backgroundColor: '#F0F4F8', display: 'flex', alignItems: 'center', padding: '0 14px' }}>
-            <Search size={14} color="#A0ABB8" style={{ marginRight: 7 }} />
-            {/* eslint-disable-next-line no-restricted-syntax */}
-            <Input
-              value={searchText}
-              onInput={(e) => setSearchText(e.detail.value)}
-              placeholder="搜索项目"
-              confirmType="search"
-              style={{ flex: 1, fontSize: 13, lineHeight: '38px', height: '100%', backgroundColor: 'transparent', border: 'none', outline: 'none', padding: '0 8px' }}
-            />
-          </View>
-
-          {/* 右侧个人中心按钮 */}
-          <View onClick={goProfile}
-            style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F0F4F8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-          >
-            <User size={15} color="#6B9BD5" />
+        {/* 搜索栏行 */}
+        <View style={{ padding: '6px 16px 10px' }}>
+          <View style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <View onClick={goStats}
+              style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F0F4F8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+            >
+              <ChartPie size={15} color="#6B9BD5" />
+            </View>
+            <View style={{ flex: 1, height: 38, borderRadius: 19, backgroundColor: '#F0F4F8', display: 'flex', alignItems: 'center', padding: '0 14px' }}>
+              <Search size={14} color="#A0ABB8" style={{ marginRight: 7 }} />
+              {/* eslint-disable-next-line no-restricted-syntax */}
+              <Input
+                value={searchText}
+                onInput={(e) => setSearchText(e.detail.value)}
+                placeholder="搜索项目"
+                confirmType="search"
+                style={{ flex: 1, fontSize: 13, lineHeight: '38px', height: '100%', backgroundColor: 'transparent', border: 'none', outline: 'none', padding: '0 8px' }}
+              />
+            </View>
+            <View onClick={goProfile}
+              style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F0F4F8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+            >
+              <User size={15} color="#6B9BD5" />
+            </View>
           </View>
         </View>
       </View>
 
-      {/* ===== 项目列表 ===== */}
+      {/* ===== 项目列表（留出固定头部高度） ===== */}
       <ScrollView
         scrollY
         enhanced
         showScrollbar={false}
-        style={{ flex: 1 }}
+        style={{ flex: 1, marginTop: headerTotalH }}
       >
         <View style={{ padding: '12px 16px 140px', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
@@ -257,7 +267,7 @@ export default function IndexPage() {
                           fontWeight: '600',
                           color: cs.name,
                           textAlign: 'center',
-                          fontFamily: '-apple-system, "SF Pro Display", "Helvetica Neue", sans-serif',
+                          fontFamily: '-apple-system, "SF Pro Display", "PingFang SC", sans-serif',
                         }}
                       >{p.name}</Text>
                     </View>

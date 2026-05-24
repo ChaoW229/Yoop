@@ -199,22 +199,24 @@ export default function ProjectPage() {
 
   return (
     <View className="flex flex-col min-h-full bg-white">
-      {/* Header：与胶囊按钮对齐，无重叠 */}
+      {/* Header：固定在顶部 */}
       <View
         style={{
+          position: 'fixed', top: 0, left: 0, right: 0,
+          zIndex: 100,
           paddingTop: statusBarH,
           height: capsuleBottom,
         }}
         className="flex items-center px-4 bg-white"
       >
         <View onClick={goBack} className="w-8 h-8 flex items-center justify-center">
-          <ArrowLeft size={18} color="#8896A6" />
+          <ArrowLeft size={16} color="#8896A6" />
         </View>
-        <Text className="block flex-1 text-center text-base font-semibold pr-8" style={{ color: '#2D3748' }}>项目详情</Text>
+        <Text className="block flex-1 text-center font-semibold pr-8" style={{ color: '#2D3748', fontSize: 17, fontFamily: '-apple-system, "SF Pro Display", "PingFang SC", sans-serif' }}>项目详情</Text>
       </View>
 
-      <View className="flex-1 px-4 pb-4" style={{ paddingTop: 4 }}>
-        {/* 封面 + 信息 */}
+      <View className="flex-1 px-4 pb-4" style={{ paddingTop: capsuleBottom + 6 }}>
+      {/* 封面 + 信息 */}
         <View
           className="flex items-center rounded-2xl overflow-hidden mb-3"
           style={{

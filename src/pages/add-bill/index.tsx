@@ -76,7 +76,11 @@ export default function AddBillPage() {
     const pages = Taro.getCurrentPages();
     const current = pages[pages.length - 1];
     const pid = current.options?.project_id;
-    if (pid) setProjectId(pid);
+    if (pid) {
+      setProjectId(pid);
+      // eslint-disable-next-line no-restricted-syntax
+      setProjectColor(CARD_COLORS[parseInt(pid, 10) % CARD_COLORS.length] || CARD_COLORS[0]);
+    }
   });
 
   const goBack = () => Taro.navigateBack();
