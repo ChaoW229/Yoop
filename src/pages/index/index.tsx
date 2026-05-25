@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import Taro from '@tarojs/taro';
+import Taro, { useDidShow } from '@tarojs/taro';
 /* eslint-disable-next-line no-restricted-syntax */
 import { View, Text, Image, ScrollView, Input } from '@tarojs/components';
 import { Network } from '@/network';
@@ -85,6 +85,10 @@ export default function IndexPage() {
   useEffect(() => {
     fetchProjects();
   }, []);
+
+  useDidShow(() => {
+    fetchProjects();
+  });
 
   useEffect(() => {
     projects.forEach((p, i) => {

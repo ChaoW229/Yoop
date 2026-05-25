@@ -32,6 +32,29 @@ function getCardStyle(id: string) {
   return CARD_COLORS[idx];
 }
 
+/* 持久化存储 key */
+const STORAGE_KEYS = {
+  customCategories: 'yoop_custom_categories',
+  payers: 'yoop_payers',
+};
+
+/* 从本地存储读取数据 */
+function loadFromStorage<T>(key: string, defaultValue: T): T {
+  try {
+    const data = Taro.getStorageSync(key);
+    return data || defaultValue;
+  } catch (_) {
+    return defaultValue;
+  }
+}
+
+/* 保存到本地存储 */
+function saveToStorage(key: string, data: any): void {
+  try {
+    Taro.setStorageSync(key, data);
+  } catch (_) {}
+}
+
 export default function AddBillPage() {
   const [projectId, setProjectId] = useState('');
   const [projectColor, setProjectColor] = useState(CARD_COLORS[0]);
@@ -41,6 +64,7 @@ export default function AddBillPage() {
   const [amount, setAmount] = useState('');
   const [payer, setPayer] = useState('自己');
   const [participants, setParticipants] = useState<string[]>(['小明', '小红', '自己']);
+  const [customCategories, setCustomCategories] = useState<string[]>([]);
   const [isTreat, setIsTreat] = useState(false);
   const [showCategoryDrawer, setShowCategoryDrawer] = useState(false);
 
@@ -60,6 +84,14 @@ export default function AddBillPage() {
     } catch (_) {}
   }
 
+  /* 初始化时从本地存储加载持久化数据 */
+  useEffect(() => {
+    const savedCategories = loadFromStorage<string[]>(STORAGE_KEYS.customCategories, []);
+    const savedPayers = loadFromStorage<string[]>(STORAGE_KEYS.payers, []);
+    if (savedCategories.length > 0) setCustomCategories(savedCategories);
+    if (savedPayers.length > 0) setParticipants(savedPayers);
+  }, []);
+
   useEffect(() => {
     if (projectId) {
       try {
@@ -78,13 +110,13 @@ export default function AddBillPage() {
     const pid = current.options?.project_id;
     if (pid) {
       setProjectId(pid);
-      // eslint-disable-next-line no-restricted-syntax
       setProjectColor(CARD_COLORS[parseInt(pid, 10) % CARD_COLORS.length] || CARD_COLORS[0]);
     }
   });
 
   const goBack = () => Taro.navigateBack();
 
+  /* 添加支付人（带持久化） */
   const handleAddPayer = () => {
     (Taro as any).showModal({
       title: '添加支付人',
@@ -92,17 +124,76 @@ export default function AddBillPage() {
       placeholderText: '姓名',
       success: (res: any) => {
         if (res.confirm && res.content) {
-          setPayer(res.content);
-          if (!participants.includes(res.content)) {
-            setParticipants(prev => [...prev, res.content]);
+          const newPayer = res.content.trim();
+          if (!participants.includes(newPayer)) {
+            const updated = [...participants, newPayer];
+            setParticipants(updated);
+            saveToStorage(STORAGE_KEYS.payers, updated);
           }
+          setPayer(newPayer);
         }
       },
     });
   };
 
+  /* 长按删除支付人 */
+  const handleLongPressDeletePayer = (p: string) => {
+    if (p === '自己') {
+      Taro.showToast({ title: '默认支付人不可删除', icon: 'none' });
+      return;
+    }
+    Taro.showModal({
+      title: '删除支付人',
+      content: `确定要删除「${p}」吗？`,
+      confirmColor: '#E86C6C',
+      success: (res) => {
+        if (res.confirm) {
+          const updated = participants.filter(item => item !== p);
+          setParticipants(updated);
+          saveToStorage(STORAGE_KEYS.payers, updated);
+          if (payer === p) setPayer('自己');
+          Taro.showToast({ title: '已删除', icon: 'success' });
+        }
+      },
+    });
+  };
+
+  /* 添加自定义类别（带持久化） */
+  const handleAddCustomCategory = (catName: string) => {
+    const trimmed = catName.trim();
+    if (!trimmed) return;
+    if (![...CATEGORIES.map(c => c.name), ...customCategories].includes(trimmed)) {
+      const updated = [...customCategories, trimmed];
+      setCustomCategories(updated);
+      saveToStorage(STORAGE_KEYS.customCategories, updated);
+    }
+    setCustomCategory(trimmed);
+    setShowCategoryDrawer(false);
+  };
+
+  /* 长按删除自定义类别 */
+  const handleLongPressDeleteCategory = (cat: string) => {
+    Taro.showModal({
+      title: '删除自定义类别',
+      content: `确定要删除「${cat}」吗？`,
+      confirmColor: '#E86C6C',
+      success: (res) => {
+        if (res.confirm) {
+          const updated = customCategories.filter(c => c !== cat);
+          setCustomCategories(updated);
+          saveToStorage(STORAGE_KEYS.customCategories, updated);
+          if (customCategory === cat) setCustomCategory('');
+          Taro.showToast({ title: '已删除', icon: 'success' });
+        }
+      },
+    });
+  };
+
+  /* 检查表单是否填写完整 */
+  const isFormValid = !!name.trim() && !!amount.trim() && Number(amount) > 0;
+
   const handleSave = async () => {
-    if (!name || !amount) {
+    if (!isFormValid) {
       Taro.showToast({ title: '请填写名称和金额', icon: 'none' });
       return;
     }
@@ -157,33 +248,24 @@ export default function AddBillPage() {
         </View>
       </View>
 
-      <View className="flex-1 px-5 pt-4 pb-4 flex flex-col gap-4" style={{ paddingTop: capsuleBottom + 10 }}>
-        {/* 花费名称 */}
+      <View className="flex-1 px-5 pt-4 pb-4 flex flex-col gap-3" style={{ paddingTop: capsuleBottom + 6 }}>
+        {/* 花费名称 - 去掉内嵌样式 */}
         <View>
           <Text className="block text-xs mb-2" style={{ color: theme.accent }}>花费名称</Text>
-          <View
-            className="rounded-2xl px-4 py-3"
-            style={{ backgroundColor: `${theme.bg}33`, border: `1px solid ${theme.bg}` }}
-          >
-            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-            <Input
-              className="w-full text-sm"
-              placeholder="例如：古城门票"
-              style={{ color: theme.name }}
-              value={name}
-              onInput={e => setName(e.detail.value)}
-              /* eslint-disable-next-line react/jsx-no-duplicate-props */
-            />
-          </View>
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+          <Input
+            className="w-full text-sm"
+            placeholder="例如：古城门票"
+            style={{ color: theme.name, borderBottom: `1px solid ${theme.bg}`, paddingBottom: 8 }}
+            value={name}
+            onInput={e => setName(e.detail.value)}
+          />
         </View>
 
-        {/* 金额 */}
+        {/* 金额 - 去掉内嵌样式 */}
         <View>
           <Text className="block text-xs mb-2" style={{ color: theme.accent }}>金额</Text>
-          <View
-            className="rounded-2xl px-4 py-3 flex items-center"
-            style={{ backgroundColor: `${theme.bg}33`, border: `1px solid ${theme.bg}` }}
-          >
+          <View style={{ display: 'flex', alignItems: 'center', borderBottom: `1px solid ${theme.bg}`, paddingBottom: 8 }}>
             <Text className="block text-sm mr-2" style={{ color: theme.amount }}>¥</Text>
             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             <Input
@@ -197,13 +279,13 @@ export default function AddBillPage() {
           </View>
         </View>
 
-        {/* 类别 */}
+        {/* 类别 - 紧凑布局 */}
         <View>
           <Text className="block text-xs mb-2" style={{ color: theme.accent }}>类别</Text>
           <View
             onClick={() => setShowCategoryDrawer(true)}
-            className="rounded-2xl px-4 py-3 flex items-center justify-between"
-            style={{ backgroundColor: `${theme.bg}33`, border: `1px solid ${theme.bg}` }}
+            className="flex items-center justify-between"
+            style={{ paddingBottom: 8, borderBottom: `1px solid ${theme.bg}` }}
           >
             <View className="flex items-center gap-2">
               <Text className="block text-sm">{selectedEmoji}</Text>
@@ -218,8 +300,8 @@ export default function AddBillPage() {
           <Text className="block text-xs mb-2" style={{ color: theme.accent }}>时间</Text>
           <Picker mode="date" value={date} onChange={onDateChange}>
             <View
-              className="rounded-2xl px-4 py-3 flex items-center justify-between"
-              style={{ backgroundColor: `${theme.bg}33`, border: `1px solid ${theme.bg}` }}
+              className="flex items-center justify-between"
+              style={{ paddingBottom: 8, borderBottom: `1px solid ${theme.bg}` }}
             >
               <Text className="block text-sm" style={{ color: theme.name }}>{date}</Text>
               <Text className="block text-xs" style={{ color: theme.accent }}>选择 ›</Text>
@@ -227,14 +309,15 @@ export default function AddBillPage() {
           </Picker>
         </View>
 
-        {/* 支付人 */}
+        {/* 支付人 - 支持长按删除 */}
         <View>
-          <Text className="block text-xs mb-2" style={{ color: theme.accent }}>支付人</Text>
+          <Text className="block text-xs mb-2" style={{ color: theme.accent }}>支付人 <Text style={{ color: '#C0C8D4', fontSize: 10 }}>(长按删除)</Text></Text>
           <View className="flex items-center gap-2 flex-wrap">
             {participants.map(p => (
               <View
                 key={p}
                 onClick={() => setPayer(p)}
+                onLongPress={() => handleLongPressDeletePayer(p)}
                 className="px-4 py-2 rounded-full"
                 style={{
                   backgroundColor: payer === p ? theme.bg : `${theme.bg}22`,
@@ -257,8 +340,8 @@ export default function AddBillPage() {
 
         {/* 请客开关 */}
         <View
-          className="flex items-center justify-between rounded-2xl px-4 py-3"
-          style={{ backgroundColor: `${theme.bg}22`, border: `1px solid ${theme.bg}` }}
+          className="flex items-center justify-between py-3"
+          style={{ borderBottom: `1px solid ${theme.bg}` }}
         >
           <Text className="block text-sm" style={{ color: theme.name }}>请客</Text>
           <View
@@ -290,17 +373,20 @@ export default function AddBillPage() {
         </View>
       </View>
 
-      {/* 保存按钮 */}
+      {/* 保存按钮 - 根据表单状态变化样式 */}
       <View className="px-5 py-3 bg-white">
         <View
           onClick={handleSave}
           className="w-full py-4 rounded-2xl flex items-center justify-center"
           style={{
-            background: `linear-gradient(135deg, ${theme.accent}88, ${theme.bg})`,
-            boxShadow: `0 8px 30px ${theme.name}40`,
+            background: isFormValid
+              ? `linear-gradient(135deg, ${theme.amount}, ${theme.bg})`
+              : `linear-gradient(135deg, ${theme.bg}, ${theme.bg})`,
+            opacity: isFormValid ? 1 : 0.55,
+            boxShadow: isFormValid ? `0 8px 30px ${theme.name}30` : 'none',
           }}
         >
-          <Text className="block text-base font-semibold text-white">保存</Text>
+          <Text className="block text-base font-semibold" style={{ color: isFormValid ? '#FFF' : theme.amount }}>保存</Text>
         </View>
       </View>
 
@@ -322,7 +408,9 @@ export default function AddBillPage() {
                 <X size={20} color="#8896A6" />
               </View>
             </View>
-            <View className="grid grid-cols-3 gap-3 mb-4">
+            
+            {/* 预设类别 */}
+            <View className="grid grid-cols-3 gap-3 mb-3">
               {CATEGORIES.map(cat => {
                 const isActive = category === cat.name && !customCategory;
                 return (
@@ -342,8 +430,37 @@ export default function AddBillPage() {
                 );
               })}
             </View>
+
+            {/* 自定义类别列表 - 支持长按删除 */}
+            {customCategories.length > 0 && (
+              <>
+                <Text className="block text-xs mb-2" style={{ color: theme.accent }}>自定义类别 <Text style={{ color: '#C0C8D4', fontSize: 10 }}>(长按删除)</Text></Text>
+                <View className="flex flex-wrap gap-2 mb-3">
+                  {customCategories.map(cat => {
+                    const isActive = customCategory === cat;
+                    return (
+                      <View
+                        key={cat}
+                        onClick={() => { setCustomCategory(cat); setCategory(''); setShowCategoryDrawer(false); }}
+                        onLongPress={() => handleLongPressDeleteCategory(cat)}
+                        className="px-3 py-2 rounded-xl flex items-center gap-1"
+                        style={{
+                          backgroundColor: isActive ? theme.name : `${theme.bg}44`,
+                          border: isActive ? `1px solid ${theme.name}` : `1px solid ${theme.bg}`,
+                        }}
+                      >
+                        <Text className="block text-xs" style={{ color: isActive ? '#FFFFFF' : theme.name }}>{cat}</Text>
+                        {isActive && <Text className="block text-xs" style={{ color: '#FFFFFF', opacity: 0.7 }}>✓</Text>}
+                      </View>
+                    );
+                  })}
+                </View>
+              </>
+            )}
+
+            {/* 添加新自定义类别 */}
             <View className="flex items-center gap-2">
-              <Text className="block text-xs" style={{ color: theme.accent }}>自定义：</Text>
+              <Text className="block text-xs" style={{ color: theme.accent }}>新增自定义：</Text>
               <View
                 className="flex-1 rounded-xl px-3 py-2"
                 style={{ backgroundColor: `${theme.bg}33`, border: `1px solid ${theme.bg}` }}
@@ -354,15 +471,14 @@ export default function AddBillPage() {
                     placeholderText: '输入类别名',
                     success: (res: any) => {
                       if (res.confirm && res.content) {
-                        setCustomCategory(res.content);
-                        setShowCategoryDrawer(false);
+                        handleAddCustomCategory(res.content);
                       }
                     },
                   });
                 }}
               >
-                <Text className="block text-sm" style={{ color: customCategory ? theme.name : theme.accent }}>
-                  {customCategory || '点击输入'}
+                <Text className="block text-sm" style={{ color: theme.accent }}>
+                  + 点击输入新类别
                 </Text>
               </View>
             </View>

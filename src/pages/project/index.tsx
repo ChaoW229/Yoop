@@ -158,6 +158,26 @@ export default function ProjectPage() {
     });
   };
 
+  const handleDeleteBill = (billId: string, billName: string) => {
+    Taro.showModal({
+      title: '删除账单',
+      content: `确定要删除「${billName}」吗？`,
+      confirmColor: '#E86C6C',
+      success: async (res) => {
+        if (res.confirm) {
+          try {
+            await Network.request({ url: `/api/bills/${billId}`, method: 'DELETE' });
+            setBills(prev => prev.filter(b => b.id !== billId));
+            Taro.showToast({ title: '已删除', icon: 'success' });
+          } catch (e) {
+            console.error(e);
+            Taro.showToast({ title: '删除失败', icon: 'none' });
+          }
+        }
+      },
+    });
+  };
+
   const billDates = bills.map(b => b.bill_date).filter(Boolean) as string[];
   const autoStart = billDates.length > 0 ? billDates.reduce((a, b) => (a < b ? a : b)) : project?.start_date;
   const autoEnd = billDates.length > 0 ? billDates.reduce((a, b) => (a > b ? a : b)) : project?.end_date;
@@ -236,7 +256,7 @@ export default function ProjectPage() {
               marginLeft: 12,
               marginTop: 4,
               marginBottom: 4,
-              background: project?.cover_url ? undefined : cc.name,
+              background: project?.cover_url ? undefined : cc.accent,
               opacity: project?.cover_url ? undefined : 0.85,
             }}
             onClick={handleChangeCover}
@@ -304,6 +324,7 @@ export default function ProjectPage() {
                   backgroundColor: '#FFFFFF',
                   boxShadow: '0 4px 16px rgba(91,155,213,0.06)',
                 }}
+                onLongPress={() => handleDeleteBill(b.id, b.name)}
               >
                 <View className="flex items-center gap-3">
                   <View
