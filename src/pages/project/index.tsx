@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import Taro, { useLoad, useDidShow } from '@tarojs/taro';
-import { View, Text, Image, ScrollView } from '@tarojs/components';
-import { Input } from '@/components/ui/input';
+/* eslint-disable-next-line no-restricted-syntax, import/no-duplicates */
+import { View, Text, Image, ScrollView, Picker, Input } from '@tarojs/components';
 import { Network } from '@/network';
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { ArrowLeft, Plus, Trash2, Camera, Pencil } from 'lucide-react-taro';
@@ -61,8 +61,6 @@ export default function ProjectPage() {
   const [editingName, setEditingName] = useState(false);
   const [editNameValue, setEditNameValue] = useState('');
   const [editingDate, setEditingDate] = useState(false);
-  const [editStartValue, setEditStartValue] = useState('');
-  const [editEndValue, setEditEndValue] = useState('');
 
   /* 顶部与胶囊按钮对齐 */
   const statusBarH = Taro.getSystemInfoSync().statusBarHeight || 0;
@@ -79,13 +77,13 @@ export default function ProjectPage() {
 
   /* 固定区域高度 */
   const headerH = capsuleBottom;           // 标题栏
-  const cardGap = 10;                      // 标题与卡片间距(新增!)
+  const cardGap = 10;                      // 标题与卡片间距
   const cardH = 112;                       // 封面卡片高度
   const buttonGap = 8;                     // 卡片与按钮间距
   const buttonH = 52;                      // 添加花费按钮高度
-  const sectionH = 32;                     // 账单明细标题行高(新增! fixed)
+  const sectionH = 32;                     // 账单明细标题行高(fixed)
   const bottomH = 56;                      // 底部删除按钮+安全距
-  const topFixedH = headerH + cardGap + cardH + buttonGap + buttonH + sectionH; // 顶部固定总高
+  const topFixedH = headerH + cardGap + cardH + buttonGap + buttonH + sectionH;
 
   const fetchData = async () => {
     try {
@@ -105,8 +103,6 @@ export default function ProjectPage() {
       /* 同步编辑值 */
       if (projData) {
         setEditNameValue(projData.name || '');
-        setEditStartValue(projData.start_date || '');
-        setEditEndValue(projData.end_date || '');
       }
     } catch (e) {
       console.error(e);
@@ -166,28 +162,45 @@ export default function ProjectPage() {
     }
   };
 
-  /* ===== 编辑日期范围 ===== */
+  /* ===== 编辑日期范围（使用 Picker 选择器） ===== */
   const handleEditDate = () => {
     setEditingDate(true);
-    setEditStartValue(project?.start_date || '');
-    setEditEndValue(project?.end_date || '');
   };
 
-  const handleSaveDate = async () => {
+  const onStartDateChange = async (e: any) => {
     try {
       await Network.request({
         url: `/api/projects/${project.id}`,
         method: 'PUT',
-        data: { start_date: editStartValue, end_date: editEndValue },
+        data: { start_date: e.detail.value },
       });
-      setProject(prev => ({ ...prev, start_date: editStartValue, end_date: editEndValue }));
-      setEditingDate(false);
+      setProject(prev => ({ ...prev, start_date: e.detail.value }));
       Taro.showToast({ title: '已更新', icon: 'success' });
-    } catch (e) {
-      console.error(e);
+      Taro.eventCenter.trigger('yoop_project_updated');
+    } catch (err) {
+      console.error(err);
       Taro.showToast({ title: '更新失败', icon: 'none' });
     }
   };
+
+  const onEndDateChange = async (e: any) => {
+    try {
+      await Network.request({
+        url: `/api/projects/${project.id}`,
+        method: 'PUT',
+        data: { end_date: e.detail.value },
+      });
+      setProject(prev => ({ ...prev, end_date: e.detail.value }));
+      setEditingDate(false);
+      Taro.showToast({ title: '已更新', icon: 'success' });
+      Taro.eventCenter.trigger('yoop_project_updated');
+    } catch (err) {
+      console.error(err);
+      Taro.showToast({ title: '更新失败', icon: 'none' });
+    }
+  };
+
+  const finishDateEdit = () => setEditingDate(false);
 
   /* ===== 封面图 ===== */
   const handleChangeCover = async () => {
@@ -248,6 +261,7 @@ export default function ProjectPage() {
           try {
             await Network.request({ url: `/api/bills/${billId}`, method: 'DELETE' });
             setBills(prev => prev.filter(b => b.id !== billId));
+            Taro.eventCenter.trigger('yoop_bill_updated');
             Taro.showToast({ title: '已删除', icon: 'success' });
           } catch (e) {
             console.error(e);
@@ -319,7 +333,7 @@ export default function ProjectPage() {
       <View
         style={{
           position: 'fixed',
-          top: headerH + cardGap,       // ← 加了10px间距!
+          top: headerH + cardGap,
           left: 12,
           right: 12,
           zIndex: 90,
@@ -358,25 +372,30 @@ export default function ProjectPage() {
 
           {/* 信息区 */}
           <View className="flex-1 p-3 flex flex-col justify-between h-full">
-            {/* 项目名 - 支持点击编辑 */}
+            {/* 项目名 - 支持点击编辑（紧凑内联输入框） */}
             {editingName ? (
-              <View style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <View style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                 {/* eslint-disable-next-line no-restricted-syntax */}
-                <View
-                  style={{ flex: 1, borderBottom: `1px solid ${cc.bg}`, paddingBottom: 2 }}
-                  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-                >
-                  {/* eslint-disable-next-line no-restricted-syntax */}
-                  <Input
-                    value={editNameValue}
-                    onInput={(e: any) => setEditNameValue(e.detail.value)}
-                    focus
-                    confirmType="done"
-                    onConfirm={handleSaveName}
-                    onBlur={handleSaveName}
-                    style={{ fontSize: 15, fontWeight: '600', color: '#2D3748', padding: 0, textAlign: 'center' }}
-                  />
-                </View>
+                <Input
+                  value={editNameValue}
+                  onInput={(e: any) => setEditNameValue(e.detail.value)}
+                  focus
+                  confirmType="done"
+                  onConfirm={handleSaveName}
+                  onBlur={handleSaveName}
+                  style={{
+                    fontSize: 14,
+                    fontWeight: '600',
+                    color: '#2D3748',
+                    padding: 0,
+                    textAlign: 'center',
+                    borderBottom: `1px solid ${cc.name}66`,
+                    width: 120,
+                    height: 24,
+                    lineHeight: '24px',
+                  }}
+                />
+                <Text onClick={handleSaveName} style={{ fontSize: 14, color: cc.amount, fontWeight: '500' }}>✓</Text>
               </View>
             ) : (
               <View
@@ -393,37 +412,27 @@ export default function ProjectPage() {
               </View>
             )}
 
-            {/* 时间 - 支持点击编辑 */}
+            {/* 时间 - 使用 Picker 选择器，点击后弹出日期选择器 */}
             {editingDate ? (
               <View style={{ display: 'flex', flexDirection: 'row', gap: 8, justifyContent: 'center', alignItems: 'center' }}>
                 <View style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                   <Text className="block text-[10px]" style={{ color: '#8896A6' }}>起</Text>
-                  {/* eslint-disable-next-line no-restricted-syntax */}
-                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                  <Input
-                    type="text"
-                    value={editStartValue}
-                    placeholder="YYYY-MM-DD"
-                    onInput={(e: any) => setEditStartValue(e.detail.value)}
-                    style={{ fontSize: 11, color: cc.name, borderBottom: `1px solid ${cc.bg}`, width: 80, padding: 0 }}
-                  />
+                  <Picker mode="date" value={project?.start_date || ''} onChange={onStartDateChange}>
+                    <View style={{ borderBottom: `1px solid ${cc.name}66`, padding: '0 4px' }}>
+                      <Text style={{ fontSize: 11, color: cc.name }}>{(project?.start_date || '选择').replace(/-/g, '/')}</Text>
+                    </View>
+                  </Picker>
                 </View>
                 <Text className="block text-xs" style={{ color: '#CBD5E0' }}>~</Text>
                 <View style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                   <Text className="block text-[10px]" style={{ color: '#8896A6' }}>止</Text>
-                  {/* eslint-disable-next-line no-restricted-syntax */}
-                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                  <Input
-                    type="text"
-                    value={editEndValue}
-                    placeholder="YYYY-MM-DD"
-                    onInput={(e: any) => setEditEndValue(e.detail.value)}
-                    onConfirm={handleSaveDate}
-                    onBlur={handleSaveDate}
-                    style={{ fontSize: 11, color: cc.name, borderBottom: `1px solid ${cc.bg}`, width: 80, padding: 0 }}
-                  />
+                  <Picker mode="date" value={project?.end_date || ''} onChange={onEndDateChange}>
+                    <View style={{ borderBottom: `1px solid ${cc.name}66`, padding: '0 4px' }}>
+                      <Text style={{ fontSize: 11, color: cc.name }}>{(project?.end_date || '选择').replace(/-/g, '/')}</Text>
+                    </View>
+                  </Picker>
                 </View>
-                <View onClick={handleSaveDate}>
+                <View onClick={finishDateEdit}>
                   <Text className="block text-[11px]" style={{ color: cc.amount, fontWeight: '500' }}>✓</Text>
                 </View>
               </View>
@@ -498,65 +507,76 @@ export default function ProjectPage() {
         <Text className="block text-sm font-semibold" style={{ color: '#2D3748' }}>账单明细</Text>
       </View>
 
-      {/* ========== 5. 账单列表：中间滚动区域 ========== */}
-      <ScrollView
-        scrollY
-        enhanced
-        showScrollbar={false}
-        style={{ flex: 1, marginTop: topFixedH, marginBottom: bottomH }}
+      {/* ========== 5. 账单列表：带边框窗口容器内滚动 ========== */}
+      <View
+        style={{
+          position: 'fixed',
+          top: topFixedH,
+          left: 12,
+          right: 12,
+          bottom: bottomH,
+          zIndex: 80,
+          borderRadius: 16,
+          overflow: 'hidden',
+          backgroundColor: '#FFFFFF',
+          border: '1px solid #E8EDF2',
+          boxShadow: '0 4px 20px rgba(91,155,213,0.05)',
+        }}
       >
-        <View style={{ padding: '4px 16px 24px' }}>
-          {Object.entries(byDate).map(([date, items]) => (
-            <View key={date} className="mb-3">
-              <Text className="block text-xs mb-2" style={{ color: '#8896A6' }}>{date}</Text>
-              {items.map(b => (
-                <View
-                  key={b.id}
-                  className="flex items-center justify-between rounded-xl p-3 mb-2"
-                  style={{
-                    backgroundColor: '#FFFFFF',
-                    boxShadow: '0 4px 16px rgba(91,155,213,0.06)',
-                  }}
-                  onClick={() => goEditBill(b.id)}
-                  onLongPress={() => handleDeleteBill(b.id, b.name)}
-                >
-                  <View className="flex items-center gap-3">
-                    <View
-                      className="w-8 h-8 rounded-lg flex items-center justify-center"
-                      style={{ backgroundColor: '#F0F6FC' }}
-                    >
-                      <Text className="block text-sm">{CATEGORY_ICONS[b.category] || '\uD83D\uDCCC'}</Text>
-                    </View>
-                    <View>
-                      <Text className="block text-sm" style={{ color: '#2D3748' }}>{b.name}</Text>
-                      <Text className="block text-xs" style={{ color: '#8896A6' }}>{b.payer}</Text>
-                    </View>
-                  </View>
-                  <View className="flex items-center gap-2">
-                    {b.is_treat && (
+        <ScrollView scrollY enhanced showScrollbar={false} style={{ flex: 1, height: '100%' }}>
+          <View style={{ padding: 12 }}>
+            {Object.entries(byDate).map(([date, items]) => (
+              <View key={date} style={{ marginBottom: 12 }}>
+                <Text className="block text-[11px] mb-2" style={{ color: '#8896A6', fontWeight: '500' }}>{date}</Text>
+                {items.map(b => (
+                  <View
+                    key={b.id}
+                    className="flex items-center justify-between rounded-xl p-3 mb-2"
+                    style={{
+                      backgroundColor: '#FAFBFD',
+                      border: '1px solid #F0F4F8',
+                    }}
+                    onClick={() => goEditBill(b.id)}
+                    onLongPress={() => handleDeleteBill(b.id, b.name)}
+                  >
+                    <View className="flex items-center gap-3">
                       <View
-                        className="rounded-full px-2 py-1"
-                        style={{ backgroundColor: '#F0F6FC', border: '1px solid #E4EDF7' }}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center"
+                        style={{ backgroundColor: '#F0F6FC' }}
                       >
-                        <Text className="block text-xs" style={{ color: cc.name }}>请客</Text>
+                        <Text className="block text-xs">{CATEGORY_ICONS[b.category] || '\uD83D\uDCCC'}</Text>
                       </View>
-                    )}
-                    <Text className="block text-sm font-semibold" style={{ color: b.is_treat ? cc.name : '#2D3748' }}>
-                      ¥{Number(b.amount).toFixed(0)}
-                    </Text>
+                      <View>
+                        <Text className="block text-sm" style={{ color: '#2D3748' }}>{b.name}</Text>
+                        <Text className="block text-[11px]" style={{ color: '#A0ABB8' }}>{b.payer}</Text>
+                      </View>
+                    </View>
+                    <View className="flex items-center gap-2">
+                      {b.is_treat && (
+                        <View
+                          className="rounded-full px-2 py-1"
+                          style={{ backgroundColor: '#F0F6FC', border: '1px solid #E4EDF7' }}
+                        >
+                          <Text className="block text-[10px]" style={{ color: cc.name }}>请客</Text>
+                        </View>
+                      )}
+                      <Text className="block text-sm font-semibold" style={{ color: b.is_treat ? cc.name : '#2D3748' }}>
+                        ¥{Number(b.amount).toFixed(0)}
+                      </Text>
+                    </View>
                   </View>
-                </View>
-              ))}
-            </View>
-          ))}
+                ))}
+              </View>
+            ))}
 
-          {bills.length === 0 && (
-            <View className="flex items-center justify-center py-8">
-              <Text className="block text-sm" style={{ color: '#8896A6' }}>暂无账单，点击上方添加</Text>
-            </View>
-          )}
-        </View>
-      </ScrollView>
+            {bills.length === 0 && (
+              <View className="flex items-center justify-center py-12">
+                <Text className="block text-sm" style={{ color: '#A0ABB8' }}>暂无账单，点击上方添加</Text>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+      </View>
 
       {/* ========== 6. 删除此项目按钮：固定在底部（无边框） ========== */}
       <View
@@ -570,7 +590,7 @@ export default function ProjectPage() {
           paddingTop: 8,
           paddingLeft: 20,
           paddingRight: 20,
-          backgroundColor: '#F7F9FC',     // ← 与页面背景一致，无分割线
+          backgroundColor: '#F7F9FC',
         }}
       >
         <View
