@@ -58,6 +58,8 @@ function saveToStorage(key: string, data: any): void {
 export default function AddBillPage() {
   const [projectId, setProjectId] = useState('');
   const [projectColor, setProjectColor] = useState(CARD_COLORS[0]);
+  const [billId, setBillId] = useState<string | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [name, setName] = useState('');
   const [category, setCategory] = useState('交通');
   const [customCategory, setCustomCategory] = useState('');
@@ -104,17 +106,47 @@ export default function AddBillPage() {
     }
   }, [projectId]);
 
+  /* 加载编辑模式下的账单数据 */
+  useEffect(() => {
+    if (isEditMode && billId) {
+      Network.request({ url: `/api/bills/${billId}` }).then((res: any) => {
+        const bill = res.data?.data;
+        if (bill) {
+          setName(bill.name || '');
+          setAmount(String(bill.amount || ''));
+          setPayer(bill.payer || '自己');
+          setIsTreat(bill.is_treat || false);
+          setDate(bill.bill_date || todayStr);
+          /* 判断类别是预设还是自定义 */
+          if (bill.category && CATEGORIES.find(c => c.name === bill.category)) {
+            setCategory(bill.category);
+            setCustomCategory('');
+          } else if (bill.category) {
+            setCategory('其他');
+            setCustomCategory(bill.category);
+          }
+        }
+      }).catch(() => {});
+    }
+  }, [isEditMode, billId]);
+
   useLoad(() => {
     const pages = Taro.getCurrentPages();
     const current = pages[pages.length - 1];
     const pid = current.options?.project_id;
+    const bid = current.options?.bill_id;
     if (pid) {
       setProjectId(pid);
       setProjectColor(CARD_COLORS[parseInt(pid, 10) % CARD_COLORS.length] || CARD_COLORS[0]);
     }
+    if (bid) {
+      setBillId(bid);
+      setIsEditMode(true);
+    }
   });
 
   const goBack = () => Taro.navigateBack();
+  const pageTitle = isEditMode ? '编辑花费' : '添加花费';
 
   /* 添加支付人（带持久化） */
   const handleAddPayer = () => {
@@ -198,24 +230,37 @@ export default function AddBillPage() {
       return;
     }
     try {
-      await Network.request({
-        url: '/api/bills',
-        method: 'POST',
-        data: {
-          projectId,
-          name,
-          category: customCategory || category,
-          amount: Number(amount),
-          payer,
-          billDate: date,
-          isTreat,
-        },
-      });
-      Taro.showToast({ title: '保存成功', icon: 'success' });
+      const payload = {
+        projectId,
+        name,
+        category: customCategory || category,
+        amount: Number(amount),
+        payer,
+        billDate: date,
+        isTreat,
+      };
+
+      if (isEditMode && billId) {
+        /* 编辑模式：PUT 更新 */
+        await Network.request({
+          url: `/api/bills/${billId}`,
+          method: 'PUT',
+          data: payload,
+        });
+        Taro.showToast({ title: '更新成功', icon: 'success' });
+      } else {
+        /* 新建模式：POST 创建 */
+        await Network.request({
+          url: '/api/bills',
+          method: 'POST',
+          data: payload,
+        });
+        Taro.showToast({ title: '保存成功', icon: 'success' });
+      }
       setTimeout(() => Taro.navigateBack(), 800);
     } catch (e) {
       console.error(e);
-      Taro.showToast({ title: '保存失败', icon: 'none' });
+      Taro.showToast({ title: isEditMode ? '更新失败' : '保存失败', icon: 'none' });
     }
   };
 
@@ -243,13 +288,13 @@ export default function AddBillPage() {
             <ArrowLeft size={16} color="#8896A6" />
           </View>
           <View style={{ flex: 1, display: 'flex', justifyContent: 'center' }} className="pr-8">
-            <Text className="block" style={{ fontSize: 17, fontWeight: '600', fontFamily: '-apple-system, "SF Pro Display", "PingFang SC", sans-serif', color: '#1E293B', letterSpacing: 1 }}>添加花费</Text>
+            <Text className="block" style={{ fontSize: 17, fontWeight: '600', fontFamily: '-apple-system, "SF Pro Display", "PingFang SC", sans-serif', color: '#1E293B', letterSpacing: 1 }}>{pageTitle}</Text>
           </View>
         </View>
       </View>
 
       <View className="flex-1 px-5 pt-4 pb-4 flex flex-col gap-3" style={{ paddingTop: capsuleBottom + 6 }}>
-        {/* 花费名称 - 去掉内嵌样式 */}
+        {/* 花费名称 */}
         <View>
           <Text className="block text-xs mb-2" style={{ color: theme.accent }}>花费名称</Text>
           {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
@@ -262,7 +307,7 @@ export default function AddBillPage() {
           />
         </View>
 
-        {/* 金额 - 去掉内嵌样式 */}
+        {/* 金额 */}
         <View>
           <Text className="block text-xs mb-2" style={{ color: theme.accent }}>金额</Text>
           <View style={{ display: 'flex', alignItems: 'center', borderBottom: `1px solid ${theme.bg}`, paddingBottom: 8 }}>
@@ -279,7 +324,7 @@ export default function AddBillPage() {
           </View>
         </View>
 
-        {/* 类别 - 紧凑布局 */}
+        {/* 类别 */}
         <View>
           <Text className="block text-xs mb-2" style={{ color: theme.accent }}>类别</Text>
           <View
@@ -408,7 +453,7 @@ export default function AddBillPage() {
                 <X size={20} color="#8896A6" />
               </View>
             </View>
-            
+
             {/* 预设类别 */}
             <View className="grid grid-cols-3 gap-3 mb-3">
               {CATEGORIES.map(cat => {
