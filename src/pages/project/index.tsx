@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import Taro, { useLoad } from '@tarojs/taro';
+import Taro, { useLoad, useDidShow } from '@tarojs/taro';
 import { View, Text, Image, ScrollView } from '@tarojs/components';
 import { Input } from '@/components/ui/input';
 import { Network } from '@/network';
@@ -79,10 +79,13 @@ export default function ProjectPage() {
 
   /* 固定区域高度 */
   const headerH = capsuleBottom;           // 标题栏
+  const cardGap = 10;                      // 标题与卡片间距(新增!)
   const cardH = 112;                       // 封面卡片高度
+  const buttonGap = 8;                     // 卡片与按钮间距
   const buttonH = 52;                      // 添加花费按钮高度
+  const sectionH = 32;                     // 账单明细标题行高(新增! fixed)
   const bottomH = 56;                      // 底部删除按钮+安全距
-  const topFixedH = headerH + cardH + buttonH + 16; // 顶部固定总高(含间距)
+  const topFixedH = headerH + cardGap + cardH + buttonGap + buttonH + sectionH; // 顶部固定总高
 
   const fetchData = async () => {
     try {
@@ -110,12 +113,24 @@ export default function ProjectPage() {
     }
   };
 
+  /* 页面显示时刷新（从添加/编辑页返回时触发）*/
   useEffect(() => {
     fetchData();
+    /* 监听账单/项目更新事件 */
+    Taro.eventCenter.on('yoop_bill_updated', fetchData);
+    Taro.eventCenter.on('yoop_project_updated', fetchData);
+    return () => {
+      Taro.eventCenter.off('yoop_bill_updated', fetchData);
+      Taro.eventCenter.off('yoop_project_updated', fetchData);
+    };
   }, []);
 
   useLoad(() => {
     setTimeout(fetchData, 50);
+  });
+
+  useDidShow(() => {
+    fetchData();
   });
 
   useEffect(() => {
@@ -143,6 +158,8 @@ export default function ProjectPage() {
       setProject(prev => ({ ...prev, name: editNameValue.trim() }));
       setEditingName(false);
       Taro.showToast({ title: '已更新', icon: 'success' });
+      /* 通知首页刷新 */
+      Taro.eventCenter.trigger('yoop_project_updated');
     } catch (e) {
       console.error(e);
       Taro.showToast({ title: '更新失败', icon: 'none' });
@@ -213,6 +230,7 @@ export default function ProjectPage() {
       success: async (res) => {
         if (res.confirm) {
           await Network.request({ url: `/api/projects/${project.id}`, method: 'DELETE' });
+          Taro.eventCenter.trigger('yoop_project_updated');
           Taro.showToast({ title: '已删除', icon: 'success' });
           setTimeout(() => Taro.navigateBack(), 800);
         }
@@ -297,11 +315,11 @@ export default function ProjectPage() {
         <Text className="block flex-1 text-center font-semibold pr-8" style={{ color: '#2D3748', fontSize: 17, fontFamily: '-apple-system, "SF Pro Display", "PingFang SC", sans-serif' }}>项目详情</Text>
       </View>
 
-      {/* ========== 2. 封面卡片：固定在标题下方 ========== */}
+      {/* ========== 2. 封面卡片：固定在标题下方（带间距） ========== */}
       <View
         style={{
           position: 'fixed',
-          top: headerH,
+          top: headerH + cardGap,       // ← 加了10px间距!
           left: 12,
           right: 12,
           zIndex: 90,
@@ -445,7 +463,7 @@ export default function ProjectPage() {
       <View
         style={{
           position: 'fixed',
-          top: headerH + cardH + 8,
+          top: headerH + cardGap + cardH + buttonGap,
           left: 12,
           right: 12,
           zIndex: 90,
@@ -465,16 +483,29 @@ export default function ProjectPage() {
         </View>
       </View>
 
-      {/* ========== 4. 账单明细：中间滚动区域 ========== */}
+      {/* ========== 4. 账单明细标题：固定不动 ========== */}
+      <View
+        style={{
+          position: 'fixed',
+          top: headerH + cardGap + cardH + buttonGap + buttonH + 4,
+          left: 16,
+          right: 16,
+          zIndex: 90,
+          height: sectionH,
+        }}
+        className="flex items-center"
+      >
+        <Text className="block text-sm font-semibold" style={{ color: '#2D3748' }}>账单明细</Text>
+      </View>
+
+      {/* ========== 5. 账单列表：中间滚动区域 ========== */}
       <ScrollView
         scrollY
         enhanced
         showScrollbar={false}
         style={{ flex: 1, marginTop: topFixedH, marginBottom: bottomH }}
       >
-        <View style={{ padding: '4px 16px' }}>
-          <Text className="block text-sm font-semibold mb-2 mt-1" style={{ color: '#2D3748' }}>账单明细</Text>
-
+        <View style={{ padding: '4px 16px 24px' }}>
           {Object.entries(byDate).map(([date, items]) => (
             <View key={date} className="mb-3">
               <Text className="block text-xs mb-2" style={{ color: '#8896A6' }}>{date}</Text>
@@ -527,7 +558,7 @@ export default function ProjectPage() {
         </View>
       </ScrollView>
 
-      {/* ========== 5. 删除项目按钮：固定在底部 ========== */}
+      {/* ========== 6. 删除此项目按钮：固定在底部（无边框） ========== */}
       <View
         style={{
           position: 'fixed',
@@ -535,12 +566,11 @@ export default function ProjectPage() {
           left: 0,
           right: 0,
           zIndex: 100,
-          paddingBottom: 8,
-          paddingTop: 6,
-          paddingLeft: 16,
-          paddingRight: 16,
-          backgroundColor: '#FFFFFF',
-          borderTop: '1px solid #F0F0F0',
+          paddingBottom: 12,
+          paddingTop: 8,
+          paddingLeft: 20,
+          paddingRight: 20,
+          backgroundColor: '#F7F9FC',     // ← 与页面背景一致，无分割线
         }}
       >
         <View

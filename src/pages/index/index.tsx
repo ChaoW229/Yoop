@@ -84,6 +84,13 @@ export default function IndexPage() {
 
   useEffect(() => {
     fetchProjects();
+    /* 监听其他页面触发的更新事件 */
+    Taro.eventCenter.on('yoop_project_updated', fetchProjects);
+    Taro.eventCenter.on('yoop_bill_updated', fetchProjects);
+    return () => {
+      Taro.eventCenter.off('yoop_project_updated', fetchProjects);
+      Taro.eventCenter.off('yoop_bill_updated', fetchProjects);
+    };
   }, []);
 
   useDidShow(() => {

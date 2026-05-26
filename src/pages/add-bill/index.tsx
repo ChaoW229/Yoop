@@ -4,7 +4,7 @@ import { View, Text, Picker } from '@tarojs/components';
 import { Input } from '@/components/ui/input';
 import { Network } from '@/network';
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { ArrowLeft, Plus, X } from 'lucide-react-taro';
+import { ArrowLeft, Plus, X, Trash2 } from 'lucide-react-taro';
 
 const CATEGORIES = [
   { name: '交通', emoji: '🚗' },
@@ -257,6 +257,8 @@ export default function AddBillPage() {
         });
         Taro.showToast({ title: '保存成功', icon: 'success' });
       }
+      /* 通知项目详情页和首页刷新 */
+      Taro.eventCenter.trigger('yoop_bill_updated');
       setTimeout(() => Taro.navigateBack(), 800);
     } catch (e) {
       console.error(e);
@@ -265,6 +267,29 @@ export default function AddBillPage() {
   };
 
   const onDateChange = (e: any) => setDate(e.detail.value);
+
+  /* ===== 编辑模式：删除账单 ===== */
+  const handleDeleteBill = () => {
+    if (!billId) return;
+    Taro.showModal({
+      title: '删除账单',
+      content: `确定要删除「${name}」吗？`,
+      confirmColor: '#E86C6C',
+      success: async (res) => {
+        if (res.confirm) {
+          try {
+            await Network.request({ url: `/api/bills/${billId}`, method: 'DELETE' });
+            Taro.eventCenter.trigger('yoop_bill_updated');
+            Taro.showToast({ title: '已删除', icon: 'success' });
+            setTimeout(() => Taro.navigateBack(), 800);
+          } catch (e) {
+            console.error(e);
+            Taro.showToast({ title: '删除失败', icon: 'none' });
+          }
+        }
+      },
+    });
+  };
 
   const selectedCat = customCategory || category;
   const selectedEmoji = customCategory ? '📌' : CATEGORIES.find(c => c.name === category)?.emoji || '📌';
@@ -417,6 +442,20 @@ export default function AddBillPage() {
           </View>
         </View>
       </View>
+
+      {/* 编辑模式：删除按钮 */}
+      {isEditMode && (
+        <View className="px-5 py-2 bg-white">
+          <View
+            onClick={handleDeleteBill}
+            className="w-full rounded-2xl py-3 flex items-center justify-center gap-2"
+            style={{ border: '1px solid #FDE8E8', backgroundColor: '#FFF5F5' }}
+          >
+            <Trash2 size={16} color="#E86C6C" />
+            <Text className="block text-sm font-semibold" style={{ color: '#E86C6C' }}>删除此花费</Text>
+          </View>
+        </View>
+      )}
 
       {/* 保存按钮 - 根据表单状态变化样式 */}
       <View className="px-5 py-3 bg-white">
