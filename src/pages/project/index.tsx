@@ -1,605 +1,539 @@
-import { useState, useEffect } from 'react';
-import Taro, { useLoad, useDidShow } from '@tarojs/taro';
-/* eslint-disable-next-line no-restricted-syntax, import/no-duplicates */
-import { View, Text, Image, ScrollView, Picker, Input } from '@tarojs/components';
+import React, { useState, useEffect } from 'react';
+import Taro, { useRouter, useDidShow } from '@tarojs/taro';
+/* eslint-disable-next-line no-restricted-syntax */
+import { View, Text, Image, ScrollView, Input, Picker } from '@tarojs/components';
 import { Network } from '@/network';
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import { ArrowLeft, Plus, Trash2, Camera, Pencil } from 'lucide-react-taro';
+import { Plus, Trash2, ChevronLeft, CalendarDays, Camera, Pencil, Check, ArrowRightLeft } from 'lucide-react-taro';
 
-interface Bill {
-  id: string;
-  name: string;
-  category: string;
-  amount: string;
-  payer: string;
-  is_treat: boolean;
-  bill_date?: string;
-}
+/* ─── 统一配色（8 套低饱和多彩） ─── */
+const CARD_COLORS: Record<number, {
+  bg: string; name: string; amount: string; accent: string;
+}> = {
+  0: { bg: '#F0E6D8', name: '#6B5E4A', amount: '#8B7355', accent: '#D4C4A0' }, /* 暖沙 */
+  1: { bg: '#E4EDF5', name: '#4A6B8B', amount: '#5D7A99', accent: '#B0CCDF' }, /* 雾蓝 */
+  2: { bg: '#EBF0E4', name: '#5B6B4A', amount: '#75855F', accent: '#C4D4AF' }, /* 草绿 */
+  3: { bg: '#F5E8EC', name: '#8B4A5E', amount: '#A65D72', accent: '#DEB0BE' }, /* 樱粉 */
+  4: { bg: '#F0EBE5', name: '#6B6050', amount: '#8A7865', accent: '#CCC4BA' }, /* 燕麦 */
+  5: { bg: '#E8EEF5', name: '#4A5E7A', amount: '#5D7399', accent: '#B0C4DD' }, /* 靛灰 */
+  6: { bg: '#F5F0E8', name: '#7A684A', amount: '#99825F', accent: '#DDD1B8' }, /* 蜜糖 */
+  7: { bg: '#EDEDF0', name: '#5A5A6A', amount: '#727285', accent: '#C5C5D0' }, /* 烟灰 */
+};
+const getCardStyle = (id?: string) => CARD_COLORS[(id ? parseInt(id.slice(0, 8), 16) : 0) % 8] || CARD_COLORS[0];
 
-/* 与首页一致的8种低饱和度配色 */
-const CARD_COLORS = [
-  { bg: '#EDE7D9', name: '#6B5E4A', amount: '#A89068', accent: '#D4C4A0' },
-  { bg: '#DDBEC8', name: '#6B4555', amount: '#B87A92', accent: '#C8A0AC' },
-  { bg: '#C8DAE2', name: '#3D5A66', amount: '#6B99B0', accent: '#98C0D4' },
-  { bg: '#DFDCC8', name: '#5A5638', amount: '#99905A', accent: '#C8C498' },
-  { bg: '#D9D4E8', name: '#50486B', amount: '#8880AA', accent: '#B8B0D0' },
-  { bg: '#E0DDD1', name: '#565342', amount: '#8E8968', accent: '#C4BF9E' },
-  { bg: '#D4E2DD', name: '#3D554F', amount: '#6B9288', accent: '#98C8BC' },
-  { bg: '#E2DCD8', name: '#584842', amount: '#987870', accent: '#C8B8AE' },
+/* ─── 支付人预设颜色池 ─── */
+const PAYER_COLORS = [
+  '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
+  '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F',
+  '#BB8FCE', '#85C1E9',
 ];
-
-function getCardStyle(id: string) {
-  const idx = Math.abs(id.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % CARD_COLORS.length;
-  return CARD_COLORS[idx];
-}
-
-function getIcon(name: string): string {
-  const n = (name || '').toLowerCase();
-  if (n.includes('海') || n.includes('滩') || n.includes('岛')) return '\u{1F3D6}';
-  if (n.includes('山') || n.includes('峰') || n.includes('岭')) return '\u{1F3D4}';
-  if (n.includes('湖') || n.includes('水')) return '\u{1F4A7}';
-  if (n.includes('城') || n.includes('京') || n.includes('都')) return '\u{1F3D9}';
-  if (n.includes('古镇') || n.includes('丽江') || n.includes('巷')) return '\u{1F3EF}';
-  if (n.includes('雪') || n.includes('冰')) return '\u{2744}\uFE0F';
-  if (n.includes('花') || n.includes('园')) return '\u{1F338}';
-  if (n.includes('森') || n.includes('林') || n.includes('木')) return '\u{1F332}';
-  if (n.includes('食') || n.includes('吃') || n.includes('味')) return '\u{1F35C}';
-  if (n.includes('酒') || n.includes('吧')) return '\u{1F37A}';
-  return '\u{2708}\uFE0F';
-}
-
-const CATEGORY_ICONS: Record<string, string> = {
-  '交通': '\uD83D\uDE97', '餐饮': '\uD83C\uDF7D', '住宿': '\uD83C\uDFE8', '纪念品': '\uD83C\uDF81', '门票': '\uD83C\uDFAB', '其他': '\uD83D\uDCCC',
+const getPayerColor = (name: string): string => {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return PAYER_COLORS[Math.abs(hash) % PAYER_COLORS.length];
 };
 
-export default function ProjectPage() {
-  const [project, setProject] = useState<any>(null);
-  const [bills, setBills] = useState<Bill[]>([]);
-  const [refreshKey, setRefreshKey] = useState(0);
+/* ─── A账结算算法 ─── */
+interface SettlementItem {
+  from: string;
+  to: string;
+  amount: number;
+}
 
-  /* 编辑状态 */
-  const [editingName, setEditingName] = useState(false);
-  const [editNameValue, setEditNameValue] = useState('');
-  const [editingDate, setEditingDate] = useState(false);
+function calcSettlement(bills: any[]): SettlementItem[] {
+  const balances: Record<string, number> = {};
 
-  /* 顶部与胶囊按钮对齐 */
-  const statusBarH = Taro.getSystemInfoSync().statusBarHeight || 0;
-  let capsuleBottom = statusBarH + 44;
-  const isWeapp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP;
-  if (isWeapp) {
-    try {
-      const capsule = Taro.getMenuButtonBoundingClientRect();
-      if (capsule && capsule.bottom) {
-        capsuleBottom = capsule.bottom + 6;
+  // 收集所有参与人（从支付人字段）
+  const allPeople = new Set<string>();
+  for (const b of bills) {
+    if (!b.is_treat && b.payer) {
+      allPeople.add(b.payer);
+      if (b.participants && Array.isArray(b.participants)) {
+        b.participants.forEach((p: string) => allPeople.add(p));
       }
-    } catch (e) { /* H5 fallback */ }
+    }
   }
 
-  /* 固定区域高度 */
-  const headerH = capsuleBottom;           // 标题栏
-  const cardGap = 10;                      // 标题与卡片间距
-  const cardH = 112;                       // 封面卡片高度
-  const buttonGap = 8;                     // 卡片与按钮间距
-  const buttonH = 52;                      // 添加花费按钮高度
-  const sectionH = 32;                     // 账单明细标题行高(fixed)
-  const bottomH = 56;                      // 底部删除按钮+安全距
-  const topFixedH = headerH + cardGap + cardH + buttonGap + buttonH + sectionH;
+  // 初始化余额为0
+  allPeople.forEach(p => { balances[p] = 0; });
 
-  const fetchData = async () => {
-    try {
-      const pages = Taro.getCurrentPages();
-      const current = pages[pages.length - 1];
-      const id = current.options?.id;
-      if (!id) return;
+  // 计算每人净收支（请客的不计入）
+  for (const b of bills) {
+    if (b.is_treat) continue;
+    if (!b.payer || !b.amount) continue;
 
-      const [projRes, billsRes] = await Promise.all([
-        Network.request({ url: `/api/projects/${id}` }),
-        Network.request({ url: `/api/projects/${id}/bills` }),
-      ]);
-      console.log('project detail', projRes.data);
-      const projData = projRes.data?.data;
-      setProject(projData);
-      setBills(billsRes.data?.data || []);
-      /* 同步编辑值 */
-      if (projData) {
-        setEditNameValue(projData.name || '');
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
+    const amt = Number(b.amount);
+    // 参与人数：有participants字段就用它，否则用所有涉及的人
+    const participants = (b.participants && Array.isArray(b.participants) && b.participants.length > 0)
+      ? b.participants
+      : Array.from(allPeople);
+    const n = Math.max(participants.length, 1); // 至少1人分摊
+    const share = amt / n;
 
-  /* 页面显示时刷新（从添加/编辑页返回时触发）*/
+    // 支付者：支出增加（他垫付了）
+    if (!balances[b.payer]) balances[b.payer] = 0;
+    balances[b.payer] += amt;
+
+    // 每个参与者：欠款增加
+    participants.forEach((p: string) => {
+      if (!balances[p]) balances[p] = 0;
+      balances[p] -= share;
+    });
+  }
+
+  // 分离债权人和债务人
+  const debtors: { name: string; amount: number }[] = [];
+  const creditors: { name: string; amount: number }[] = [];
+  Object.entries(balances).forEach(([name, bal]) => {
+    if (Math.abs(bal) < 0.01) return;
+    if (bal < 0) debtors.push({ name, amount: -bal }); // 负数=欠钱
+    else creditors.push({ name, amount: bal }); // 正数=应收
+  });
+
+  // 简单贪心匹配
+  const results: SettlementItem[] = [];
+  let di = 0, ci = 0;
+  while (di < debtors.length && ci < creditors.length) {
+    const d = debtors[di], c = creditors[ci];
+    const pay = Math.min(d.amount, c.amount);
+    if (pay > 0.01) results.push({ from: d.name, to: c.name, amount: Math.round(pay * 100) / 100 });
+    d.amount -= pay;
+    c.amount -= pay;
+    if (d.amount < 0.01) di++;
+    if (c.amount < 0.01) ci++;
+  }
+
+  return results;
+}
+
+export default function ProjectDetail() {
+  const router = useRouter();
+  const projectId = router.params.id || '';
+
+  /* ---- 尺寸常量 ---- */
+  let statusBarH = 20, capsuleTop = statusBarH + 4, capsuleH = 32;
+  try {
+    const menuBtn = Taro.getMenuButtonBoundingClientRect();
+    statusBarH = menuBtn.top;
+    capsuleTop = menuBtn.top;
+    capsuleH = menuBtn.height;
+  } catch {}
+  const capsuleBottom = capsuleTop + capsuleH;
+  const headerH = capsuleBottom;
+  const cardGap = 10;
+  const cardH = 112;
+  const buttonH = 52;
+  const bottomH = 56;
+  const topFixedH = headerH + cardGap + cardH + 8 + buttonH + 12 + 36; // +36 for "账单明细" row
+
+  const cc = getCardStyle(projectId);
+
+  /* ---- State ---- */
+  const [project, setProject] = useState<any>(null);
+  const [bills, setBills] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editingName, setEditingName] = useState(false);
+  const [tempName, setTempName] = useState('');
+
+  /* ---- 数据加载 ---- */
+  useDidShow(() => { fetchData(); });
+
   useEffect(() => {
-    fetchData();
-    /* 监听账单/项目更新事件 */
+    const unsub = () => {};
     Taro.eventCenter.on('yoop_bill_updated', fetchData);
-    Taro.eventCenter.on('yoop_project_updated', fetchData);
-    return () => {
-      Taro.eventCenter.off('yoop_bill_updated', fetchData);
-      Taro.eventCenter.off('yoop_project_updated', fetchData);
-    };
+    return () => { Taro.eventCenter.off('yoop_bill_updated', unsub); };
   }, []);
 
-  useLoad(() => {
-    setTimeout(fetchData, 50);
-  });
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [projRes, billsRes] = await Promise.all([
+        Network.request({ url: `/api/projects/${projectId}` }),
+        Network.request({ url: `/api/bills?project_id=${projectId}` }),
+      ]);
+      console.log('[ProjectDetail] project:', projRes.data?.data);
+      console.log('[ProjectDetail] bills:', billsRes.data?.data);
+      setProject(projRes.data?.data);
+      setBills(billsRes.data?.data || []);
+    } catch(e) { console.error('fetch error:', e); }
+    finally { setLoading(false); }
+  };
 
-  useDidShow(() => {
+  /* ---- 编辑项目名 ---- */
+  const startEditName = () => { setTempName(project.name || ''); setEditingName(true); };
+  const confirmName = async () => {
+    if (!tempName.trim()) return;
+    await Network.request({ url: `/api/projects/${projectId}`, method: 'PUT', data: { name: tempName.trim() } });
+    setEditingName(false);
     fetchData();
-  });
-
-  useEffect(() => {
-    fetchData();
-  }, [refreshKey]);
-
-  const goBack = () => Taro.navigateBack();
-  const goAddBill = () => Taro.navigateTo({ url: `/pages/add-bill/index?project_id=${project?.id}` });
-  const goEditBill = (billId: string) => Taro.navigateTo({ url: `/pages/add-bill/index?project_id=${project?.id}&bill_id=${billId}` });
-
-  /* ===== 编辑项目名称 ===== */
-  const handleEditName = () => {
-    setEditingName(true);
-    setEditNameValue(project?.name || '');
+    Taro.eventCenter.trigger('yoop_project_updated');
   };
 
-  const handleSaveName = async () => {
-    if (!editNameValue.trim()) { Taro.showToast({ title: '名称不能为空', icon: 'none' }); return; }
-    try {
-      await Network.request({
-        url: `/api/projects/${project.id}`,
-        method: 'PUT',
-        data: { name: editNameValue.trim() },
-      });
-      setProject(prev => ({ ...prev, name: editNameValue.trim() }));
-      setEditingName(false);
-      Taro.showToast({ title: '已更新', icon: 'success' });
-      /* 通知首页刷新 */
-      Taro.eventCenter.trigger('yoop_project_updated');
-    } catch (e) {
-      console.error(e);
-      Taro.showToast({ title: '更新失败', icon: 'none' });
-    }
+  /* ---- 编辑日期 ---- */
+  const onStartDateChange = (e: any) => {
+    const v = e.detail.value;
+    Network.request({ url: `/api/projects/${projectId}`, method: 'PUT', data: { start_date: v } }).then(fetchData);
+  };
+  const onEndDateChange = (e: any) => {
+    const v = e.detail.value;
+    Network.request({ url: `/api/projects/${projectId}`, method: 'PUT', data: { end_date: v } }).then(fetchData);
   };
 
-  /* ===== 编辑日期范围（使用 Picker 选择器） ===== */
-  const handleEditDate = () => {
-    setEditingDate(true);
-  };
-
-  const onStartDateChange = async (e: any) => {
-    try {
-      await Network.request({
-        url: `/api/projects/${project.id}`,
-        method: 'PUT',
-        data: { start_date: e.detail.value },
-      });
-      setProject(prev => ({ ...prev, start_date: e.detail.value }));
-      Taro.showToast({ title: '已更新', icon: 'success' });
-      Taro.eventCenter.trigger('yoop_project_updated');
-    } catch (err) {
-      console.error(err);
-      Taro.showToast({ title: '更新失败', icon: 'none' });
-    }
-  };
-
-  const onEndDateChange = async (e: any) => {
-    try {
-      await Network.request({
-        url: `/api/projects/${project.id}`,
-        method: 'PUT',
-        data: { end_date: e.detail.value },
-      });
-      setProject(prev => ({ ...prev, end_date: e.detail.value }));
-      setEditingDate(false);
-      Taro.showToast({ title: '已更新', icon: 'success' });
-      Taro.eventCenter.trigger('yoop_project_updated');
-    } catch (err) {
-      console.error(err);
-      Taro.showToast({ title: '更新失败', icon: 'none' });
-    }
-  };
-
-  const finishDateEdit = () => setEditingDate(false);
-
-  /* ===== 封面图 ===== */
-  const handleChangeCover = async () => {
-    const isMiniApp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT;
-    try {
-      let tempFilePath = '';
-      if (isMiniApp) {
-        const res = await Taro.chooseMedia({ count: 1, mediaType: ['image'], sourceType: ['album', 'camera'] });
-        if (res.tempFiles && res.tempFiles.length > 0) tempFilePath = res.tempFiles[0].tempFilePath;
-      } else {
-        const res = await Taro.chooseImage({ count: 1, sourceType: ['album', 'camera'] });
-        if (res.tempFilePaths && res.tempFilePaths.length > 0) tempFilePath = res.tempFilePaths[0];
-      }
-      if (!tempFilePath) return;
-      const uploadRes = await Network.uploadFile({
-        url: '/api/upload',
-        filePath: tempFilePath,
-        name: 'file',
-      });
-      const parsed = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data;
-      const url = parsed?.data?.url;
-      if (url && project?.id) {
-        await Network.request({ url: `/api/projects/${project.id}`, method: 'PUT', data: { cover_url: url } });
-        Taro.showToast({ title: '封面已更新', icon: 'success' });
-        setRefreshKey(k => k + 1);
-      }
-    } catch (e) {
-      console.error('choose cover error', e);
-      Taro.showToast({ title: '选择失败', icon: 'none' });
-    }
-  };
-
-  /* ===== 删除操作 ===== */
-  const handleDelete = () => {
-    if (!project) return;
+  /* ---- 删除项目 ---- */
+  const handleDeleteProject = () => {
     Taro.showModal({
       title: '删除项目',
-      content: '确定要删除吗？账单也将一并删除。',
-      confirmColor: '#E86C6C',
+      content: `确定要删除「${project?.name}」吗？所有账单将一起删除！`,
+      confirmColor: '#EF4444',
       success: async (res) => {
         if (res.confirm) {
-          await Network.request({ url: `/api/projects/${project.id}`, method: 'DELETE' });
-          Taro.eventCenter.trigger('yoop_project_updated');
-          Taro.showToast({ title: '已删除', icon: 'success' });
-          setTimeout(() => Taro.navigateBack(), 800);
+          try {
+            await Network.request({ url: `/api/projects/${projectId}`, method: 'DELETE' });
+            Taro.eventCenter.trigger('yoop_project_updated');
+            Taro.navigateBack();
+            Taro.showToast({ title: '已删除', icon: 'success' });
+          } catch(e) { Taro.showToast({ title: '删除失败', icon: 'none' }); }
         }
       },
     });
   };
 
-  const handleDeleteBill = (billId: string, billName: string) => {
+  /* ---- 删除账单 ---- */
+  const handleDeleteBill = (billId: string, name: string) => {
     Taro.showModal({
       title: '删除账单',
-      content: `确定要删除「${billName}」吗？`,
-      confirmColor: '#E86C6C',
+      content: `确定要删除「${name}」吗？`,
       success: async (res) => {
         if (res.confirm) {
           try {
             await Network.request({ url: `/api/bills/${billId}`, method: 'DELETE' });
             setBills(prev => prev.filter(b => b.id !== billId));
-            Taro.eventCenter.trigger('yoop_bill_updated');
+            fetchData();
             Taro.showToast({ title: '已删除', icon: 'success' });
-          } catch (e) {
-            console.error(e);
-            Taro.showToast({ title: '删除失败', icon: 'none' });
-          }
+          } catch(e) { Taro.showToast({ title: '删除失败', icon: 'none' }); }
         }
       },
     });
   };
 
-  /* 计算数据 */
-  const billDates = bills.map(b => b.bill_date).filter(Boolean) as string[];
-  const autoStart = billDates.length > 0 ? billDates.reduce((a, b) => (a < b ? a : b)) : project?.start_date;
-  const autoEnd = billDates.length > 0 ? billDates.reduce((a, b) => (a > b ? a : b)) : project?.end_date;
-  const displayStart = (project?.start_date || autoStart || '待定').replace(/-/g, '/');
-  const displayEnd = (project?.end_date || autoEnd || '待定').replace(/-/g, '/');
-  const totalAmount = bills.reduce((sum, b) => sum + Number(b.amount), 0);
-  const treatAmount = bills.filter(b => b.is_treat).reduce((sum, b) => sum + Number(b.amount), 0);
-  const splitAmount = totalAmount - treatAmount;
-  const participantCount = project?.participants?.length || 1;
-  const perPerson = participantCount > 0 ? splitAmount / participantCount : 0;
+  /* ---- 导航到添加/编辑 ---- */
+  const goAddBill = () => Taro.navigateTo({ url: `/pages/add-bill/index?project_id=${projectId}` });
+  const goEditBill = (billId: string) => Taro.navigateTo({ url: `/pages/add-bill/index?project_id=${projectId}&bill_id=${billId}` });
 
-  const byDate: Record<string, Bill[]> = {};
-  for (const b of bills) {
-    const d = b.bill_date || '未分类';
-    if (!byDate[d]) byDate[d] = [];
-    byDate[d].push(b);
-  }
+  /* ---- A账数据 ---- */
+  const settlements = calcSettlement(bills);
 
-  const cc = getCardStyle(project?.id || '');
+  /* ---- 分组 ---- */
+  const grouped: Record<string, typeof bills> = {};
+  (bills || []).forEach(b => {
+    const d = b.bill_date || '未知日期';
+    if (!grouped[d]) grouped[d] = [];
+    grouped[d].push(b);
+  });
 
-  /* 数据未加载时渲染占位 */
-  if (!project) {
-    return (
-      <View className="flex flex-col min-h-full bg-white">
-        <View style={{ paddingTop: statusBarH, height: capsuleBottom }} className="flex items-center px-4">
-          <View onClick={goBack} className="w-8 h-8 flex items-center justify-center">
-            <ArrowLeft size={18} color="#8896A6" />
-          </View>
-          <Text className="block flex-1 text-center text-base font-semibold pr-8" style={{ color: '#2D3748' }}>项目详情</Text>
-        </View>
-        <View className="px-4 pt-4 flex items-center justify-center" style={{ height: 200 }}>
-          <Text className="block text-sm" style={{ color: '#A0ABB8' }}>加载中...</Text>
-        </View>
-      </View>
-    );
-  }
+  /* ---- 渐变色 ---- */
+  const gradCard = `linear-gradient(135deg, ${cc.amount}CC, ${cc.bg})`;
+  const gradBtn = `linear-gradient(135deg, ${cc.amount}, ${cc.bg})`;
+
+  /* ---- 标题样式 ---- */
+  const titleStyle: React.CSSProperties = {
+    fontSize: 17, fontWeight: '600',
+    fontFamily: '-apple-system,"SF Pro Display","PingFang SC",sans-serif',
+    color: '#1E293B',
+  };
 
   return (
-    <View className="flex flex-col h-screen" style={{ backgroundColor: '#F7F9FC' }}>
-      {/* ========== 1. Header：固定在顶部 ========== */}
-      <View
-        style={{
-          position: 'fixed', top: 0, left: 0, right: 0,
-          zIndex: 100,
-          paddingTop: statusBarH,
-          height: capsuleBottom,
-          backgroundColor: '#FFFFFF',
-        }}
-        className="flex items-center px-4"
-      >
-        <View onClick={goBack} className="w-8 h-8 flex items-center justify-center">
-          <ArrowLeft size={16} color="#8896A6" />
+    <View className="flex flex-col h-full" style={{ backgroundColor: '#F7F9FC' }}>
+      {/* ════════ 固定 Header ════════ */}
+      <View style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, backgroundColor: '#FFFFFF' }}>
+        <View style={{ paddingTop: capsuleBottom, paddingBottom: 6, paddingLeft: 16, paddingRight: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View onClick={() => Taro.navigateBack()} style={{ marginRight: 8 }}>
+              <ChevronLeft size={22} color="#374151" />
+            </View>
+            <Text style={titleStyle}>项目详情</Text>
+          </View>
         </View>
-        <Text className="block flex-1 text-center font-semibold pr-8" style={{ color: '#2D3748', fontSize: 17, fontFamily: '-apple-system, "SF Pro Display", "PingFang SC", sans-serif' }}>项目详情</Text>
       </View>
 
-      {/* ========== 2. 封面卡片：固定在标题下方（带间距） ========== */}
-      <View
-        style={{
-          position: 'fixed',
-          top: headerH + cardGap,
-          left: 12,
-          right: 12,
-          zIndex: 90,
-          height: cardH,
+      {/* ════════ 固定封面卡片 ════════ */}
+      {!loading && project && (
+        <View style={{
+          position: 'fixed', top: headerH + cardGap, left: 12, right: 12,
+          zIndex: 90, height: cardH, borderRadius: 18, overflow: 'hidden',
+          background: gradCard, boxShadow: '0 6px 24px rgba(91,155,213,0.08)',
         }}
-      >
-        <View
-          className="flex items-center rounded-2xl overflow-hidden w-full h-full"
-          style={{
-            backgroundColor: '#FFFFFF',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.03)',
-          }}
         >
-          {/* 封面图 */}
-          <View
-            className="flex items-center justify-center flex-shrink-0 relative overflow-hidden"
-            style={{
-              width: 96,
-              height: 96,
-              borderRadius: '16px',
-              marginLeft: 10,
-              background: project?.cover_url ? undefined : cc.accent,
-              opacity: project?.cover_url ? undefined : 0.85,
+          <View style={{ flexDirection: 'row', height: '100%', alignItems: 'center' }}>
+            {/* 左侧图片 */}
+            <View style={{
+              marginLeft: 14, width: 86, height: 86, borderRadius: 14, overflow: 'hidden',
+              flexShrink: 0, backgroundColor: cc.accent,
+              justifyContent: 'center', alignItems: 'center',
             }}
-            onClick={handleChangeCover}
-          >
-            {project?.cover_url ? (
-              <Image style={{ width: 96, height: 96 }} src={project.cover_url} mode="aspectFill" />
-            ) : (
-              <Text className="block text-3xl">{getIcon(project?.name || '')}</Text>
-            )}
-            <View className="absolute bottom-1 right-1 w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.85)' }}>
-              <Camera size={10} color={cc.name} />
+            >
+              {project.cover_url ? (
+                <Image src={project.cover_url} mode="aspectFill" style={{ width: '100%', height: '100%' }} />
+              ) : (
+                <Camera size={28} color="#FFF" strokeWidth={1.8} />
+              )}
             </View>
-          </View>
-
-          {/* 信息区 */}
-          <View className="flex-1 p-3 flex flex-col justify-between h-full">
-            {/* 项目名 - 支持点击编辑（紧凑内联输入框） */}
-            {editingName ? (
-              <View style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                {/* eslint-disable-next-line no-restricted-syntax */}
-                <Input
-                  value={editNameValue}
-                  onInput={(e: any) => setEditNameValue(e.detail.value)}
-                  focus
-                  confirmType="done"
-                  onConfirm={handleSaveName}
-                  onBlur={handleSaveName}
-                  style={{
-                    fontSize: 14,
-                    fontWeight: '600',
-                    color: '#2D3748',
-                    padding: 0,
-                    textAlign: 'center',
-                    borderBottom: `1px solid ${cc.name}66`,
-                    width: 120,
-                    height: 24,
-                    lineHeight: '24px',
-                  }}
-                />
-                <Text onClick={handleSaveName} style={{ fontSize: 14, color: cc.amount, fontWeight: '500' }}>✓</Text>
-              </View>
-            ) : (
-              <View
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
-                onClick={handleEditName}
-              >
-                <Text
-                  className="block text-base font-semibold"
-                  style={{ color: '#2D3748', letterSpacing: '0.5px' }}
-                >
-                  {project?.name}
-                </Text>
-                <Pencil size={11} color="#B0BEC5" />
-              </View>
-            )}
-
-            {/* 时间 - 使用 Picker 选择器，点击后弹出日期选择器 */}
-            {editingDate ? (
-              <View style={{ display: 'flex', flexDirection: 'row', gap: 8, justifyContent: 'center', alignItems: 'center' }}>
-                <View style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Text className="block text-[10px]" style={{ color: '#8896A6' }}>起</Text>
-                  <Picker mode="date" value={project?.start_date || ''} onChange={onStartDateChange}>
-                    <View style={{ borderBottom: `1px solid ${cc.name}66`, padding: '0 4px' }}>
-                      <Text style={{ fontSize: 11, color: cc.name }}>{(project?.start_date || '选择').replace(/-/g, '/')}</Text>
-                    </View>
-                  </Picker>
+            {/* 右侧信息 */}
+            <View style={{ flex: 1, paddingLeft: 12, paddingRight: 14, justifyContent: 'space-between', height: '80%' }}>
+              {/* 项目名称 */}
+              {editingName ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  {/* eslint-disable-next-line no-restricted-syntax */}
+                  <Input value={tempName}
+                    onInput={(e) => setTempName(e.detail.value)}
+                    onConfirm={confirmName}
+                    onBlur={confirmName}
+                    autoFocus
+                    focus
+                    style={{ width: 120, height: 24, fontSize: 14, borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: cc.amount }}
+                  />
+                  <Check size={15} color={cc.amount} style={{ marginLeft: 4 }} onClick={confirmName} />
                 </View>
-                <Text className="block text-xs" style={{ color: '#CBD5E0' }}>~</Text>
-                <View style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Text className="block text-[10px]" style={{ color: '#8896A6' }}>止</Text>
-                  <Picker mode="date" value={project?.end_date || ''} onChange={onEndDateChange}>
-                    <View style={{ borderBottom: `1px solid ${cc.name}66`, padding: '0 4px' }}>
-                      <Text style={{ fontSize: 11, color: cc.name }}>{(project?.end_date || '选择').replace(/-/g, '/')}</Text>
-                    </View>
-                  </Picker>
+              ) : (
+                <View onClick={startEditName} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <Text numberOfLines={1} style={{ fontSize: 17, fontWeight: '600', color: cc.name }}>{project.name}</Text>
+                  <Pencil size={13} color={cc.amount} strokeWidth={2} />
                 </View>
-                <View onClick={finishDateEdit}>
-                  <Text className="block text-[11px]" style={{ color: cc.amount, fontWeight: '500' }}>✓</Text>
+              )}
+
+              {/* 金额行 */}
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 2 }}>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={{ fontSize: 11, color: cc.name, opacity: 0.7 }}>总金额</Text>
+                  <Text style={{ fontSize: 20, fontWeight: '700', color: cc.amount }}>¥{Number(project.total_amount || 0).toLocaleString()}</Text>
+                </View>
+                <View style={{ borderLeft: '1px solid #00000018', paddingLeft: 10 }}>
+                  <Text style={{ fontSize: 10, color: cc.name, opacity: 0.6 }}>人均</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: cc.amount }}>¥{bills.length > 0 ? ((Number(project.total_amount||0)/new Set(bills.map(b=>b.payer)).size).toFixed(2)) : '0.00'}</Text>
                 </View>
               </View>
-            ) : (
-              <View
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
-                onClick={handleEditDate}
-              >
-                <Text className="block text-xs" style={{ color: '#8896A6' }}>
-                  {displayStart} ~ {displayEnd}
-                </Text>
-                <Pencil size={10} color="#B0BEC5" />
-              </View>
-            )}
 
-            {/* 金额行 */}
-            <View className="flex items-end justify-between mt-1">
-              <View>
-                <Text className="block text-xs" style={{ color: '#8896A6' }}>总金额</Text>
-                <Text className="block text-xl font-bold" style={{ color: cc.name }}>¥{totalAmount.toFixed(0)}</Text>
+              {/* 日期行 */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, justifyContent: 'center', paddingTop: 2 }}>
+                <CalendarDays size={11} color={cc.name} style={{ opacity: 0.45 }} />
+                <Picker mode="date" value={project.start_date || ''} onChange={onStartDateChange}>
+                  <Text style={{ fontSize: 11, color: cc.name, opacity: 0.65 }} onClick={(e)=>{e.stopPropagation()}}>{(project.start_date||'开始').replace(/-/g,'/')}</Text>
+                </Picker>
+                <Text style={{ fontSize: 11, color: cc.name, opacity: 0.45 }}>~</Text>
+                <Picker mode="date" value={project.end_date || ''} onChange={onEndDateChange}>
+                  <Text style={{ fontSize: 11, color: cc.name, opacity: 0.65 }} onClick={(e)=>{e.stopPropagation()}}>{(project.end_date||'结束').replace(/-/g,'/')}</Text>
+                </Picker>
+                <Pencil size={10} color={cc.amount} style={{ opacity: 0.5 }} />
               </View>
-              <View
-                className="rounded-xl px-3 py-2"
-                style={{ backgroundColor: '#F0F6FC', border: '1px solid #E4EDF7' }}
-              >
-                <Text className="block text-xs" style={{ color: cc.name }}>人均 ¥{perPerson.toFixed(2)}</Text>
-                {treatAmount > 0 && (
-                  <Text className="block text-xs mt-1" style={{ color: '#8896A6' }}>含请客 ¥{treatAmount.toFixed(0)}</Text>
-                )}
-              </View>
+
+              {/* 含请客提示 */}
+              {(bills.filter(b=>b.is_treat).length > 0) && (
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={{ fontSize: 9, color: cc.name, opacity: 0.45 }}>含请客 {bills.filter(b=>b.is_treat).length} 笔</Text>
+                </View>
+              )}
             </View>
           </View>
         </View>
+      )}
+
+      {/* ════════ 固定 添加花费按钮 ════════ */}
+      <View style={{
+        position: 'fixed', top: headerH + cardGap + cardH + 8, left: 12, right: 12,
+        zIndex: 90, height: buttonH, borderRadius: 14,
+        background: gradBtn, boxShadow: '0 3px 12px rgba(91,155,213,0.06)',
+        justifyContent: 'center', alignItems: 'center',
+      }} onClick={goAddBill}
+      >
+        <Plus size={18} color="#FFFFFF" />
+        <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '500', marginLeft: 6 }}>添加花费</Text>
       </View>
 
-      {/* ========== 3. 添加花费按钮：固定在卡片下方 ========== */}
-      <View
-        style={{
-          position: 'fixed',
-          top: headerH + cardGap + cardH + buttonGap,
-          left: 12,
-          right: 12,
-          zIndex: 90,
-          height: buttonH,
-        }}
+      {/* ════════ 固定 账单明细标题 ════════ */}
+      <View style={{
+        position: 'fixed', top: headerH + cardGap + cardH + 8 + buttonH + 12,
+        left: 12, right: 12, zIndex: 90, height: 34,
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      }}
       >
-        <View
-          onClick={goAddBill}
-          className="w-full rounded-2xl py-3 flex items-center justify-center gap-2 h-full"
-          style={{
-            background: `linear-gradient(135deg, ${cc.amount}CC, ${cc.bg})`,
-            boxShadow: '0 6px 24px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04)',
-          }}
+        <Text style={{ fontSize: 13, fontWeight: '600', color: '#475569' }}>账单明细</Text>
+        {settlements.length > 0 && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+            <ArrowRightLeft size={12} color="#059669" />
+            <Text style={{ fontSize: 11, color: '#059669', fontWeight: '500' }}>A账 {settlements.length}笔待结</Text>
+          </View>
+        )}
+      </View>
+
+      {/* ════════ 中间滚动区（带边框容器） ════════ */}
+      <View style={{
+        position: 'fixed', top: topFixedH, left: 12, right: 12,
+        bottom: bottomH, zIndex: 80,
+        borderRadius: 16, overflow: 'hidden',
+        backgroundColor: '#FFFFFF',
+        border: '1px solid #E8EDF2',
+        boxShadow: '0 4px 20px rgba(91,155,213,0.04)',
+      }}
+      >
+        <ScrollView scrollY enhanced showScrollbar={false}
+          style={{ height: '100%', backgroundColor: 'transparent' }}
         >
-          <Plus size={18} color="#FFFFFF" />
-          <Text className="block text-base font-semibold text-white">添加花费</Text>
-        </View>
-      </View>
-
-      {/* ========== 4. 账单明细标题：固定不动 ========== */}
-      <View
-        style={{
-          position: 'fixed',
-          top: headerH + cardGap + cardH + buttonGap + buttonH + 4,
-          left: 16,
-          right: 16,
-          zIndex: 90,
-          height: sectionH,
-        }}
-        className="flex items-center"
-      >
-        <Text className="block text-sm font-semibold" style={{ color: '#2D3748' }}>账单明细</Text>
-      </View>
-
-      {/* ========== 5. 账单列表：带边框窗口容器内滚动 ========== */}
-      <View
-        style={{
-          position: 'fixed',
-          top: topFixedH,
-          left: 12,
-          right: 12,
-          bottom: bottomH,
-          zIndex: 80,
-          borderRadius: 16,
-          overflow: 'hidden',
-          backgroundColor: '#FFFFFF',
-          border: '1px solid #E8EDF2',
-          boxShadow: '0 4px 20px rgba(91,155,213,0.05)',
-        }}
-      >
-        <ScrollView scrollY enhanced showScrollbar={false} style={{ flex: 1, height: '100%' }}>
-          <View style={{ padding: 12 }}>
-            {Object.entries(byDate).map(([date, items]) => (
-              <View key={date} style={{ marginBottom: 12 }}>
-                <Text className="block text-[11px] mb-2" style={{ color: '#8896A6', fontWeight: '500' }}>{date}</Text>
-                {items.map(b => (
-                  <View
-                    key={b.id}
-                    className="flex items-center justify-between rounded-xl p-3 mb-2"
-                    style={{
-                      backgroundColor: '#FAFBFD',
-                      border: '1px solid #F0F4F8',
+          {loading ? (
+            <View style={{ padding: 40, alignItems: 'center' }}>
+              <Text style={{ fontSize: 13, color: '#94a3b8' }}>加载中...</Text>
+            </View>
+          ) : !project ? (
+            <View style={{ padding: 40, alignItems: 'center' }}>
+              <Text style={{ fontSize: 13, color: '#94a3b8' }}>项目不存在</Text>
+            </View>
+          ) : (
+            <>
+              {/* ── A账结算区域 ── */}
+              {settlements.length > 0 && (
+                <View style={{
+                  margin: 12, marginBottom: 8, padding: 12,
+                  borderRadius: 12, borderWidth: 1, borderColor: '#D1FAE5',
+                  backgroundColor: '#ECFDF5',
+                }}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#065F46', marginBottom: 8, display: 'block' }}>
+                    📊 结算建议（请客不计入）
+                  </Text>
+                  {settlements.map((s, idx) => (
+                    <View key={idx} style={{
+                      flexDirection: 'row', alignItems: 'center',
+                      padding: 6, paddingLeft: 4, paddingRight: 4,
+                      borderBottom: idx < settlements.length - 1 ? '1px dashed #A7F3D0' : undefined,
                     }}
-                    onClick={() => goEditBill(b.id)}
-                    onLongPress={() => handleDeleteBill(b.id, b.name)}
-                  >
-                    <View className="flex items-center gap-3">
-                      <View
-                        className="w-7 h-7 rounded-lg flex items-center justify-center"
-                        style={{ backgroundColor: '#F0F6FC' }}
+                    >
+                      <View style={{
+                        width: 22, height: 22, borderRadius: 11,
+                        backgroundColor: getPayerColor(s.from),
+                        justifyContent: 'center', alignItems: 'center',
+                      }}
                       >
-                        <Text className="block text-xs">{CATEGORY_ICONS[b.category] || '\uD83D\uDCCC'}</Text>
+                        <Text style={{ fontSize: 10, color: '#fff', fontWeight: '600' }}>
+                          {s.from.charAt(0)}
+                        </Text>
                       </View>
-                      <View>
-                        <Text className="block text-sm" style={{ color: '#2D3748' }}>{b.name}</Text>
-                        <Text className="block text-[11px]" style={{ color: '#A0ABB8' }}>{b.payer}</Text>
-                      </View>
-                    </View>
-                    <View className="flex items-center gap-2">
-                      {b.is_treat && (
-                        <View
-                          className="rounded-full px-2 py-1"
-                          style={{ backgroundColor: '#F0F6FC', border: '1px solid #E4EDF7' }}
-                        >
-                          <Text className="block text-[10px]" style={{ color: cc.name }}>请客</Text>
-                        </View>
-                      )}
-                      <Text className="block text-sm font-semibold" style={{ color: b.is_treat ? cc.name : '#2D3748' }}>
-                        ¥{Number(b.amount).toFixed(0)}
+                      <Text style={{ fontSize: 13, color: '#374151', flex: 1, marginLeft: 6 }}>
+                        {s.from}
                       </Text>
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: '#DC2626' }}>
+                        → ¥{s.amount.toFixed(2)}
+                      </Text>
+                      <Text style={{ fontSize: 13, color: '#374151', marginLeft: 6 }}>
+                        → {s.to}
+                      </Text>
+                      <View style={{
+                        width: 22, height: 22, borderRadius: 11,
+                        backgroundColor: getPayerColor(s.to),
+                        justifyContent: 'center', alignItems: 'center',
+                        marginLeft: 6,
+                      }}
+                      >
+                        <Text style={{ fontSize: 10, color: '#fff', fontWeight: '600' }}>
+                          {s.to.charAt(0)}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
-                ))}
-              </View>
-            ))}
+                  ))}
+                </View>
+              )}
 
-            {bills.length === 0 && (
-              <View className="flex items-center justify-center py-12">
-                <Text className="block text-sm" style={{ color: '#A0ABB8' }}>暂无账单，点击上方添加</Text>
-              </View>
-            )}
-          </View>
+              {/* ── 账单列表 ── */}
+              {Object.keys(grouped).length === 0 ? (
+                <View style={{ padding: 50, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, color: '#94a3b8' }}>暂无账单，点击上方添加</Text>
+                </View>
+              ) : (
+                Object.entries(grouped).map(([date, items]) => (
+                  <View key={date} style={{ marginBottom: 4 }}>
+                    <Text style={{
+                      fontSize: 11, color: '#94a3b8', paddingLeft: 14, paddingTop: 10, paddingBottom: 4, display: 'block',
+                    }}
+                    >{date.replace(/-/g, '-')}</Text>
+                    {items.map((bill) => {
+                      const catIconMap: Record<string, string> = {
+                        '餐饮': '🍜', '交通': '🚗', '住宿': '🏨', '门票': '🎫',
+                        '购物': '🛍️', '娱乐': '🎮', '医疗': '💊', '其他': '📋',
+                      };
+                      const icon = catIconMap[bill.category] || '📋';
+                      return (
+                        <View key={bill.id}
+                          onClick={() => goEditBill(bill.id)}
+                          onLongPress={() => handleDeleteBill(bill.id, bill.name)}
+                          style={{
+                            flexDirection: 'row', alignItems: 'center',
+                            margin: 12, marginLeft: 12, marginRight: 12, marginBottom: 6,
+                            padding: 10, borderRadius: 12,
+                            backgroundColor: bill.is_treat ? '#FEF3C7' : '#FAFBFC',
+                            border: bill.is_treat ? '1px solid #FDE68A' : '1px solid #F1F5F9',
+                          }}
+                        >
+                          {/* 类别图标 */}
+                          <View style={{
+                            width: 38, height: 38, borderRadius: 10, marginRight: 10,
+                            backgroundColor: bill.is_treat ? '#FDE68A' : '#EFF6FF',
+                            justifyContent: 'center', alignItems: 'center',
+                          }}
+                          >
+                            <Text style={{ fontSize: 17 }}>{icon}</Text>
+                          </View>
+                          {/* 信息 */}
+                          <View style={{ flex: 1 }}>
+                            <Text style={{
+                              fontSize: 14, fontWeight: '500', color: '#1e293b', display: 'block',
+                              marginBottom: 1,
+                            }}
+                            >
+                              {bill.name}{bill.is_treat ? ' 🎁' : ''}
+                            </Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                              <View style={{
+                                width: 16, height: 16, borderRadius: 8,
+                                backgroundColor: getPayerColor(bill.payer || ''),
+                                justifyContent: 'center', alignItems: 'center',
+                              }}
+                              >
+                                <Text style={{ fontSize: 8, color: '#fff' }}>{(bill.payer||'自').charAt(0)}</Text>
+                              </View>
+                              <Text style={{ fontSize: 11, color: '#64748b' }}>{bill.payer || '未填'}</Text>
+                            </View>
+                          </View>
+                          {/* 金额 */}
+                          <Text style={{
+                            fontSize: 15, fontWeight: '600', color: bill.is_treat ? '#D97706' : '#334155',
+                          }}
+                          >¥{Number(bill.amount).toFixed(0)}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                ))
+              )}
+            </>
+          )}
         </ScrollView>
       </View>
 
-      {/* ========== 6. 删除此项目按钮：固定在底部（无边框） ========== */}
-      <View
-        style={{
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          zIndex: 100,
-          paddingBottom: 12,
-          paddingTop: 8,
-          paddingLeft: 20,
-          paddingRight: 20,
-          backgroundColor: '#F7F9FC',
-        }}
+      {/* ════════ 固定 底部删除按钮（宽度与内容一致） ════════ */}
+      <View style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100,
+        backgroundColor: '#F7F9FC',
+        paddingBottom: 20, paddingTop: 10, paddingLeft: 12, paddingRight: 12,
+      }}
       >
-        <View
-          onClick={handleDelete}
-          className="w-full rounded-2xl py-3 flex items-center justify-center gap-2"
-          style={{ border: '1px solid #FDE8E8', backgroundColor: '#FFF5F5' }}
+        <View onClick={handleDeleteProject} style={{
+          flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
+          height: 42, borderRadius: 21,
+          backgroundColor: '#FEE2E2',
+          border: '1px solid #FECACA',
+        }}
         >
-          <Trash2 size={16} color="#E86C6C" />
-          <Text className="block text-sm font-semibold" style={{ color: '#E86C6C' }}>删除此项目</Text>
+          <Trash2 size={15} color="#EF4444" />
+          <Text style={{ color: '#EF4444', fontSize: 14, fontWeight: '500', marginLeft: 6 }}>
+            删除此项目
+          </Text>
         </View>
       </View>
     </View>

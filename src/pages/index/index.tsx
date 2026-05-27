@@ -130,7 +130,7 @@ export default function IndexPage() {
       await Network.request({
         url: '/api/projects',
         method: 'POST',
-        data: { name: newName.trim(), cover_url: newCoverTemp },
+        data: { name: newName.trim(), destination: '', cover_url: newCoverTemp },
       });
       setShowAddModal(false); setNewName(''); setNewCoverTemp('');
       fetchProjects();
