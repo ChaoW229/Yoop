@@ -36,24 +36,7 @@ function getCardStyle(id: string) {
 const STORAGE_KEYS = {
   customCategories: 'yoop_custom_categories',
   payers: 'yoop_payers',
-  payerColors: 'yoop_payer_colors', // 支付人自定义颜色
 };
-
-/* 支付人颜色池 */
-const PAYER_COLORS = [
-  '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
-  '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F',
-  '#BB8FCE', '#85C1E9',
-];
-
-/* 获取支付人的持久化颜色 */
-function getPayerColor(name: string, savedColors: Record<string, string>): string {
-  if (savedColors[name]) return savedColors[name];
-  // 基于名称生成稳定颜色
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return PAYER_COLORS[Math.abs(hash) % PAYER_COLORS.length];
-}
 
 /* 从本地存储读取数据 */
 function loadFromStorage<T>(key: string, defaultValue: T): T {
@@ -86,7 +69,6 @@ export default function AddBillPage() {
   const [customCategories, setCustomCategories] = useState<string[]>([]);
   const [isTreat, setIsTreat] = useState(false);
   const [showCategoryDrawer, setShowCategoryDrawer] = useState(false);
-  const [payerColors, setPayerColors] = useState<Record<string, string>>({});
 
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -108,10 +90,8 @@ export default function AddBillPage() {
   useEffect(() => {
     const savedCategories = loadFromStorage<string[]>(STORAGE_KEYS.customCategories, []);
     const savedPayers = loadFromStorage<string[]>(STORAGE_KEYS.payers, []);
-    const savedColors = loadFromStorage<Record<string, string>>(STORAGE_KEYS.payerColors, {});
     if (savedCategories.length > 0) setCustomCategories(savedCategories);
     if (savedPayers.length > 0) setParticipants(savedPayers);
-    if (Object.keys(savedColors).length > 0) setPayerColors(savedColors);
   }, []);
 
   useEffect(() => {
@@ -181,13 +161,6 @@ export default function AddBillPage() {
             const updated = [...participants, newPayer];
             setParticipants(updated);
             saveToStorage(STORAGE_KEYS.payers, updated);
-            // 自动分配颜色（如果还没有）
-            if (!payerColors[newPayer]) {
-              const newColor = getPayerColor(newPayer, {});
-              const newColors = { ...payerColors, [newPayer]: newColor };
-              setPayerColors(newColors);
-              saveToStorage(STORAGE_KEYS.payerColors, newColors);
-            }
           }
           setPayer(newPayer);
         }
@@ -195,8 +168,12 @@ export default function AddBillPage() {
     });
   };
 
-  /* 长按删除支付人（所有支付人都可删除） */
+  /* 长按删除支付人 */
   const handleLongPressDeletePayer = (p: string) => {
+    if (p === '自己') {
+      Taro.showToast({ title: '默认支付人不可删除', icon: 'none' });
+      return;
+    }
     Taro.showModal({
       title: '删除支付人',
       content: `确定要删除「${p}」吗？`,
@@ -206,14 +183,7 @@ export default function AddBillPage() {
           const updated = participants.filter(item => item !== p);
           setParticipants(updated);
           saveToStorage(STORAGE_KEYS.payers, updated);
-          if (payer === p && updated.length > 0) setPayer(updated[0]);
-          // 删除颜色记录
-          if (payerColors[p]) {
-            const newColors = { ...payerColors };
-            delete newColors[p];
-            setPayerColors(newColors);
-            saveToStorage(STORAGE_KEYS.payerColors, newColors);
-          }
+          if (payer === p) setPayer('自己');
           Taro.showToast({ title: '已删除', icon: 'success' });
         }
       },
@@ -413,35 +383,21 @@ export default function AddBillPage() {
         <View>
           <Text className="block text-xs mb-2" style={{ color: theme.accent }}>支付人 <Text style={{ color: '#C0C8D4', fontSize: 10 }}>(长按删除)</Text></Text>
           <View className="flex items-center gap-2 flex-wrap">
-            {participants.map(p => {
-              const pColor = getPayerColor(p, payerColors);
-              const isSelected = payer === p;
-              return (
-                <View
-                  key={p}
-                  onClick={() => setPayer(p)}
-                  onLongPress={() => handleLongPressDeletePayer(p)}
-                  style={{
-                    flexDirection: 'row', alignItems: 'center', gap: 5,
-                    paddingLeft: 10, paddingRight: 10, paddingTop: 5, paddingBottom: 5, borderRadius: 20,
-                    backgroundColor: isSelected ? `${pColor}18` : '#F1F5F9',
-                    border: isSelected ? `1px solid ${pColor}55` : `1px solid #E8EDF2`,
-                    boxShadow: isSelected ? `0 3px 10px ${pColor}22` : 'none',
-                  }}
-                >
-                  {/* 彩色头像圆点 */}
-                  <View style={{
-                    width: 20, height: 20, borderRadius: 10,
-                    backgroundColor: pColor,
-                    justifyContent: 'center', alignItems: 'center',
-                  }}
-                  >
-                    <Text style={{ fontSize: 9, color: '#fff', fontWeight: '600' }}>{p.charAt(0)}</Text>
-                  </View>
-                  <Text className="block text-xs" style={{ color: isSelected ? pColor : '#64748B' }}>{p}</Text>
-                </View>
-              );
-            })}
+            {participants.map(p => (
+              <View
+                key={p}
+                onClick={() => setPayer(p)}
+                onLongPress={() => handleLongPressDeletePayer(p)}
+                className="px-4 py-2 rounded-full"
+                style={{
+                  backgroundColor: payer === p ? theme.bg : `${theme.bg}22`,
+                  border: payer === p ? `1px solid ${theme.name}44` : `1px solid ${theme.bg}`,
+                  boxShadow: payer === p ? `0 4px 12px ${theme.name}25` : 'none',
+                }}
+              >
+                <Text className="block text-xs" style={{ color: payer === p ? theme.name : '#8896A6' }}>{p}</Text>
+              </View>
+            ))}
             <View
               onClick={handleAddPayer}
               className="w-9 h-9 rounded-full flex items-center justify-center"
