@@ -64,8 +64,8 @@ export default function AddBillPage() {
   const [category, setCategory] = useState('交通');
   const [customCategory, setCustomCategory] = useState('');
   const [amount, setAmount] = useState('');
-  const [payer, setPayer] = useState('自己');
-  const [participants, setParticipants] = useState<string[]>(['小明', '小红', '自己']);
+  const [payer, setPayer] = useState('');
+  const [participants, setParticipants] = useState<string[]>([]);
   const [customCategories, setCustomCategories] = useState<string[]>([]);
   const [isTreat, setIsTreat] = useState(false);
   const [showCategoryDrawer, setShowCategoryDrawer] = useState(false);
@@ -91,7 +91,7 @@ export default function AddBillPage() {
     const savedCategories = loadFromStorage<string[]>(STORAGE_KEYS.customCategories, []);
     const savedPayers = loadFromStorage<string[]>(STORAGE_KEYS.payers, []);
     if (savedCategories.length > 0) setCustomCategories(savedCategories);
-    if (savedPayers.length > 0) setParticipants(savedPayers);
+    if (savedPayers.length > 0) { setParticipants(savedPayers); if (!payer) setPayer(savedPayers[0]); }
   }, []);
 
   useEffect(() => {
@@ -170,10 +170,6 @@ export default function AddBillPage() {
 
   /* 长按删除支付人 */
   const handleLongPressDeletePayer = (p: string) => {
-    if (p === '自己') {
-      Taro.showToast({ title: '默认支付人不可删除', icon: 'none' });
-      return;
-    }
     Taro.showModal({
       title: '删除支付人',
       content: `确定要删除「${p}」吗？`,
@@ -183,7 +179,7 @@ export default function AddBillPage() {
           const updated = participants.filter(item => item !== p);
           setParticipants(updated);
           saveToStorage(STORAGE_KEYS.payers, updated);
-          if (payer === p) setPayer('自己');
+          if (payer === p) setPayer(updated[0] || '');
           Taro.showToast({ title: '已删除', icon: 'success' });
         }
       },
@@ -383,25 +379,55 @@ export default function AddBillPage() {
         <View>
           <Text className="block text-xs mb-2" style={{ color: theme.accent }}>支付人 <Text style={{ color: '#C0C8D4', fontSize: 10 }}>(长按删除)</Text></Text>
           <View className="flex items-center gap-2 flex-wrap">
-            {participants.map(p => (
-              <View
-                key={p}
-                onClick={() => setPayer(p)}
-                onLongPress={() => handleLongPressDeletePayer(p)}
-                className="px-4 py-2 rounded-full"
-                style={{
-                  backgroundColor: payer === p ? theme.bg : `${theme.bg}22`,
-                  border: payer === p ? `1px solid ${theme.name}44` : `1px solid ${theme.bg}`,
-                  boxShadow: payer === p ? `0 4px 12px ${theme.name}25` : 'none',
-                }}
-              >
-                <Text className="block text-xs" style={{ color: payer === p ? theme.name : '#8896A6' }}>{p}</Text>
-              </View>
-            ))}
+            {participants.map((p, idx) => {
+              const payerColors = CARD_COLORS[idx % CARD_COLORS.length];
+              return (
+                <View
+                  key={p}
+                  onClick={() => setPayer(p)}
+                  onLongPress={() => handleLongPressDeletePayer(p)}
+                  className="px-3 py-3 rounded-xl"
+                  style={{
+                    width: '25%',
+                    minWidth: 80,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    backgroundColor: payer === p ? `${payerColors.bg}` : `${payerColors.bg}44`,
+                    border: payer === p ? `1px solid ${payerColors.amount}66` : `1px solid ${payerColors.bg}`,
+                    boxShadow: payer === p ? `0 4px 12px ${payerColors.name}20` : 'none',
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: 5,
+                      backgroundColor: payerColors.amount,
+                      flexShrink: 0,
+                    }}
+                  />
+                  <Text
+                    className="block text-xs"
+                    style={{
+                      color: payer === p ? payerColors.name : '#8896A6',
+                      fontSize: 12,
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      flex: 1,
+                    }}
+                  >
+                    {p}
+                  </Text>
+                </View>
+              );
+            })}
             <View
               onClick={handleAddPayer}
-              className="w-9 h-9 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: `${theme.bg}22`, border: `1px solid ${theme.bg}` }}
+              style={{
+                width: '25%', minWidth: 80, height: 40, borderRadius: 12,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                backgroundColor: `${theme.bg}22`, border: `1px dashed ${theme.bg}`,
+              }}
             >
               <Plus size={14} color={theme.name} />
             </View>

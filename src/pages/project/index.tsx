@@ -14,6 +14,7 @@ interface Bill {
   payer: string;
   is_treat: boolean;
   bill_date?: string;
+  participants?: string[];
 }
 
 /* 与首页一致的8种低饱和度配色 */
@@ -81,9 +82,66 @@ export default function ProjectPage() {
   const cardH = 112;                       // 封面卡片高度
   const buttonGap = 8;                     // 卡片与按钮间距
   const buttonH = 52;                      // 添加花费按钮高度
+  const settleH = bills.length > 0 ? 110 : 0;  // 分账情况卡片高度（有账单时显示）
+  const settleGap = 6;                     // 按钮与分账卡片间距
   const sectionH = 32;                     // 账单明细标题行高(fixed)
   const bottomH = 56;                      // 底部删除按钮+安全距
-  const topFixedH = headerH + cardGap + cardH + buttonGap + buttonH + sectionH;
+  const topFixedH = headerH + cardGap + cardH + buttonGap + buttonH + (settleH > 0 ? settleGap + settleH : 0) + sectionH;
+
+  /* 分账算法：计算谁该付给谁 */
+  const calculateSettlement = () => {
+    const nonTreatBills = bills.filter(b => !b.is_treat);
+    if (nonTreatBills.length === 0) return { balances: [], transfers: [] };
+
+    /* 收集所有参与人 */
+    const peopleSet = new Set<string>();
+    for (const b of nonTreatBills) {
+      peopleSet.add(b.payer);
+      const parts = b.participants || [];
+      parts.forEach((p: string) => peopleSet.add(p));
+    }
+    const people = Array.from(peopleSet);
+
+    /* 计算每人应付/已付 */
+    const paid: Record<string, number> = {};
+    const share: Record<string, number> = {};
+    for (const p of people) { paid[p] = 0; share[p] = 0; }
+
+    for (const b of nonTreatBills) {
+      const amt = Number(b.amount) || 0;
+      paid[b.payer] = (paid[b.payer] || 0) + amt;
+      const parts = (b.participants && b.participants.length > 0) ? b.participants : [b.payer];
+      const perPerson = amt / parts.length;
+      for (const p of parts) { share[p] = (share[p] || 0) + perPerson; }
+    }
+
+    /* 结余 = 已付 - 应付 */
+    const balances: { name: string; balance: number; color: string }[] = [];
+    for (const p of people) {
+      const bal = (paid[p] || 0) - (share[p] || 0);
+      if (Math.abs(bal) > 0.01) balances.push({ name: p, balance: Math.round(bal * 100) / 100, color: CARD_COLORS[Math.abs(p.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % CARD_COLORS.length].amount });
+    }
+
+    /* 转账建议：欠钱多的 → 收钱多的 */
+    const debtors = balances.filter(b => b.balance < -0.01).sort((a, b) => a.balance - b.balance);
+    const creditors = balances.filter(b => b.balance > 0.01).sort((a, b) => b.balance - a.balance);
+    const transfers: { from: string; to: string; amount: number }[] = [];
+    let di = 0, ci = 0;
+    while (di < debtors.length && ci < creditors.length) {
+      const owe = -debtors[di].balance;
+      const get = creditors[ci].balance;
+      const amount = Math.min(owe, get);
+      if (amount > 0.01) transfers.push({ from: debtors[di].name, to: creditors[ci].name, amount: Math.round(amount * 100) / 100 });
+      debtors[di].balance += amount;
+      creditors[ci].balance -= amount;
+      if (Math.abs(debtors[di].balance) <= 0.01) di++;
+      if (Math.abs(creditors[ci].balance) <= 0.01) ci++;
+    }
+
+    return { balances, transfers };
+  };
+
+  const { balances, transfers } = calculateSettlement();
 
   const fetchData = async () => {
     try {
@@ -492,11 +550,62 @@ export default function ProjectPage() {
         </View>
       </View>
 
+      {/* ========== 3.5 分账情况：固定在添加花费和账单之间（有账单时显示） ========== */}
+      {settleH > 0 && transfers.length > 0 && (
+        <View
+          style={{
+            position: 'fixed',
+            top: headerH + cardGap + cardH + buttonGap + buttonH + settleGap,
+            left: 12,
+            right: 12,
+            zIndex: 90,
+            height: settleH,
+            borderRadius: 14,
+            backgroundColor: '#FFFFFF',
+            border: '1px solid #E8EDF2',
+            padding: '10px 14px',
+          }}
+        >
+          {/* 标题 */}
+          <View style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <Text className="block text-xs font-semibold" style={{ color: '#6B7280' }}>💰 分账情况</Text>
+            {balances.length > 0 && (
+              <Text className="block" style={{ fontSize: 10, color: '#9CA3AF' }}>{balances.length}人参与</Text>
+            )}
+          </View>
+          {/* 转账建议列表 */}
+          <ScrollView scrollX showScrollbar={false} style={{ height: settleH - 50 }}>
+            <View style={{ display: 'flex', flexDirection: 'row', gap: 8 }}>
+              {transfers.map((t, i) => {
+                const fromColor = CARD_COLORS[Math.abs(t.from.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % CARD_COLORS.length];
+                const toColor = CARD_COLORS[Math.abs(t.to.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % CARD_COLORS.length];
+                return (
+                  <View
+                    key={i}
+                    style={{
+                      display: 'flex', alignItems: 'center',
+                      backgroundColor: `${fromColor.bg}44`,
+                      borderRadius: 10, padding: '6px 10px',
+                      gap: 4, flexShrink: 0,
+                    }}
+                  >
+                    <Text className="block" style={{ fontSize: 11, color: fromColor.name }}>{t.from}</Text>
+                    <Text className="block" style={{ fontSize: 11, color: '#9CA3AF' }}>→</Text>
+                    <Text className="block" style={{ fontSize: 11, color: toColor.name }}>¥{t.amount}</Text>
+                    <Text className="block" style={{ fontSize: 11, color: toColor.name }}>{t.to}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          </ScrollView>
+        </View>
+      )}
+
       {/* ========== 4. 账单明细标题：固定不动 ========== */}
       <View
         style={{
           position: 'fixed',
-          top: headerH + cardGap + cardH + buttonGap + buttonH + 4,
+          top: headerH + cardGap + cardH + buttonGap + buttonH + (settleH > 0 ? settleGap + settleH : 0) + 4,
           left: 16,
           right: 16,
           zIndex: 90,

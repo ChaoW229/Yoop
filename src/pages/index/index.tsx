@@ -321,16 +321,18 @@ export default function IndexPage() {
       {/* 新建项目弹窗 */}
       {showAddModal && (
         <View style={{ position: 'fixed', inset: 0, zIndex: 200, backgroundColor: '#FFFFFF' }}>
-          <View style={{ paddingTop: statusBarH + 6, display: 'flex', alignItems: 'center', padding: '0 16px', paddingBottom: 12 }}>
-            <View onClick={() => { setShowAddModal(false); setNewCoverTemp(''); }}
-              style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-            >
-              <X size={20} color="#94A3B8" />
+          <View style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 200, backgroundColor: '#FFFFFF' }}>
+            <View style={{ paddingTop: statusBarH + 6, display: 'flex', alignItems: 'center', padding: '0 16px', paddingBottom: 12 }}>
+              <View onClick={() => { setShowAddModal(false); setNewCoverTemp(''); }}
+                style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <X size={20} color="#94A3B8" />
+              </View>
+              <Text style={{ flex: 1, textAlign: 'center', ...titleStyle, paddingRight: 28 }}>添加新项目</Text>
             </View>
-            <Text style={{ flex: 1, textAlign: 'center', ...titleStyle, paddingRight: 28 }}>添加新项目</Text>
           </View>
 
-          <View style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <View style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 18, marginTop: statusBarH + 50 }}>
             <View>
               <Text style={{ fontSize: 13, color: '#94A3B8', marginBottom: 8, display: 'block', fontWeight: '500' }}>项目名称</Text>
               {/* eslint-disable-next-line no-restricted-syntax */}

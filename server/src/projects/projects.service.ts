@@ -14,12 +14,12 @@ export class ProjectsService {
     return data || [];
   }
 
-  async create(body: { name: string; destination: string; start_date?: string; end_date?: string; participants?: string[]; cover_url?: string }) {
+  async create(body: { name: string; destination?: string; start_date?: string; end_date?: string; participants?: string[]; cover_url?: string }) {
     const { data, error } = await this.client
       .from('projects')
       .insert({
         name: body.name,
-        destination: body.destination,
+        destination: body.destination || body.name,
         start_date: body.start_date,
         end_date: body.end_date,
         participants: body.participants || [],
