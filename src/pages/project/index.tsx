@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Taro, { useLoad, useDidShow } from '@tarojs/taro';
 /* eslint-disable-next-line no-restricted-syntax, import/no-duplicates */
 import { View, Text, Image, ScrollView, Picker, Input } from '@tarojs/components';
@@ -82,7 +82,11 @@ export default function ProjectPage() {
   const cardH = 112;                       // 封面卡片高度
   const buttonGap = 8;                     // 卡片与按钮间距
   const buttonH = 52;                      // 添加花费按钮高度
-  const settleH = bills.length > 0 ? 110 : 0;  // 分账情况卡片高度（有账单时显示）
+  /* 分账算法：计算谁该付给谁 */
+  const { balances, transfers } = useMemo(() => calculateSettlement(), [bills]);
+
+  const hasSettlement = bills.length > 0 && transfers.length > 0;  // 有账单且有转账建议时才显示
+  const settleH = hasSettlement ? 110 : 0;           // 分账情况卡片高度
   const settleGap = 6;                     // 按钮与分账卡片间距
   const sectionH = 32;                     // 账单明细标题行高(fixed)
   const bottomH = 56;                      // 底部删除按钮+安全距
@@ -116,32 +120,30 @@ export default function ProjectPage() {
     }
 
     /* 结余 = 已付 - 应付 */
-    const balances: { name: string; balance: number; color: string }[] = [];
+    const _balances: { name: string; balance: number; color: string }[] = [];
     for (const p of people) {
       const bal = (paid[p] || 0) - (share[p] || 0);
-      if (Math.abs(bal) > 0.01) balances.push({ name: p, balance: Math.round(bal * 100) / 100, color: CARD_COLORS[Math.abs(p.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % CARD_COLORS.length].amount });
+      if (Math.abs(bal) > 0.01) _balances.push({ name: p, balance: Math.round(bal * 100) / 100, color: CARD_COLORS[Math.abs(p.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % CARD_COLORS.length].amount });
     }
 
     /* 转账建议：欠钱多的 → 收钱多的 */
-    const debtors = balances.filter(b => b.balance < -0.01).sort((a, b) => a.balance - b.balance);
-    const creditors = balances.filter(b => b.balance > 0.01).sort((a, b) => b.balance - a.balance);
-    const transfers: { from: string; to: string; amount: number }[] = [];
+    const debtors = _balances.filter(b => b.balance < -0.01).sort((a, b) => a.balance - b.balance);
+    const creditors = _balances.filter(b => b.balance > 0.01).sort((a, b) => b.balance - a.balance);
+    const _transfers: { from: string; to: string; amount: number }[] = [];
     let di = 0, ci = 0;
     while (di < debtors.length && ci < creditors.length) {
       const owe = -debtors[di].balance;
       const get = creditors[ci].balance;
       const amount = Math.min(owe, get);
-      if (amount > 0.01) transfers.push({ from: debtors[di].name, to: creditors[ci].name, amount: Math.round(amount * 100) / 100 });
+      if (amount > 0.01) _transfers.push({ from: debtors[di].name, to: creditors[ci].name, amount: Math.round(amount * 100) / 100 });
       debtors[di].balance += amount;
       creditors[ci].balance -= amount;
       if (Math.abs(debtors[di].balance) <= 0.01) di++;
       if (Math.abs(creditors[ci].balance) <= 0.01) ci++;
     }
 
-    return { balances, transfers };
+    return { balances: _balances, transfers: _transfers };
   };
-
-  const { balances, transfers } = calculateSettlement();
 
   const fetchData = async () => {
     try {
@@ -551,7 +553,7 @@ export default function ProjectPage() {
       </View>
 
       {/* ========== 3.5 分账情况：固定在添加花费和账单之间（有账单时显示） ========== */}
-      {settleH > 0 && transfers.length > 0 && (
+      {hasSettlement && (
         <View
           style={{
             position: 'fixed',
