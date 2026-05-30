@@ -321,8 +321,8 @@ export default function IndexPage() {
       {/* 新建项目弹窗 */}
       {showAddModal && (
         <View style={{ position: 'fixed', inset: 0, zIndex: 200, backgroundColor: '#FFFFFF' }}>
-          <View style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 200, backgroundColor: '#FFFFFF' }}>
-            <View style={{ paddingTop: statusBarH + 10, display: 'flex', alignItems: 'center', padding: '0 16px', paddingBottom: 14 }}>
+          <View style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 200, backgroundColor: '#FFFFFF', height: capsuleBottom + 14 }}>
+            <View style={{ paddingTop: statusBarH, display: 'flex', alignItems: 'center', padding: '0 16px', paddingBottom: 10 }}>
               <View onClick={() => { setShowAddModal(false); setNewCoverTemp(''); }}
                 style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >
