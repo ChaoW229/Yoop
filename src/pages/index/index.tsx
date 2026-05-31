@@ -3,9 +3,7 @@ import Taro, { useDidShow } from '@tarojs/taro';
 /* eslint-disable-next-line no-restricted-syntax */
 import { View, Text, Image, ScrollView, Input } from '@tarojs/components';
 import { Network } from '@/network';
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import { Search, User, ChartPie, Plus, X } from 'lucide-react-taro';
-/* eslint-enable @typescript-eslint/no-unused-vars */
+import { Search, User, ChartPie, Plus } from 'lucide-react-taro';
 
 interface Project {
   id: string;
@@ -318,46 +316,67 @@ export default function IndexPage() {
         </View>
       )}
 
-      {/* 新建项目弹窗 */}
+      {/* ====== 底部半屏弹窗：新建项目 ====== */}
       {showAddModal && (
-        <View style={{ position: 'fixed', inset: 0, zIndex: 200, backgroundColor: '#FFFFFF' }}>
-          <View style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 200, backgroundColor: '#FFFFFF', height: capsuleBottom + 14 }}>
-            <View style={{ paddingTop: statusBarH, display: 'flex', alignItems: 'center', padding: '0 16px', paddingBottom: 10 }}>
-              <View onClick={() => { setShowAddModal(false); setNewCoverTemp(''); }}
-                style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              >
-                <X size={20} color="#94A3B8" />
-              </View>
-              <Text style={{ flex: 1, textAlign: 'center', ...titleStyle, paddingRight: 28 }}>添加新项目</Text>
+        <View style={{ position: 'fixed', inset: 0, zIndex: 200 }}>
+          {/* 遮罩层：点击关闭 */}
+          <View
+            onClick={() => { setShowAddModal(false); setNewCoverTemp(''); }}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.35)' }}
+          />
+          {/* 弹出面板：从底部升起 */}
+          <View
+            style={{
+              position: 'absolute', left: 0, right: 0, bottom: 0,
+              height: '62%',
+              backgroundColor: '#FFFFFF',
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              boxShadow: '0 -8px 40px rgba(0,0,0,0.12)',
+              display: 'flex', flexDirection: 'column',
+              padding: '0 20px',
+            }}
+            catchMove
+          >
+            {/* 顶部拖拽条 + 标题栏 */}
+            <View style={{ paddingTop: 12, paddingBottom: 6, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: '#E2E8F0', marginBottom: 12 }} />
+              <Text style={{ fontSize: 17, fontWeight: '600', color: '#1E293B', fontFamily: '-apple-system, "SF Pro Display", sans-serif' }}>添加新项目</Text>
             </View>
-          </View>
 
-          <View style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 18, marginTop: capsuleBottom + 6 }}>
-            <View>
-              <Text style={{ fontSize: 13, color: '#94A3B8', marginBottom: 8, display: 'block', fontWeight: '500' }}>项目名称</Text>
-              {/* eslint-disable-next-line no-restricted-syntax */}
-              <Input value={newName} onInput={(e) => setNewName(e.detail.value)} placeholder="例如：云南之旅"
-                style={{ height: 46, borderRadius: 12, backgroundColor: '#F8FAFC', padding: '0 14px', fontSize: 15, borderWidth: 1, borderColor: '#E2E8F0', borderStyle: 'solid' }}
-              />
-            </View>
+            {/* 表单内容区（可滚动） */}
+            <ScrollView scrollY enhanced showScrollbar={false} style={{ flex: 1 }}>
+              <View style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                {/* 项目名称 */}
+                <View>
+                  <Text className="block" style={{ fontSize: 13, color: '#94A3B8', marginBottom: 8, fontWeight: '500' }}>项目名称</Text>
+                  {/* eslint-disable-next-line no-restricted-syntax */}
+                  <Input value={newName} onInput={(e) => setNewName(e.detail.value)} placeholder="例如：云南之旅"
+                    style={{ height: 46, borderRadius: 12, backgroundColor: '#F8FAFC', padding: '0 14px', fontSize: 15, borderWidth: 1, borderColor: '#E2E8F0', borderStyle: 'solid' }}
+                  />
+                </View>
 
-            <View>
-              <Text style={{ fontSize: 13, color: '#94A3B8', marginBottom: 8, display: 'block', fontWeight: '500' }}>封面图片（可选）</Text>
-              <View onClick={handleChooseCover} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                {newCoverTemp ? (
-                  <Image src={newCoverTemp} mode="aspectFill" style={{ width: 68, height: 68, borderRadius: 14 }} />
-                ) : (
-                  <View style={{ width: 68, height: 68, borderRadius: 14, backgroundColor: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#E2E8F0', borderStyle: 'dashed' }}>
-                    <Text style={{ fontSize: 24, opacity: 0.4 }}>+</Text>
+                {/* 封面图片 */}
+                <View>
+                  <Text className="block" style={{ fontSize: 13, color: '#94A3B8', marginBottom: 8, fontWeight: '500' }}>封面图片（可选）</Text>
+                  <View onClick={handleChooseCover} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    {newCoverTemp ? (
+                      <Image src={newCoverTemp} mode="aspectFill" style={{ width: 68, height: 68, borderRadius: 14 }} />
+                    ) : (
+                      <View style={{ width: 68, height: 68, borderRadius: 14, backgroundColor: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#E2E8F0', borderStyle: 'dashed' }}>
+                        <Text style={{ fontSize: 24, opacity: 0.4 }}>+</Text>
+                      </View>
+                    )}
+                    <Text style={{ fontSize: 13, color: '#8896A6' }}>{newCoverTemp ? '点击更换图片' : '点击选择封面'}</Text>
                   </View>
-                )}
-                <Text style={{ fontSize: 13, color: '#8896A6' }}>{newCoverTemp ? '点击更换图片' : '点击选择封面'}</Text>
+                </View>
               </View>
-            </View>
+            </ScrollView>
 
+            {/* 底部创建按钮（固定在面板底部） */}
             <View onClick={handleCreateProject}
               style={{
-                marginTop: 8, height: 48, borderRadius: 14,
+                marginTop: 10, marginBottom: 28, height: 48, borderRadius: 14,
                 background: 'linear-gradient(135deg, #5B8DEE, #7BA8EA)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}

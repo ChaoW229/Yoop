@@ -128,10 +128,10 @@ function ProjectPage() {
 
   const hasSettlement = bills.length > 0 && transfers.length > 0;  // 有账单且有转账建议时才显示
   const settleH = hasSettlement ? 110 : 0;           // 分账情况卡片高度
-  const settleGap = 6;                     // 按钮与分账卡片间距
   const sectionH = 32;                     // 账单明细标题行高(fixed)
   const bottomH = 56;                      // 底部删除按钮+安全距
-  const topFixedH = headerH + cardGap + cardH + buttonGap + buttonH + (settleH > 0 ? settleGap + settleH : 0) + sectionH;
+  // 布局常量（不含分账，分账动态计算）
+  const topFixedH = headerH + cardGap + cardH + buttonGap + buttonH;
 
   const fetchData = async () => {
     try {
@@ -333,12 +333,22 @@ function ProjectPage() {
           success: async (res) => {
             const tempPath = res.tempFilePaths[0];
             try {
+              console.log('上传封面图片...', tempPath);
               const uploadRes = await Network.uploadFile({ url: '/api/upload', filePath: tempPath, name: 'file' });
-              const coverUrl = (uploadRes.data as any)?.url || '';
+              // 解析响应：可能是字符串或对象
+              let coverUrl = '';
+              const respData = uploadRes.data as any;
+              if (typeof respData === 'string') {
+                try { const parsed = JSON.parse(respData); coverUrl = parsed?.data?.url || parsed?.url || ''; } catch (_) { /* ignore */ }
+              } else {
+                coverUrl = respData?.data?.url || respData?.url || '';
+              }
+              console.log('上传成功，URL:', coverUrl);
+              if (!coverUrl) { Taro.showToast({ title: '上传返回异常', icon: 'none' }); return; }
               await Network.request({ url: `/api/projects/${project.id}`, method: 'PUT', data: { cover_url: coverUrl } });
               setProject((prev: any) => ({ ...prev, cover_url: coverUrl }));
               Taro.showToast({ title: '封面已更换', icon: 'success' });
-            } catch (_) { Taro.showToast({ title: '上传失败', icon: 'none' }); }
+            } catch (err) { console.error('上传失败:', err); Taro.showToast({ title: '上传失败', icon: 'none' }); }
           },
         })}
           style={{ width: 84, height: 84, borderRadius: 14, flexShrink: 0, overflow: 'hidden', position: 'relative' }}
@@ -425,23 +435,23 @@ function ProjectPage() {
         <Text style={{ fontSize: 15, fontWeight: '600', color: '#FFFFFF', letterSpacing: 1 }}>添加花费</Text>
       </View>
 
-      {/* ====== 固定分账情况卡片（仅在有转账建议时显示） ====== */}
+      {/* ====== 固定分账情况窗口（仅在有转账建议时显示，独立圆角窗口） ====== */}
       {hasSettlement && (
         <View style={{
-          position: 'fixed', top: topFixedH - sectionH - settleGap - settleH, left: 12, right: 12, zIndex: 90,
-          borderRadius: 14, overflow: 'hidden', height: settleH,
+          position: 'fixed', top: topFixedH, left: 12, right: 12, zIndex: 85,
+          borderRadius: 16, overflow: 'hidden',
           backgroundColor: '#FFFFFF',
           border: '1px solid #E8EDF2',
           boxShadow: '0 2px 12px rgba(91,155,213,0.04)',
           padding: 14,
+          height: settleH,
         }}
         >
           <View style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
             <Text style={{ fontSize: 13, fontWeight: '600', color: '#1E293B' }}>💰 分账情况</Text>
             <Text style={{ fontSize: 11, color: '#94A3B8', marginLeft: 8 }}>{balances.length}人参与</Text>
           </View>
-
-          <ScrollView scrollX enhanced showScrollbar={false} style={{ whiteSpace: 'nowrap' }}>
+          <ScrollView scrollX enhanced showScrollbar={false}>
             <View style={{ display: 'flex', flexDirection: 'row', gap: 8 }}>
               {transfers.map((t, i) => {
                 const cIdx = i % CARD_COLORS.length;
@@ -449,7 +459,8 @@ function ProjectPage() {
                 return (
                   <View key={`${t.from}-${t.to}`} style={{
                     display: 'inline-flex', flexDirection: 'row', alignItems: 'center', gap: 4,
-                    backgroundColor: sc.bg, borderRadius: 20, paddingTop: 6, paddingBottom: 6, paddingLeft: 12, paddingRight: 12,
+                    backgroundColor: sc.bg, borderRadius: 20,
+                    paddingTop: 6, paddingBottom: 6, paddingLeft: 12, paddingRight: 12,
                     border: `1px solid ${sc.accent}`,
                     flexShrink: 0,
                   }}
@@ -465,18 +476,18 @@ function ProjectPage() {
         </View>
       )}
 
-      {/* ====== 固定账单明细标题 ====== */}
+      {/* ====== 固定账单明细标题（位置根据分账窗口动态调整） ====== */}
       <View style={{
-        position: 'fixed', top: topFixedH - sectionH, left: 16, right: 16, zIndex: 90,
+        position: 'fixed', top: topFixedH + (hasSettlement ? settleH + 10 : 0), left: 16, right: 16, zIndex: 90,
         height: sectionH, display: 'flex', alignItems: 'center',
       }}
       >
         <Text style={{ fontSize: 13, fontWeight: '600', color: '#64748B' }}>账单明细</Text>
       </View>
 
-      {/* ====== 账单明细窗口（中间滚动区） ====== */}
+      {/* ====== 账单明细窗口（中间滚动区，top动态跟随分账窗口） ====== */}
       <View style={{
-        position: 'fixed', top: topFixedH, left: 12, right: 12,
+        position: 'fixed', top: topFixedH + sectionH + (hasSettlement ? settleH + 10 : 0), left: 12, right: 12,
         bottom: bottomH, zIndex: 80,
         borderRadius: 16, overflow: 'hidden',
         backgroundColor: '#FFFFFF',
