@@ -556,7 +556,9 @@ function ProjectPage() {
   );
 }
 
-export default typeof definePageConfig === 'function'
+export default ProjectPage;
+
+export const projectConfig = typeof definePageConfig === 'function'
   ? definePageConfig({ navigationBarTitleText: '项目详情', navigationStyle: 'custom' })
   : { navigationBarTitleText: '项目详情', navigationStyle: 'custom' }
 
