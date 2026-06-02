@@ -124,12 +124,16 @@ function ProjectPage() {
   const buttonH = 52;                      // 添加花费按钮高度
 
   /* 分账算法（函数已 hoist 到组件外部，安全调用）*/
-  const { balances, transfers } = useMemo(() => calculateSettlement(bills), [bills]);
+  const { balances, transfers } = useMemo(() => {
+    const result = calculateSettlement(bills);
+    console.log('[Settlement] bills:', bills.length, 'transfers:', result.transfers.length, 'balances:', result.balances.map(b => `${b.name}:${b.balance}`));
+    return result;
+  }, [bills]);
 
   const hasSettlement = bills.length > 0 && transfers.length > 0;  // 有账单且有转账建议时才显示
   const settleH = hasSettlement ? 110 : 0;           // 分账情况卡片高度
   const sectionH = 32;                     // 账单明细标题行高(fixed)
-  const bottomH = 56;                      // 底部删除按钮+安全距
+  const bottomH = 70;                      // 底部删除按钮+安全距
   // 布局常量（不含分账，分账动态计算）
   const topFixedH = headerH + cardGap + cardH + buttonGap + buttonH;
 

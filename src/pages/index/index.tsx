@@ -58,6 +58,8 @@ export default function IndexPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newName, setNewName] = useState('');
   const [newCoverTemp, setNewCoverTemp] = useState('');
+  const [newCoverUrl, setNewCoverUrl] = useState('');
+  const [, setIsUploading] = useState(false);
 
   /* 动画状态 */
   const [cardVisible, setCardVisible] = useState<Record<string, boolean>>({});
@@ -125,18 +127,21 @@ export default function IndexPage() {
   const handleCreateProject = async () => {
     if (!newName.trim()) { Taro.showToast({ title: '请输入名称', icon: 'none' }); return; }
     try {
+      const coverUrl = newCoverUrl || '';
       await Network.request({
         url: '/api/projects',
         method: 'POST',
-        data: { name: newName.trim(), cover_url: newCoverTemp },
+        data: { name: newName.trim(), cover_url: coverUrl },
       });
-      setShowAddModal(false); setNewName(''); setNewCoverTemp('');
+      setShowAddModal(false); setNewName(''); setNewCoverTemp(''); setNewCoverUrl('');
       fetchProjects();
+      Taro.eventCenter.trigger('yoop_project_updated');
       Taro.showToast({ title: '创建成功', icon: 'success' });
     } catch (e) { Taro.showToast({ title: '创建失败', icon: 'none' }); }
   };
 
   const handleChooseCover = async () => {
+    setIsUploading(true);
     const isMiniApp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT;
     try {
       let tempFilePath = '';
@@ -147,12 +152,18 @@ export default function IndexPage() {
         const res = await Taro.chooseImage({ count: 1, sourceType: ['album', 'camera'] });
         if (res.tempFilePaths && res.tempFilePaths.length > 0) tempFilePath = res.tempFilePaths[0];
       }
-      if (!tempFilePath) return;
+      if (!tempFilePath) { setIsUploading(false); return; }
+      setNewCoverTemp(tempFilePath);
       const uploadRes = await Network.uploadFile({ url: '/api/upload', filePath: tempFilePath, name: 'file' });
+      console.log('[Upload] cover result:', JSON.stringify(uploadRes.data));
       const parsed = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data;
-      const url = parsed?.data?.url;
-      if (url) setNewCoverTemp(url);
-    } catch (e) { console.error('choose error', e); }
+      const url = parsed?.data?.url || parsed?.url || '';
+      if (url) { setNewCoverUrl(url); Taro.showToast({ title: '图片上传成功', icon: 'success' }); }
+      else { Taro.showToast({ title: '图片保存失败，请重试', icon: 'none' }); }
+    } catch (e) {
+      console.error('[Upload] error:', e);
+      Taro.showToast({ title: '选择失败', icon: 'none' });
+    } finally { setIsUploading(false); }
   };
 
   /* 统一标题字体样式 */
