@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import Taro from '@tarojs/taro'
 /* eslint-disable-next-line no-restricted-syntax */
-import { View, Text, ScrollView, Picker } from '@tarojs/components'
+import { View, Text, ScrollView } from '@tarojs/components'
 import { Network } from '@/network'
 
 const CARD_COLORS = [
@@ -15,20 +15,38 @@ const CARD_COLORS = [
   { bg: '#FFF8EC', name: '#C05621', amount: '#DD6B20', accent: '#FBD38D' },
 ]
 
+/* 主题色 - 用于按钮选中态等强调 */
+const PRIMARY = { gradient: 'linear-gradient(135deg, #5B8DEE, #7BA8EA)', solid: '#5B8DEE', light: '#EEF2FF' }
+
 interface Bill {
   id: string; name: string; amount: number;
   category: string; payer: string; bill_date: string;
   is_treat: boolean; project_id?: string; destination?: string;
 }
 
+/* 自定义日期选择器：月份/日期 滚轮数据 */
+const MONTHS = ['01','02','03','04','05','06','07','08','09','10','11','12']
+function getDaysInMonth(y: number, m: number): string[] {
+  const d = new Date(y, m, 0).getDate()
+  return Array.from({ length: d }, (_, i) => String(i + 1).padStart(2, '0'))
+}
+function getYears(): string[] {
+  const y = new Date().getFullYear()
+  return Array.from({ length: 10 }, (_, i) => String(y - 3 + i))
+}
+
 function StatsPage() {
   const [activeTab, setActiveTab] = useState<'chart'|'detail'>('chart')
   const [bills, setBills] = useState<Bill[]>([])
-  const [dateRange, setDateRange] = useState<string>('all') // all | month | week | custom
+  const [dateRange, setDateRange] = useState<string>('all')
   const [customStart, setCustomStart] = useState('')
   const [customEnd, setCustomEnd] = useState('')
+  /* 日期选择器状态 */
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [pickerTarget, setPickerTarget] = useState<'start'|'end'>('start')
+  const [pickerYear, setPickerYear] = useState('')
+  const [pickerMonth, setPickerMonth] = useState('')
+  const [pickerDay, setPickerDay] = useState('')
 
   const isWeapp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT
   let capsuleBottom = 56
@@ -79,7 +97,7 @@ function StatsPage() {
       .sort((a, b) => b.amount - a.amount)
   }, [filteredBills])
 
-  // 环形饼图数据
+  /* 环形饼图数据 */
   const pieData = useMemo(() => {
     if (!categoryStats.length) return []
     const total = categoryStats.reduce((s, c) => s + c.amount, 0)
@@ -93,9 +111,11 @@ function StatsPage() {
 
   const conicGradient = useMemo(() => {
     if (!pieData.length) return '#F0F0F0'
-    let currentAngle = 0; const stops = pieData.map(d => {
+    let currentAngle = 0
+    const stops = pieData.map(d => {
       const stop = `${d.color} ${currentAngle}% ${currentAngle + d.angle}%`
-      currentAngle += d.angle; return stop
+      currentAngle += d.angle
+      return stop
     })
     return `conic-gradient(${stops.join(', ')})`
   }, [pieData])
@@ -110,21 +130,38 @@ function StatsPage() {
     } catch (e) { console.error(e) }
   }
 
-  const onDateChange = (e) => {
-    const val = e.detail.value
-    if (pickerTarget === 'start') setCustomStart(val)
-    else setCustomEnd(val)
-    setShowDatePicker(false)
-  }
-
+  /* ====== 纯自定义日期选择：打开时初始化滚轮值 ====== */
   const openDatePicker = (target: 'start'|'end') => {
+    const currentVal = target === 'start' ? customStart : customEnd
+    let y = '', m = '', d = ''
+    if (currentVal && currentVal.includes('-')) {
+      const parts = currentVal.split('-')
+      if (parts.length === 3) { y = parts[0]; m = parts[1]; d = parts[2] }
+    }
+    if (!y || !m || !d) {
+      const today = new Date()
+      y = String(today.getFullYear()); m = String(today.getMonth() + 1).padStart(2, '0'); d = String(today.getDate()).padStart(2, '0')
+    }
     setPickerTarget(target)
+    setPickerYear(y); setPickerMonth(m); setPickerDay(d)
     setShowDatePicker(true)
   }
 
+  /* 确认日期选择 */
+  const confirmDatePick = () => {
+    const val = `${pickerYear}-${pickerMonth}-${pickerDay}`
+    if (pickerTarget === 'start') setCustomStart(val)
+    else setCustomEnd(val)
+    setDateRange('custom')
+    setShowDatePicker(false)
+  }
+
+  /* 固定头部高度估算 */
+  const fixedHeaderH = capsuleBottom + 50
+
   return (
     <View className="flex flex-col h-full" style={{ backgroundColor: '#F7F9FC' }}>
-      {/* 固定顶部 */}
+      {/* ========== 固定顶部：总支出 + 筛选按钮 ========== */}
       <View style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, backgroundColor: '#FFFFFF', paddingBottom: 10 }}>
         <View style={{ paddingTop: capsuleBottom - 12, paddingLeft: 16, paddingRight: 16, display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <View style={{ flex: 1 }}>
@@ -133,7 +170,7 @@ function StatsPage() {
           </View>
 
           {/* 筛选按钮 */}
-          <View style={{ position: 'relative' }} onClick={() => setShowDatePicker(!showDatePicker)}>
+          <View style={{ position: 'relative' }} onClick={() => setShowDatePicker(true)}>
             <View style={{
               paddingTop: 6, paddingBottom: 6, paddingLeft: 14, paddingRight: 14,
               borderRadius: 20, borderWidth: 1, borderColor: '#E2E8F0',
@@ -150,12 +187,13 @@ function StatsPage() {
         </View>
       </View>
 
-      {/* 图表模式 */}
+      {/* ========== 图表模式 ========== */}
       {activeTab === 'chart' && (
-        <ScrollView scrollY enhanced showScrollbar={false} style={{ flex: 1, marginTop: capsuleBottom + 40 }}>
-          <View style={{ padding: 12, gap: 10, display: 'flex', flexDirection: 'column' }}>
-            {/* 分类统计：左侧环形图 + 右侧条形图 */}
-            {(pieData.length > 0) && (
+        <ScrollView scrollY enhanced showScrollbar={false} style={{ flex: 1, marginTop: fixedHeaderH, marginBottom: 60 }}>
+          <View style={{ paddingLeft: 12, paddingRight: 12, paddingTop: 8, paddingBottom: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+            {/* 分类统计窗口：左环形图 + 右侧条形图（横排布局） */}
+            {(pieData.length > 0) ? (
               <View style={{
                 borderRadius: 16, overflow: 'hidden',
                 backgroundColor: '#FFFFFF',
@@ -163,65 +201,79 @@ function StatsPage() {
                 padding: 16,
               }}
               >
-                {/* 左环形图 + 右条形图 横排 */}
-                <View style={{ display: 'flex', flexDirection: 'row', gap: 20 }}>
-                  {/* 左侧：环形图 */}
-                  <View style={{ alignItems: 'center', width: 140, flexShrink: 0 }}>
-                    {/* 环形图 */}
+                <Text style={{ fontSize: 14, fontWeight: 600, color: '#333', marginBottom: 14, display: 'block' }}>📊 分类占比</Text>
+
+                {/* 左环 + 右条 横向排列 */}
+                <View style={{ display: 'flex', flexDirection: 'row', gap: 16 }}>
+                  {/* ---- 左侧：环形图 + 图例 ---- */}
+                  <View style={{ width: 130, flexShrink: 0, alignItems: 'center' }}>
+                    {/* 环形图本体 */}
                     <View style={{
-                      width: 100, height: 100, borderRadius: 50,
+                      width: 96, height: 96, borderRadius: 48,
                       background: conicGradient,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      position: 'relative',
                     }}
                     >
                       <View style={{
-                        width: 64, height: 64, borderRadius: 32,
+                        width: 60, height: 60, borderRadius: 30,
                         backgroundColor: '#FFFFFF',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        position: 'absolute',
+                        flexDirection: 'column',
                       }}
                       >
-                        <Text style={{ fontSize: 11, color: '#999' }}>已统计</Text>
+                        <Text style={{ fontSize: 10, color: '#999' }}>总计</Text>
                         <Text style={{ fontSize: 15, fontWeight: 700, color: '#333' }}>{totalAmount.toFixed(0)}</Text>
                       </View>
                     </View>
-                    {/* 占比列表（在环下方） */}
-                    <View style={{ marginTop: 12, width: '100%', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      {pieData.slice(0, 5).map((item, i) => (
-                        <View key={`pie-${i}`} style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: item.color }} />
-                          <Text style={{ fontSize: 11, color: '#666', flex: 1 }}>{item.name}</Text>
-                          <Text style={{ fontSize: 11, fontWeight: 600, color: '#333' }}>{item.percent}%</Text>
-                        </View>
-                      ))}
-                    </View>
+                    {/* 环下占比列表（最多5项） */}
+                    <ScrollView scrollX enhanced showScrollbar={false} style={{ marginTop: 10, width: '100%' }}>
+                      <View style={{ display: 'flex', flexDirection: 'row', gap: 8, flexWrap: 'nowrap' }}>
+                        {pieData.slice(0, 5).map((item, i) => (
+                          <View key={`pie-${i}`} style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FAFBFC', borderRadius: 8, paddingTop: 4, paddingBottom: 4, paddingLeft: 6, paddingRight: 6 }}>
+                            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: item.color, flexShrink: 0 }} />
+                            <Text style={{ fontSize: 10, color: '#555' }}>{item.name}</Text>
+                            <Text style={{ fontSize: 10, fontWeight: 600, color: '#333' }}>{item.percent}%</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </ScrollView>
                   </View>
 
-                  {/* 右侧：横向条形图 */}
-                  <View style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, minWidth: 140 }}>
-                    <Text style={{ fontSize: 13, fontWeight: 600, color: '#333', marginBottom: 2 }}>分类排行</Text>
+                  {/* ---- 右侧：横向条形图（分类排行） ---- */}
+                  <View style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6, minWidth: 140 }}>
+                    <Text style={{ fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 2 }}>分类排行</Text>
                     {categoryStats.slice(0, 6).map((cat, i) => (
                       <View key={`bar-${i}`} style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Text style={{ fontSize: 12, color: '#666', width: 44, textAlign: 'right' }}>{cat.name}</Text>
-                        <View style={{ flex: 1, height: 16, backgroundColor: '#F0F0F0', borderRadius: 8, overflow: 'hidden' }}>
+                        <Text style={{ fontSize: 11.5, color: '#666', width: 40, textAlign: 'right', flexShrink: 0 }}>{cat.name}</Text>
+                        <View style={{ flex: 1, height: 18, backgroundColor: '#F0F2F5', borderRadius: 9, overflow: 'hidden', minWidth: 0 }}>
                           <View style={{
-                            width: `${Math.max(cat.amount / maxCatAmount * 100, 8)}%`,
-                            height: 16,
-                            background: `linear-gradient(90deg, ${CARD_COLORS[i % CARD_COLORS.length].amount}, ${CARD_COLORS[i % CARD_COLORS.length].amount}44)`,
-                            borderRadius: 8,
+                            width: `${Math.max(cat.amount / maxCatAmount * 100, 6)}%`,
+                            height: 18,
+                            background: `linear-gradient(90deg, ${CARD_COLORS[i % CARD_COLORS.length].amount}, ${CARD_COLORS[i % CARD_COLORS.length].amount}55)`,
+                            borderRadius: 9,
+                            minWidth: cat.amount > 0 ? 24 : 0,
                           }}
                           />
                         </View>
-                        <Text style={{ fontSize: 11, color: '#999', width: 48, textAlign: 'right' }}>¥{cat.amount}</Text>
+                        <Text style={{ fontSize: 10.5, color: '#999', width: 46, textAlign: 'right', flexShrink: 0 }}>¥{cat.amount}</Text>
                       </View>
                     ))}
                   </View>
                 </View>
               </View>
+            ) : (
+              <View style={{
+                borderRadius: 16, overflow: 'hidden', backgroundColor: '#FFFFFF',
+                border: '1px solid #E8EDF2', padding: 32, alignItems: 'center',
+              }}
+              >
+                <Text style={{ fontSize: 28 }}>📊</Text>
+                <Text style={{ fontSize: 14, color: '#999', marginTop: 8, display: 'block' }}>暂无统计数据</Text>
+                <Text style={{ fontSize: 12, color: '#BBB', marginTop: 4, display: 'block' }}>添加账单后将自动生成图表</Text>
+              </View>
             )}
 
-            {/* 目的地地图区域 */}
+            {/* 目的地分布窗口（标签云风格） */}
             {destinationStats.length > 0 && (
               <View style={{
                 borderRadius: 16, overflow: 'hidden',
@@ -230,7 +282,7 @@ function StatsPage() {
                 padding: 16,
               }}
               >
-                <Text style={{ fontSize: 13, fontWeight: 600, color: '#333', marginBottom: 12 }}>
+                <Text style={{ fontSize: 14, fontWeight: 600, color: '#333', marginBottom: 12, display: 'block' }}>
                   📍 目的地分布 ({destinationStats.length}个城市)
                 </Text>
                 <View style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -250,27 +302,15 @@ function StatsPage() {
                 </View>
               </View>
             )}
-
-            {!categoryStats.length && (
-              <View style={{
-                marginTop: 80, alignItems: 'center', justifyContent: 'center',
-                paddingTop: 4, paddingBottom: 40,
-              }}
-              >
-                <Text style={{ fontSize: 28 }}>📊</Text>
-                <Text style={{ fontSize: 14, color: '#999', marginTop: 8, display: 'block' }}>暂无统计数据</Text>
-                <Text style={{ fontSize: 12, color: '#BBB', marginTop: 4, display: 'block' }}>添加账单后将自动生成图表</Text>
-              </View>
-            )}
           </View>
         </ScrollView>
       )}
 
-      {/* 明细模式 */}
+      {/* ========== 明细模式 ========== */}
       {activeTab === 'detail' && (
-        <ScrollView scrollY enhanced showScrollbar={false} style={{ flex: 1, marginTop: capsuleBottom + 40, marginBottom: 58 }}>
+        <ScrollView scrollY enhanced showScrollbar={false} style={{ flex: 1, marginTop: fixedHeaderH, marginBottom: 60 }}>
+          {/* 明细窗口 — 布满屏幕左右边距 */}
           <View style={{ padding: 12 }}>
-            {/* 明细窗口 */}
             <View style={{
               borderRadius: 16, overflow: 'hidden',
               backgroundColor: '#FFFFFF',
@@ -287,7 +327,7 @@ function StatsPage() {
                 })
                 const sortedDates = Object.keys(grouped).sort().reverse()
                 if (!sortedDates.length) return (
-                  <View style={{ paddingTop: 6, paddingBottom: 60, alignItems: 'center' }}>
+                  <View style={{ paddingTop: 30, paddingBottom: 40, alignItems: 'center' }}>
                     <Text style={{ fontSize: 28 }}>📋</Text>
                     <Text style={{ fontSize: 14, color: '#999', marginTop: 8, display: 'block' }}>暂无明细</Text>
                   </View>
@@ -297,6 +337,7 @@ function StatsPage() {
                   const dayTotal = items.reduce((s, i) => s + Number(i.amount), 0)
                   return (
                     <View key={date}>
+                      {/* 日期行头 */}
                       <View style={{
                         paddingTop: 8, paddingBottom: 8, paddingLeft: 16, paddingRight: 16,
                         backgroundColor: '#FAFBFC',
@@ -307,6 +348,7 @@ function StatsPage() {
                         <Text style={{ fontSize: 12, color: '#999' }}>{date.replace(/-/g, '/')}</Text>
                         <Text style={{ fontSize: 12, fontWeight: 600, color: '#666' }}>¥{dayTotal.toFixed(2)}</Text>
                       </View>
+                      {/* 账单项 */}
                       {items.map((bill, bi) => {
                         const ci = (bill.category || '其他').charCodeAt(0) % CARD_COLORS.length
                         const cc = CARD_COLORS[ci]
@@ -326,11 +368,11 @@ function StatsPage() {
                             >
                               <Text style={{ fontSize: 14 }}>{getCategoryIcon(bill.category)}</Text>
                             </View>
-                            <View style={{ flex: 1 }}>
+                            <View style={{ flex: 1, minWidth: 0 }}>
                               <Text style={{ fontSize: 14, color: '#333', display: 'block' }}>{bill.name}</Text>
                               <Text style={{ fontSize: 11, color: '#999', display: 'block' }}>{bill.payer}{bill.is_treat ? ' · 请客' : ''}</Text>
                             </View>
-                            <Text style={{ fontSize: 15, fontWeight: 700, color: cc.amount }}>¥{Number(bill.amount).toFixed(2)}</Text>
+                            <Text style={{ fontSize: 15, fontWeight: 700, color: cc.amount, flexShrink: 0 }}>¥{Number(bill.amount).toFixed(2)}</Text>
                           </View>
                         )
                       })}
@@ -343,7 +385,7 @@ function StatsPage() {
         </ScrollView>
       )}
 
-      {/* 日期选择器弹窗 */}
+      {/* ========== 纯自定义日期选择弹窗（无 Picker 双弹窗问题） ========== */}
       {showDatePicker && (
         <View style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
@@ -355,160 +397,208 @@ function StatsPage() {
           <View style={{
             backgroundColor: '#FFFFFF',
             borderTopLeftRadius: 24, borderTopRightRadius: 24,
-            paddingTop: 20, paddingBottom: 32,
+            paddingTop: 20, paddingBottom: 36,
             paddingLeft: 20, paddingRight: 20,
           }}
             onClick={(e) => e.stopPropagation()}
           >
-            <Text style={{ fontSize: 16, fontWeight: 600, color: '#333', textAlign: 'center', marginBottom: 16, display: 'block' }}>选择日期范围</Text>
+            <Text style={{ fontSize: 16, fontWeight: 600, color: '#333', textAlign: 'center', marginBottom: 16, display: 'block' }}>筛选时间范围</Text>
 
-            {/* 快捷选项 */}
-            <View style={{ display: 'flex', flexDirection: 'row', gap: 8, marginBottom: 16, justifyContent: 'center' }}>
+            {/* 快捷选项行 */}
+            <View style={{ display: 'flex', flexDirection: 'row', gap: 8, marginBottom: 18, justifyContent: 'center' }}>
               {[
                 { key: 'all', label: '全部' },
                 { key: 'month', label: '本月' },
                 { key: 'week', label: '近7天' },
+                { key: 'custom', label: '自选' },
               ].map(opt => (
                 <View key={opt.key}
-                  onClick={() => { setDateRange(opt.key); setShowDatePicker(false) }}
+                  onClick={() => {
+                    setDateRange(opt.key);
+                    if (opt.key !== 'custom') setShowDatePicker(false);
+                    else openDatePicker(opt.key === 'custom' ? 'start' : 'start');
+                  }}
                   style={{
                     paddingTop: 8, paddingBottom: 8, paddingLeft: 18, paddingRight: 18, borderRadius: 20,
-                    backgroundColor: dateRange === opt.key ? CARD_COLORS[2].amount : '#F0F0F0',
+                    backgroundColor: dateRange === opt.key ? PRIMARY.solid : '#F0F0F0',
                   }}
                 >
                   <Text style={{ fontSize: 13, color: dateRange === opt.key ? '#FFF' : '#666' }}>{opt.label}</Text>
                 </View>
               ))}
-
-              <View
-                onClick={() => setDateRange('custom')}
-                style={{
-                  paddingTop: 8, paddingBottom: 8, paddingLeft: 18, paddingRight: 18, borderRadius: 20,
-                  backgroundColor: dateRange === 'custom' ? CARD_COLORS[2].amount : '#F0F0F0',
-                }}
-              >
-                <Text style={{ fontSize: 13, color: dateRange === 'custom' ? '#FFF' : '#666' }}>自选</Text>
-              </View>
             </View>
 
-            {/* 自选日期：开始和结束在同一行 */}
+            {/* 自选日期区域：起始 + 结束 在同一行 */}
             {dateRange === 'custom' && (
-              <View style={{ display: 'flex', flexDirection: 'row', gap: 12, marginBottom: 12 }}>
-                <View style={{ flex: 1 }}
-                  onClick={() => openDatePicker('start')}
-                >
-                  <Text style={{ fontSize: 12, color: '#999', display: 'block', marginBottom: 4 }}>起始日期</Text>
-                  <View style={{
-                    paddingTop: 10, paddingBottom: 10, paddingLeft: 12, paddingRight: 12,
-                    borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#FAFBFC',
-                  }}
+              <>
+                {/* 起始/结束 显示框 */}
+                <View style={{ display: 'flex', flexDirection: 'row', gap: 12, marginBottom: 14 }}>
+                  <View style={{ flex: 1 }}
+                    onClick={() => openDatePicker('start')}
                   >
-                    <Text style={{ fontSize: 14, color: customStart ? '#333' : '#CCC' }}>
-                      {customStart ? customStart.replace(/-/g, '/') : '点击选择'}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={{ flex: 1 }}
-                  onClick={() => openDatePicker('end')}
-                >
-                  <Text style={{ fontSize: 12, color: '#999', display: 'block', marginBottom: 4 }}>结束日期</Text>
-                  <View style={{
-                    paddingTop: 10, paddingBottom: 10, paddingLeft: 12, paddingRight: 12,
-                    borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#FAFBFC',
-                  }}
-                  >
-                    <Text style={{ fontSize: 14, color: customEnd ? '#333' : '#CCC' }}>
-                      {customEnd ? customEnd.replace(/-/g, '/') : '点击选择'}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            )}
-
-            {/* 单一日期 Picker（根据 pickerTarget 切换） */}
-            {showDatePicker && dateRange === 'custom' && (
-              <View style={{ marginTop: 8 }}>
-                <Text style={{ fontSize: 12, color: '#999', display: 'block', marginBottom: 4, textAlign: 'center' }}>
-                  选择{pickerTarget === 'start' ? '起始' : '结束'}日期
-                </Text>
-                <Picker mode="date" value={pickerTarget === 'start' ? customStart : customEnd} onChange={onDateChange}>
-                  <View style={{
-                    paddingTop: 12, paddingBottom: 12, borderRadius: 10,
-                    borderWidth: 1, borderColor: CARD_COLORS[2].amount, backgroundColor: '#FAFBFF',
-                    alignItems: 'center',
-                  }}
-                  >
-                    <Text style={{ fontSize: 15, color: '#333' }}>
-                      {pickerTarget === 'start' ? (customStart || '请选择起始日期') : (customEnd || '请选择结束日期')}
-                    </Text>
-                  </View>
-                </Picker>
-                <View style={{ display: 'flex', flexDirection: 'row', gap: 12, marginTop: 12 }}>
-                  <View style={{ flex: 1 }} onClick={() => setShowDatePicker(false)}>
+                    <Text style={{ fontSize: 12, color: '#999', display: 'block', marginBottom: 4 }}>起始日期</Text>
                     <View style={{
-                      paddingTop: 12, paddingBottom: 12, borderRadius: 10,
-                      backgroundColor: '#F0F0F0', alignItems: 'center',
+                      paddingTop: 10, paddingBottom: 10, paddingLeft: 12, paddingRight: 12,
+                      borderRadius: 10, borderWidth: 1, borderColor: pickerTarget === 'start' ? PRIMARY.solid : '#E2E8F0',
+                      backgroundColor: pickerTarget === 'start' ? PRIMARY.light : '#FAFBFC',
                     }}
                     >
-                      <Text style={{ fontSize: 14, color: '#666' }}>取消</Text>
+                      <Text style={{ fontSize: 14, color: customStart ? '#333' : '#CCC' }}>
+                        {customStart ? customStart.replace(/-/g, '/') : '点击选择'}
+                      </Text>
                     </View>
                   </View>
-                  <View style={{ flex: 1 }} onClick={() => setShowDatePicker(false)}>
+
+                  <View style={{ flex: 1 }}
+                    onClick={() => openDatePicker('end')}
+                  >
+                    <Text style={{ fontSize: 12, color: '#999', display: 'block', marginBottom: 4 }}>结束日期</Text>
                     <View style={{
-                      paddingTop: 12, paddingBottom: 12, borderRadius: 10,
-                      backgroundColor: CARD_COLORS[2].amount, alignItems: 'center',
+                      paddingTop: 10, paddingBottom: 10, paddingLeft: 12, paddingRight: 12,
+                      borderRadius: 10, borderWidth: 1, borderColor: pickerTarget === 'end' ? PRIMARY.solid : '#E2E8F0',
+                      backgroundColor: pickerTarget === 'end' ? PRIMARY.light : '#FAFBFC',
                     }}
                     >
-                      <Text style={{ fontSize: 14, color: '#FFF' }}>确定</Text>
+                      <Text style={{ fontSize: 14, color: customEnd ? '#333' : '#CCC' }}>
+                        {customEnd ? customEnd.replace(/-/g, '/') : '点击选择'}
+                      </Text>
                     </View>
                   </View>
                 </View>
-              </View>
+
+                {/* 滚轮式年月日选择器（三列模拟滚动选择） */}
+                {pickerTarget && (
+                  <View style={{
+                    backgroundColor: '#FAFBFF', borderRadius: 14,
+                    paddingTop: 14, paddingBottom: 14,
+                    borderWidth: 1, borderColor: '#E8EDF2',
+                  }}
+                  >
+                    <Text style={{ fontSize: 12, color: PRIMARY.solid, textAlign: 'center', marginBottom: 10, display: 'block' }}>
+                      选择{pickerTarget === 'start' ? '起始' : '结束'}日期
+                    </Text>
+
+                    {/* 三列滚轮：年 | 月 | 日 */}
+                    <View style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', gap: 8 }}>
+                      {/* 年列 */}
+                      <View style={{ alignItems: 'center' }}>
+                        <Text style={{ fontSize: 11, color: '#AAA', marginBottom: 4, display: 'block' }}>年</Text>
+                        <ScrollView scrollY enhanced showScrollbar={false} style={{ height: 120, width: 70 }}>
+                          {getYears().map(yr => (
+                            <View key={yr} onClick={() => setPickerYear(yr)} style={{
+                              paddingTop: 8, paddingBottom: 8, alignItems: 'center',
+                              backgroundColor: yr === pickerYear ? PRIMARY.light : 'transparent', borderRadius: 8,
+                            }}
+                            >
+                              <Text style={{ fontSize: yr === pickerYear ? 17 : 14, fontWeight: yr === pickerYear ? '700' : '400', color: yr === pickerYear ? PRIMARY.solid : '#666' }}>{yr}</Text>
+                            </View>
+                          ))}
+                        </ScrollView>
+                      </View>
+
+                      {/* 月列 */}
+                      <View style={{ alignItems: 'center' }}>
+                        <Text style={{ fontSize: 11, color: '#AAA', marginBottom: 4, display: 'block' }}>月</Text>
+                        <ScrollView scrollY enhanced showScrollbar={false} style={{ height: 120, width: 56 }}>
+                          {MONTHS.map(mo => (
+                            <View key={mo} onClick={() => setPickerMonth(mo)} style={{
+                              paddingTop: 8, paddingBottom: 8, alignItems: 'center',
+                              backgroundColor: mo === pickerMonth ? PRIMARY.light : 'transparent', borderRadius: 8,
+                            }}
+                            >
+                              <Text style={{ fontSize: mo === pickerMonth ? 17 : 14, fontWeight: mo === pickerMonth ? '700' : '400', color: mo === pickerMonth ? PRIMARY.solid : '#666' }}>{mo}</Text>
+                            </View>
+                          ))}
+                        </ScrollView>
+                      </View>
+
+                      {/* 日列 */}
+                      <View style={{ alignItems: 'center' }}>
+                        <Text style={{ fontSize: 11, color: '#AAA', marginBottom: 4, display: 'block' }}>日</Text>
+                        <ScrollView scrollY enhanced showScrollbar={false} style={{ height: 120, width: 56 }}>
+                          {getDaysInMonth(Number(pickerYear), Number(pickerMonth)).map(da => (
+                            <View key={da} onClick={() => setPickerDay(da)} style={{
+                              paddingTop: 8, paddingBottom: 8, alignItems: 'center',
+                              backgroundColor: da === pickerDay ? PRIMARY.light : 'transparent', borderRadius: 8,
+                            }}
+                            >
+                              <Text style={{ fontSize: da === pickerDay ? 17 : 14, fontWeight: da === pickerDay ? '700' : '400', color: da === pickerDay ? PRIMARY.solid : '#666' }}>{da}</Text>
+                            </View>
+                          ))}
+                        </ScrollView>
+                      </View>
+                    </View>
+                  </View>
+                )}
+              </>
             )}
+
+            {/* 取消/确定按钮（仅自选模式下且选择了目标时显示） */}
+            <View style={{ display: 'flex', flexDirection: 'row', gap: 12, marginTop: dateRange === 'custom' ? 16 : 0 }}>
+              <View style={{ flex: 1 }} onClick={() => setShowDatePicker(false)}>
+                <View style={{
+                  paddingTop: 12, paddingBottom: 12, borderRadius: 12,
+                  backgroundColor: '#F0F0F0', alignItems: 'center', display: 'flex',
+                }}
+                >
+                  <Text style={{ fontSize: 14, color: '#666' }}>取消</Text>
+                </View>
+              </View>
+              <View style={{ flex: 1 }} onClick={() => { if (dateRange !== 'custom') setShowDatePicker(false); else confirmDatePick() }}>
+                <View style={{
+                  paddingTop: 12, paddingBottom: 12, borderRadius: 12,
+                  backgroundColor: PRIMARY.solid, alignItems: 'center', display: 'flex',
+                }}
+                >
+                  <Text style={{ fontSize: 14, color: '#FFF' }}>确定</Text>
+                </View>
+              </View>
+            </View>
           </View>
         </View>
       )}
 
-      {/* 底部固定按钮栏 */}
+      {/* ========== 底部固定按钮栏（全宽、选中态色块强化） ========== */}
       <View style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
         zIndex: 100, backgroundColor: '#FFFFFF',
-        paddingTop: 8, paddingBottom: 8,
         borderTopWidth: 1, borderTopColor: '#F0F0F0',
-        display: 'flex', flexDirection: 'row', gap: 0, paddingLeft: 0, paddingRight: 0,
+        display: 'flex', flexDirection: 'row', gap: 0,
+        paddingLeft: 12, paddingRight: 12, paddingBottom: 8, paddingTop: 8,
       }}
       >
-        <View style={{ flex: 1 }}
+        {/* 图表按钮 */}
+        <View style={{ flex: 1, marginLeft: 4, marginRight: 4 }}
           onClick={() => setActiveTab('chart')}
         >
           <View style={{
-            marginLeft: 16, marginRight: 16,
             paddingTop: 14, paddingBottom: 14, borderRadius: 14,
-            backgroundColor: activeTab === 'chart' ? CARD_COLORS[2].bg : '#FFFFFF',
+            backgroundColor: activeTab === 'chart' ? PRIMARY.gradient : '#FFFFFF',
             borderWidth: activeTab === 'chart' ? 0 : 1, borderColor: '#E8EDF2',
             alignItems: 'center',
             display: 'flex', flexDirection: 'row', justifyContent: 'center', gap: 6,
+            boxShadow: activeTab === 'chart' ? '0 4px 14px rgba(91,141,238,0.25)' : 'none',
           }}
           >
             <Text style={{ fontSize: 17 }}>📊</Text>
-            <Text style={{ fontSize: 15, fontWeight: 600, color: activeTab === 'chart' ? CARD_COLORS[2].name : '#999' }}>图表</Text>
+            <Text style={{ fontSize: 15, fontWeight: 600, color: activeTab === 'chart' ? '#FFFFFF' : '#999' }}>图表</Text>
           </View>
         </View>
-        <View style={{ flex: 1 }}
+        {/* 明细按钮 */}
+        <View style={{ flex: 1, marginLeft: 4, marginRight: 4 }}
           onClick={() => setActiveTab('detail')}
         >
           <View style={{
-            marginLeft: 16, marginRight: 16,
             paddingTop: 14, paddingBottom: 14, borderRadius: 14,
-            backgroundColor: activeTab === 'detail' ? CARD_COLORS[2].bg : '#FFFFFF',
+            backgroundColor: activeTab === 'detail' ? PRIMARY.gradient : '#FFFFFF',
             borderWidth: activeTab === 'detail' ? 0 : 1, borderColor: '#E8EDF2',
             alignItems: 'center',
             display: 'flex', flexDirection: 'row', justifyContent: 'center', gap: 6,
+            boxShadow: activeTab === 'detail' ? '0 4px 14px rgba(91,141,238,0.25)' : 'none',
           }}
           >
             <Text style={{ fontSize: 17 }}>📋</Text>
-            <Text style={{ fontSize: 15, fontWeight: 600, color: activeTab === 'detail' ? CARD_COLORS[2].name : '#999' }}>明细</Text>
+            <Text style={{ fontSize: 15, fontWeight: 600, color: activeTab === 'detail' ? '#FFFFFF' : '#999' }}>明细</Text>
           </View>
         </View>
       </View>

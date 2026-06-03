@@ -59,7 +59,7 @@ export default function IndexPage() {
   const [newName, setNewName] = useState('');
   const [newCoverTemp, setNewCoverTemp] = useState('');
   const [newCoverUrl, setNewCoverUrl] = useState('');
-  const [, setIsUploading] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   /* 动画状态 */
   const [cardVisible, setCardVisible] = useState<Record<string, boolean>>({});
@@ -126,22 +126,26 @@ export default function IndexPage() {
 
   const handleCreateProject = async () => {
     if (!newName.trim()) { Taro.showToast({ title: '请输入名称', icon: 'none' }); return; }
+    if (uploading) { Taro.showToast({ title: '图片上传中...', icon: 'none' }); return; }
     try {
       const coverUrl = newCoverUrl || '';
-      await Network.request({
+      console.log('[CreateProject] name=', newName.trim(), 'cover_url=', coverUrl);
+      const res = await Network.request({
         url: '/api/projects',
         method: 'POST',
         data: { name: newName.trim(), cover_url: coverUrl },
       });
+      console.log('[CreateProject] response:', JSON.stringify(res.data)?.substring(0, 200));
       setShowAddModal(false); setNewName(''); setNewCoverTemp(''); setNewCoverUrl('');
       fetchProjects();
       Taro.eventCenter.trigger('yoop_project_updated');
       Taro.showToast({ title: '创建成功', icon: 'success' });
-    } catch (e) { Taro.showToast({ title: '创建失败', icon: 'none' }); }
+    } catch (e) { console.error('[CreateProject] error:', e); Taro.showToast({ title: '创建失败', icon: 'none' }); }
   };
 
   const handleChooseCover = async () => {
-    setIsUploading(true);
+    if (uploading) return;
+    setUploading(true);
     const isMiniApp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT;
     try {
       let tempFilePath = '';
@@ -152,18 +156,30 @@ export default function IndexPage() {
         const res = await Taro.chooseImage({ count: 1, sourceType: ['album', 'camera'] });
         if (res.tempFilePaths && res.tempFilePaths.length > 0) tempFilePath = res.tempFilePaths[0];
       }
-      if (!tempFilePath) { setIsUploading(false); return; }
+      if (!tempFilePath) { setUploading(false); return; }
       setNewCoverTemp(tempFilePath);
+
+      /* 上传到服务器 */
+      console.log('[Upload] 开始上传封面图片...');
       const uploadRes = await Network.uploadFile({ url: '/api/upload', filePath: tempFilePath, name: 'file' });
-      console.log('[Upload] cover result:', JSON.stringify(uploadRes.data));
-      const parsed = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data;
-      const url = parsed?.data?.url || parsed?.url || '';
-      if (url) { setNewCoverUrl(url); Taro.showToast({ title: '图片上传成功', icon: 'success' }); }
-      else { Taro.showToast({ title: '图片保存失败，请重试', icon: 'none' }); }
+      console.log('[Upload] cover raw result:', JSON.stringify(uploadRes.data).substring(0, 300));
+
+      /* 解析响应（兼容字符串和对象格式） */
+      let url = '';
+      const respData = uploadRes.data as any;
+      if (typeof respData === 'string') {
+        try { const parsed = JSON.parse(respData); url = parsed?.data?.url || parsed?.url || ''; } catch (_) { console.error('[Upload] JSON解析失败:', respData.substring(0, 100)); }
+      } else {
+        url = respData?.data?.url || respData?.url || '';
+      }
+
+      console.log('[Upload] 解析后URL:', url);
+      if (url) { setNewCoverUrl(url); Taro.showToast({ title: '图片已就绪', icon: 'success' }); }
+      else { Taro.showToast({ title: '上传返回异常，请重试', icon: 'none' }); }
     } catch (e) {
       console.error('[Upload] error:', e);
       Taro.showToast({ title: '选择失败', icon: 'none' });
-    } finally { setIsUploading(false); }
+    } finally { setUploading(false); }
   };
 
   /* 统一标题字体样式 */
