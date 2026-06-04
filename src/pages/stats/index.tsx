@@ -1,126 +1,176 @@
 import { useState, useEffect, useMemo } from 'react'
-import Taro from '@tarojs/taro'
+import Taro, { useDidShow } from '@tarojs/taro'
 /* eslint-disable-next-line no-restricted-syntax */
 import { View, Text, ScrollView } from '@tarojs/components'
 import { Network } from '@/network'
+import {
+  FileText,
+  FileChartPie,
+  Map as MapIcon,
+  Utensils,
+  House,
+  Car,
+  ShoppingBag,
+  Coffee,
+  Plane,
+  Gamepad2,
+  Ellipsis,
+  ChevronRight,
+} from 'lucide-react-taro'
 
-const CARD_COLORS = [
-  { bg: '#F5F0E8', name: '#6B5E4A', amount: '#C4A35A', accent: '#D4B896' },
-  { bg: '#EEF5F3', name: '#3D5A47', amount: '#7BA888', accent: '#A8C9B2' },
-  { bg: '#F0F2F8', name: '#4A5568', amount: '#718096', accent: '#A0AEC0' },
-  { bg: '#FAF5F0', name: '#8B6914', amount: '#D4A017', accent: '#E6C87A' },
-  { bg: '#F5EFF5', name: '#6B4575', amount: '#B07CC0', accent: '#D4B0DC' },
-  { bg: '#EDF5F8', name: '#1E6091', amount: '#4299E1', accent: '#90CDF4' },
-  { bg: '#FEF5F5', name: '#9B2C2C', amount: '#E53E3E', accent: '#FCBABA' },
-  { bg: '#FFF8EC', name: '#C05621', amount: '#DD6B20', accent: '#FBD38D' },
-]
+/* ======== 主题色（参考截图：薄荷绿）======== */
+const THEME = {
+  primary: '#52C41A',
+  primaryLight: '#73D13D',
+  primaryDark: '#389E0D',
+  primaryBg: 'linear-gradient(135deg, #52C41A, #73D13D)',
+  headerBg: 'linear-gradient(160deg, #52C41A, #5CB85C)',
+}
 
-/* 主题色 - 用于按钮选中态等强调 */
-const PRIMARY = { gradient: 'linear-gradient(135deg, #5B8DEE, #7BA8EA)', solid: '#5B8DEE', light: '#EEF2FF' }
+const CATEGORY_CONFIG: Record<string, { icon: any; color: string; bg: string }> = {
+  '餐饮': { icon: Utensils, color: '#F5A623', bg: '#FFF7E6' },
+  '住宿': { icon: House, color: '#5B8DEE', bg: '#EEF2FF' },
+  '交通': { icon: Car, color: '#52C41A', bg: '#F0FFF0' },
+  '购物': { icon: ShoppingBag, color: '#EB2F96', bg: '#FFF0F6' },
+  '娱乐': { icon: Gamepad2, color: '#9254DE', bg: '#F9F0FF' },
+  '咖啡': { icon: Coffee, color: '#8B572A', bg: '#FBF5ED' },
+  '门票': { icon: Plane, color: '#13C2C2', bg: '#E6FFFE' },
+  '其他': { icon: Ellipsis, color: '#8C8C8C', bg: '#FAFAFA' },
+}
+
+function getCategoryConfig(name: string) {
+  return CATEGORY_CONFIG[name] || CATEGORY_CONFIG['其他']
+}
+
+function getDayLabel(dateStr: string) {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const d = new Date(dateStr)
+  d.setHours(0, 0, 0, 0)
+  const diff = Math.floor((today.getTime() - d.getTime()) / 86400000)
+  if (diff === 0) return '今天'
+  if (diff === 1) return '昨天'
+  if (diff === 2) return '前天'
+  const md = `${d.getMonth() + 1}月${d.getDate()}日`
+  const weeks = ['日', '一', '二', '三', '四', '五', '六']
+  return `${md} 星期${weeks[d.getDay()]}`
+}
 
 interface Bill {
   id: string; name: string; amount: number;
   category: string; payer: string; bill_date: string;
   is_treat: boolean; project_id?: string; destination?: string;
+  note?: string;
 }
 
-/* 自定义日期选择器：月份/日期 滚轮数据 */
-const MONTHS = ['01','02','03','04','05','06','07','08','09','10','11','12']
-function getDaysInMonth(y: number, m: number): string[] {
-  const d = new Date(y, m, 0).getDate()
-  return Array.from({ length: d }, (_, i) => String(i + 1).padStart(2, '0'))
-}
-function getYears(): string[] {
-  const y = new Date().getFullYear()
-  return Array.from({ length: 10 }, (_, i) => String(y - 3 + i))
-}
-
+/* ======== 主组件 ======== */
 function StatsPage() {
-  const [activeTab, setActiveTab] = useState<'chart'|'detail'>('chart')
-  const [bills, setBills] = useState<Bill[]>([])
-  const [dateRange, setDateRange] = useState<string>('all')
-  const [customStart, setCustomStart] = useState('')
-  const [customEnd, setCustomEnd] = useState('')
-  /* 日期选择器状态 */
-  const [showDatePicker, setShowDatePicker] = useState(false)
-  const [pickerTarget, setPickerTarget] = useState<'start'|'end'>('start')
-  const [pickerYear, setPickerYear] = useState('')
-  const [pickerMonth, setPickerMonth] = useState('')
-  const [pickerDay, setPickerDay] = useState('')
+  /* 三段式Tab */
+  type TabType = 'detail' | 'chart' | 'map'
+  const [activeTab, setActiveTab] = useState<TabType>('detail')
 
+  const [bills, setBills] = useState<Bill[]>([])
+  const [dateRange, setDateRange] = useState<string>('month')
+
+  /* 系统信息 */
+  const statusBarH = Taro.getSystemInfoSync().statusBarHeight || 20
+  let capsuleBottom = statusBarH + 44
   const isWeapp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT
-  let capsuleBottom = 56
-  if (isWeapp) try {
-    const menuRect = Taro.getMenuButtonBoundingClientRect()
-    capsuleBottom = menuRect.bottom + 6 || 56
-  } catch (_) {}
+  if (isWeapp) {
+    try {
+      const mb = Taro.getMenuButtonBoundingClientRect()
+      if (mb && mb.bottom > 0) capsuleBottom = mb.bottom + 6
+    } catch (_) {}
+  }
 
   useEffect(() => { fetchData() }, [])
+  useDidShow(() => { fetchData() })
 
   const filteredBills = useMemo(() => {
     if (!bills.length) return []
+    const now = new Date()
+    let start: Date, end: Date
     if (dateRange === 'all') return bills
-    const now = new Date(); let start: Date, end: Date
-    if (dateRange === 'month') {
+    else if (dateRange === 'month') {
       start = new Date(now.getFullYear(), now.getMonth(), 1)
       end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
     } else if (dateRange === 'week') {
-      end = new Date(); start = new Date(end); start.setDate(start.getDate() - 6)
+      end = new Date()
+      start = new Date(end)
+      start.setDate(start.getDate() - 6)
       start.setHours(0, 0, 0, 0)
-    } else if (dateRange === 'custom' && customStart && customEnd) {
-      start = new Date(customStart + 'T00:00:00'); end = new Date(customEnd + 'T23:59:59')
-    } else { return bills }
+      end.setHours(23, 59, 59, 999)
+    } else {
+      return bills
+    }
     return bills.filter(b => {
-      const d = new Date(b.bill_date); return d >= start && d <= end
+      const d = new Date(b.bill_date)
+      return d >= start && d <= end
     })
-  }, [bills, dateRange, customStart, customEnd])
+  }, [bills, dateRange])
 
-  const totalAmount = useMemo(() =>
-    filteredBills.reduce((s, b) => s + (Number(b.amount) || 0), 0), [filteredBills])
+  /* 支出/入账 */
+  const totalExpense = useMemo(() =>
+    filteredBills.filter(b => Number(b.amount) < 0 || !b.is_treat).reduce((s, b) => s + Math.abs(Number(b.amount)), 0),
+    [filteredBills])
+  const totalIncome = useMemo(() =>
+    filteredBills.filter(b => Number(b.amount) >= 0 && b.is_treat).reduce((s, b) => s + Number(b.amount), 0),
+    [filteredBills])
 
+  /* 分类统计 */
   const categoryStats = useMemo(() => {
     const m = new Map<string, number>()
     filteredBills.filter(b => !b.is_treat).forEach(b => {
-      m.set(b.category, (m.get(b.category) || 0) + Number(b.amount))
+      m.set(b.category, (m.get(b.category) || 0) + Math.abs(Number(b.amount)))
     })
     return Array.from(m.entries()).map(([name, amount]) => ({ name, amount }))
       .sort((a, b) => b.amount - a.amount)
   }, [filteredBills])
 
-  const destinationStats = useMemo(() => {
-    const m = new Map<string, number>()
-    filteredBills.forEach(b => {
-      if (b.destination) m.set(b.destination, (m.get(b.destination) || 0) + Number(b.amount))
-    })
-    return Array.from(m.entries())
-      .map(([city, amount]) => ({ city, amount }))
-      .sort((a, b) => b.amount - a.amount)
-  }, [filteredBills])
-
-  /* 环形饼图数据 */
+  /* 饼图数据 */
   const pieData = useMemo(() => {
     if (!categoryStats.length) return []
     const total = categoryStats.reduce((s, c) => s + c.amount, 0)
-    return categoryStats.map((c, i) => ({
+    return categoryStats.map((c, _i) => ({
       ...c,
-      percent: total > 0 ? Math.round((c.amount / total) * 100) : 0,
-      color: CARD_COLORS[i % CARD_COLORS.length].amount,
+      percent: total > 0 ? ((c.amount / total) * 100).toFixed(2) : '0',
       angle: total > 0 ? (c.amount / total) * 360 : 0,
+      color: getCategoryConfig(c.name).color,
     }))
   }, [categoryStats])
 
   const conicGradient = useMemo(() => {
-    if (!pieData.length) return '#F0F0F0'
-    let currentAngle = 0
+    if (!pieData.length) return '#E8E8E8'
+    let curAngle = 0
     const stops = pieData.map(d => {
-      const stop = `${d.color} ${currentAngle}% ${currentAngle + d.angle}%`
-      currentAngle += d.angle
+      const stop = `${d.color} ${curAngle}% ${curAngle + d.angle}%`
+      curAngle += d.angle
       return stop
     })
     return `conic-gradient(${stops.join(', ')})`
   }, [pieData])
 
   const maxCatAmount = categoryStats.length > 0 ? Math.max(...categoryStats.map(c => c.amount)) : 1
+
+  /* 目的地统计（用于地图） */
+  const destinationList = useMemo(() => {
+    const m = new Map<string, { amount: number; count: number }>()
+    filteredBills.forEach(b => {
+      const dest = b.destination || ''
+      if (!dest) return
+      const prev = m.get(dest) || { amount: 0, count: 0 }
+      m.set(dest, { amount: prev.amount + Math.abs(Number(b.amount)), count: prev.count + 1 })
+    })
+    return Array.from(m.entries())
+      .map(([city, v]) => ({ city, ...v }))
+      .sort((a, b) => b.amount - a.amount)
+  }, [filteredBills])
+
+  /* 当前月份显示文本 */
+  const currentMonthLabel = (() => {
+    const now = new Date()
+    return `${now.getFullYear()}年${now.getMonth() + 1}月`
+  })()
 
   const fetchData = async () => {
     try {
@@ -130,195 +180,75 @@ function StatsPage() {
     } catch (e) { console.error(e) }
   }
 
-  /* ====== 纯自定义日期选择：打开时初始化滚轮值 ====== */
-  const openDatePicker = (target: 'start'|'end') => {
-    const currentVal = target === 'start' ? customStart : customEnd
-    let y = '', m = '', d = ''
-    if (currentVal && currentVal.includes('-')) {
-      const parts = currentVal.split('-')
-      if (parts.length === 3) { y = parts[0]; m = parts[1]; d = parts[2] }
-    }
-    if (!y || !m || !d) {
-      const today = new Date()
-      y = String(today.getFullYear()); m = String(today.getMonth() + 1).padStart(2, '0'); d = String(today.getDate()).padStart(2, '0')
-    }
-    setPickerTarget(target)
-    setPickerYear(y); setPickerMonth(m); setPickerDay(d)
-    setShowDatePicker(true)
-  }
+  /* ====== Header高度 ====== */
+  const detailHeaderH = capsuleBottom + 110   // 明细页header较高(标题+筛选行+汇总行)
+  const chartHeaderH = capsuleBottom + 130     // 统计页header(日期+支出入账切换+金额)
 
-  /* 确认日期选择 */
-  const confirmDatePick = () => {
-    const val = `${pickerYear}-${pickerMonth}-${pickerDay}`
-    if (pickerTarget === 'start') setCustomStart(val)
-    else setCustomEnd(val)
-    setDateRange('custom')
-    setShowDatePicker(false)
-  }
-
-  /* 固定头部高度估算 */
-  const fixedHeaderH = capsuleBottom + 50
-
+  /* ====== 渲染 ====== */
   return (
-    <View className="flex flex-col h-full" style={{ backgroundColor: '#F7F9FC' }}>
-      {/* ========== 固定顶部：总支出 + 筛选按钮 ========== */}
-      <View style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, backgroundColor: '#FFFFFF', paddingBottom: 10 }}>
-        <View style={{ paddingTop: capsuleBottom - 12, paddingLeft: 16, paddingRight: 16, display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 13, color: '#999' }}>总支出</Text>
-            <Text style={{ fontSize: 24, fontWeight: 700, color: '#333', fontFamily: '"Georgia","Times New Roman",serif' }}>¥{totalAmount.toFixed(2)}</Text>
-          </View>
-
-          {/* 筛选按钮 */}
-          <View style={{ position: 'relative' }} onClick={() => setShowDatePicker(true)}>
+    <View className="flex flex-col h-full" style={{ backgroundColor: '#F5F5F5' }}>
+      {/* ==================== 明细 Tab ==================== */}
+      {activeTab === 'detail' && (
+        <>
+          {/* 固定绿色Header */}
+          <View style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0,
+            zIndex: 100,
+            background: THEME.headerBg,
+          }}
+          >
+            {/* 标题行 */}
             <View style={{
-              paddingTop: 6, paddingBottom: 6, paddingLeft: 14, paddingRight: 14,
-              borderRadius: 20, borderWidth: 1, borderColor: '#E2E8F0',
-              backgroundColor: '#FAFBFC',
-              display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 4,
+              paddingTop: statusBarH,
+              height: capsuleBottom,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              paddingLeft: 16, paddingRight: 16,
             }}
             >
-              <Text style={{ fontSize: 13, color: '#666' }}>{{
-                all: '全部', month: '本月', week: '近7天', custom: customStart ? `${customStart}~${customEnd}` : '自选',
-              }[dateRange]}</Text>
-              <Text style={{ fontSize: 10, color: '#999' }}>▼</Text>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#FFFFFF', fontFamily: '-apple-system, "SF Pro Display", sans-serif' }}>记账本</Text>
+            </View>
+
+            {/* 筛选行 */}
+            <View style={{ paddingLeft: 16, paddingRight: 16, paddingBottom: 8, display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View onClick={() => {
+                const ranges: Record<string, string> = { month: 'all', all: 'month', week: 'month' }
+                setDateRange(ranges[dateRange] || 'month')
+              }} style={{
+                paddingTop: 5, paddingBottom: 5, paddingLeft: 12, paddingRight: 12,
+                borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.25)',
+              }}
+              >
+                <Text style={{ fontSize: 13, color: '#FFFFFF' }}>{{
+                  all: '全部类型', month: '本月', week: '近7天',
+                }[dateRange]}</Text>
+              </View>
+              <View style={{ width: 20, height: 20, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 12, color: '#FFFFFF' }}>&#8862;</Text>
+              </View>
+            </View>
+
+            {/* 汇总行 */}
+            <View style={{
+              paddingLeft: 16, paddingRight: 16, paddingBottom: 14,
+              display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 12,
+            }}
+            >
+              <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.9)' }}>{currentMonthLabel}</Text>
+              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>&#9660;</Text>
+              <View style={{ flex: 1 }} />
+              <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.9)' }}>总支出¥{totalExpense.toFixed(2)}</Text>
+              <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.65)' }}>总入账¥{totalIncome.toFixed(2)}</Text>
             </View>
           </View>
-        </View>
-      </View>
 
-      {/* ========== 图表模式 ========== */}
-      {activeTab === 'chart' && (
-        <ScrollView scrollY enhanced showScrollbar={false} style={{ flex: 1, marginTop: fixedHeaderH, marginBottom: 60 }}>
-          <View style={{ paddingLeft: 12, paddingRight: 12, paddingTop: 8, paddingBottom: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
-
-            {/* 分类统计窗口：左环形图 + 右侧条形图（横排布局） */}
-            {(pieData.length > 0) ? (
-              <View style={{
-                borderRadius: 16, overflow: 'hidden',
-                backgroundColor: '#FFFFFF',
-                border: '1px solid #E8EDF2',
-                padding: 16,
-              }}
-              >
-                <Text style={{ fontSize: 14, fontWeight: 600, color: '#333', marginBottom: 14, display: 'block' }}>📊 分类占比</Text>
-
-                {/* 左环 + 右条 横向排列 */}
-                <View style={{ display: 'flex', flexDirection: 'row', gap: 16 }}>
-                  {/* ---- 左侧：环形图 + 图例 ---- */}
-                  <View style={{ width: 130, flexShrink: 0, alignItems: 'center' }}>
-                    {/* 环形图本体 */}
-                    <View style={{
-                      width: 96, height: 96, borderRadius: 48,
-                      background: conicGradient,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}
-                    >
-                      <View style={{
-                        width: 60, height: 60, borderRadius: 30,
-                        backgroundColor: '#FFFFFF',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        flexDirection: 'column',
-                      }}
-                      >
-                        <Text style={{ fontSize: 10, color: '#999' }}>总计</Text>
-                        <Text style={{ fontSize: 15, fontWeight: 700, color: '#333' }}>{totalAmount.toFixed(0)}</Text>
-                      </View>
-                    </View>
-                    {/* 环下占比列表（最多5项） */}
-                    <ScrollView scrollX enhanced showScrollbar={false} style={{ marginTop: 10, width: '100%' }}>
-                      <View style={{ display: 'flex', flexDirection: 'row', gap: 8, flexWrap: 'nowrap' }}>
-                        {pieData.slice(0, 5).map((item, i) => (
-                          <View key={`pie-${i}`} style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FAFBFC', borderRadius: 8, paddingTop: 4, paddingBottom: 4, paddingLeft: 6, paddingRight: 6 }}>
-                            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: item.color, flexShrink: 0 }} />
-                            <Text style={{ fontSize: 10, color: '#555' }}>{item.name}</Text>
-                            <Text style={{ fontSize: 10, fontWeight: 600, color: '#333' }}>{item.percent}%</Text>
-                          </View>
-                        ))}
-                      </View>
-                    </ScrollView>
-                  </View>
-
-                  {/* ---- 右侧：横向条形图（分类排行） ---- */}
-                  <View style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6, minWidth: 140 }}>
-                    <Text style={{ fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 2 }}>分类排行</Text>
-                    {categoryStats.slice(0, 6).map((cat, i) => (
-                      <View key={`bar-${i}`} style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Text style={{ fontSize: 11.5, color: '#666', width: 40, textAlign: 'right', flexShrink: 0 }}>{cat.name}</Text>
-                        <View style={{ flex: 1, height: 18, backgroundColor: '#F0F2F5', borderRadius: 9, overflow: 'hidden', minWidth: 0 }}>
-                          <View style={{
-                            width: `${Math.max(cat.amount / maxCatAmount * 100, 6)}%`,
-                            height: 18,
-                            background: `linear-gradient(90deg, ${CARD_COLORS[i % CARD_COLORS.length].amount}, ${CARD_COLORS[i % CARD_COLORS.length].amount}55)`,
-                            borderRadius: 9,
-                            minWidth: cat.amount > 0 ? 24 : 0,
-                          }}
-                          />
-                        </View>
-                        <Text style={{ fontSize: 10.5, color: '#999', width: 46, textAlign: 'right', flexShrink: 0 }}>¥{cat.amount}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              </View>
-            ) : (
-              <View style={{
-                borderRadius: 16, overflow: 'hidden', backgroundColor: '#FFFFFF',
-                border: '1px solid #E8EDF2', padding: 32, alignItems: 'center',
-              }}
-              >
-                <Text style={{ fontSize: 28 }}>📊</Text>
-                <Text style={{ fontSize: 14, color: '#999', marginTop: 8, display: 'block' }}>暂无统计数据</Text>
-                <Text style={{ fontSize: 12, color: '#BBB', marginTop: 4, display: 'block' }}>添加账单后将自动生成图表</Text>
-              </View>
-            )}
-
-            {/* 目的地分布窗口（标签云风格） */}
-            {destinationStats.length > 0 && (
-              <View style={{
-                borderRadius: 16, overflow: 'hidden',
-                backgroundColor: '#FFFFFF',
-                border: '1px solid #E8EDF2',
-                padding: 16,
-              }}
-              >
-                <Text style={{ fontSize: 14, fontWeight: 600, color: '#333', marginBottom: 12, display: 'block' }}>
-                  📍 目的地分布 ({destinationStats.length}个城市)
-                </Text>
-                <View style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                  {destinationStats.map((dest, i) => (
-                    <View key={`dest-${i}`} style={{
-                      paddingTop: 8, paddingBottom: 8, paddingLeft: 14, paddingRight: 14,
-                      borderRadius: 12,
-                      backgroundColor: `${CARD_COLORS[i % CARD_COLORS.length].bg}`,
-                      borderLeftWidth: 3,
-                      borderLeftColor: CARD_COLORS[i % CARD_COLORS.length].amount,
-                    }}
-                    >
-                      <Text style={{ fontSize: 13, fontWeight: 500, color: CARD_COLORS[i % CARD_COLORS.length].name }}>{dest.city}</Text>
-                      <Text style={{ fontSize: 11, color: '#888' }}> ¥{dest.amount}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
-          </View>
-        </ScrollView>
-      )}
-
-      {/* ========== 明细模式 ========== */}
-      {activeTab === 'detail' && (
-        <ScrollView scrollY enhanced showScrollbar={false} style={{ flex: 1, marginTop: fixedHeaderH, marginBottom: 60 }}>
-          {/* 明细窗口 — 布满屏幕左右边距 */}
-          <View style={{ padding: 12 }}>
-            <View style={{
-              borderRadius: 16, overflow: 'hidden',
-              backgroundColor: '#FFFFFF',
-              border: '1px solid #E8EDF2',
-              minHeight: 300,
-            }}
-            >
+          {/* 滚动内容区 */}
+          <ScrollView scrollY enhanced showScrollbar={false}
+            style={{ flex: 1, marginTop: detailHeaderH, marginBottom: 70 }}
+          >
+            <View style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
               {(() => {
+                /* 按日期分组 */
                 const grouped: Record<string, Bill[]> = {}
                 filteredBills.forEach(b => {
                   const date = (b.bill_date || '').split('T')[0]
@@ -326,53 +256,83 @@ function StatsPage() {
                   grouped[date].push(b)
                 })
                 const sortedDates = Object.keys(grouped).sort().reverse()
+
                 if (!sortedDates.length) return (
-                  <View style={{ paddingTop: 30, paddingBottom: 40, alignItems: 'center' }}>
-                    <Text style={{ fontSize: 28 }}>📋</Text>
-                    <Text style={{ fontSize: 14, color: '#999', marginTop: 8, display: 'block' }}>暂无明细</Text>
+                  <View style={{
+                    borderRadius: 16, backgroundColor: '#FFFFFF',
+                    padding: 40, alignItems: 'center',
+                  }}
+                  >
+                    <Text style={{ fontSize: 36 }}>📋</Text>
+                    <Text style={{ fontSize: 14, color: '#BBB', marginTop: 8, display: 'block' }}>暂无明细</Text>
                   </View>
                 )
+
                 return sortedDates.map(date => {
                   const items = grouped[date]
-                  const dayTotal = items.reduce((s, i) => s + Number(i.amount), 0)
+                  const dayOut = items.filter(i => !i.is_treat).reduce((s, i) => s + Math.abs(Number(i.amount)), 0)
+                  const dayIn = items.filter(i => i.is_treat).reduce((s, i) => s + Number(i.amount), 0)
+
                   return (
-                    <View key={date}>
-                      {/* 日期行头 */}
+                    <View key={date} style={{
+                      borderRadius: 16, overflow: 'hidden', backgroundColor: '#FFFFFF',
+                      boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+                    }}
+                    >
+                      {/* 日期头 */}
                       <View style={{
-                        paddingTop: 8, paddingBottom: 8, paddingLeft: 16, paddingRight: 16,
-                        backgroundColor: '#FAFBFC',
+                        paddingTop: 10, paddingBottom: 10, paddingLeft: 16, paddingRight: 16,
+                        display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+                        backgroundColor: '#FAFAFA',
                         borderBottomWidth: 1, borderBottomColor: '#F0F0F0',
-                        display: 'flex', flexDirection: 'row', justifyContent: 'space-between',
                       }}
                       >
-                        <Text style={{ fontSize: 12, color: '#999' }}>{date.replace(/-/g, '/')}</Text>
-                        <Text style={{ fontSize: 12, fontWeight: 600, color: '#666' }}>¥{dayTotal.toFixed(2)}</Text>
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: '#333' }}>{getDayLabel(date)}</Text>
+                        <View style={{ display: 'flex', flexDirection: 'row', gap: 12 }}>
+                          <Text style={{ fontSize: 12, color: '#999' }}>出 {dayOut.toFixed(2)}</Text>
+                          <Text style={{ fontSize: 12, color: '#999' }}>入 {dayIn.toFixed(2)}</Text>
+                        </View>
                       </View>
                       {/* 账单项 */}
                       {items.map((bill, bi) => {
-                        const ci = (bill.category || '其他').charCodeAt(0) % CARD_COLORS.length
-                        const cc = CARD_COLORS[ci]
+                        const cc = getCategoryConfig(bill.category)
+                        const IconComp = cc.icon
+                        const amt = Number(bill.amount)
+                        const isPos = amt >= 0
                         return (
                           <View key={`${bill.id}-${bi}`} style={{
-                            paddingTop: 10, paddingBottom: 10, paddingLeft: 16, paddingRight: 16,
-                            borderBottomWidth: 1, borderBottomColor: '#F8F8F8',
-                            display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 10,
+                            paddingTop: 12, paddingBottom: 12, paddingLeft: 16, paddingRight: 16,
+                            display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 12,
+                            borderBottomWidth: bi < items.length - 1 ? 1 : 0,
+                            borderBottomColor: '#F5F5F5',
                           }}
                           >
+                            {/* 类别图标圆 */}
                             <View style={{
-                              width: 32, height: 32, borderRadius: 8,
+                              width: 40, height: 40, borderRadius: 20,
                               backgroundColor: cc.bg,
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                               flexShrink: 0,
                             }}
                             >
-                              <Text style={{ fontSize: 14 }}>{getCategoryIcon(bill.category)}</Text>
+                              <IconComp size={18} color={cc.color} />
                             </View>
+                            {/* 名称+备注 */}
                             <View style={{ flex: 1, minWidth: 0 }}>
-                              <Text style={{ fontSize: 14, color: '#333', display: 'block' }}>{bill.name}</Text>
-                              <Text style={{ fontSize: 11, color: '#999', display: 'block' }}>{bill.payer}{bill.is_treat ? ' · 请客' : ''}</Text>
+                              <Text style={{ fontSize: 15, color: '#333', display: 'block' }}>{bill.name}</Text>
+                              {(bill.note || bill.payer) && (
+                                <Text style={{ fontSize: 11, color: '#AAA', display: 'block', marginTop: 1 }}>
+                                  {[bill.payer, bill.note].filter(Boolean).join(' | ')}
+                                </Text>
+                              )}
                             </View>
-                            <Text style={{ fontSize: 15, fontWeight: 700, color: cc.amount, flexShrink: 0 }}>¥{Number(bill.amount).toFixed(2)}</Text>
+                            {/* 金额 */}
+                            <Text style={{
+                              fontSize: 16, fontWeight: '600',
+                              color: isPos ? '#F5A623' : '#333',
+                              flexShrink: 0,
+                            }}
+                            >{isPos ? '+' : ''}{amt.toFixed(2)}</Text>
                           </View>
                         )
                       })}
@@ -381,234 +341,408 @@ function StatsPage() {
                 })
               })()}
             </View>
-          </View>
-        </ScrollView>
-      )}
+          </ScrollView>
 
-      {/* ========== 纯自定义日期选择弹窗（无 Picker 双弹窗问题） ========== */}
-      {showDatePicker && (
-        <View style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          zIndex: 200, backgroundColor: 'rgba(0,0,0,0.4)',
-          display: 'flex', flexDirection: 'column-reverse',
-        }}
-          onClick={() => setShowDatePicker(false)}
-        >
-          <View style={{
-            backgroundColor: '#FFFFFF',
-            borderTopLeftRadius: 24, borderTopRightRadius: 24,
-            paddingTop: 20, paddingBottom: 36,
-            paddingLeft: 20, paddingRight: 20,
-          }}
-            onClick={(e) => e.stopPropagation()}
+          {/* 浮动"记一笔"按钮 */}
+          <View onClick={() => Taro.navigateTo({ url: '/pages/add-bill/index' })}
+            style={{
+              position: 'fixed', right: 20, bottom: 80, zIndex: 99,
+              width: 56, height: 56, borderRadius: 28,
+              background: 'linear-gradient(135deg, #52C41A, #73D13D)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 6px 24px rgba(82,196,26,0.35)',
+            }}
           >
-            <Text style={{ fontSize: 16, fontWeight: 600, color: '#333', textAlign: 'center', marginBottom: 16, display: 'block' }}>筛选时间范围</Text>
-
-            {/* 快捷选项行 */}
-            <View style={{ display: 'flex', flexDirection: 'row', gap: 8, marginBottom: 18, justifyContent: 'center' }}>
-              {[
-                { key: 'all', label: '全部' },
-                { key: 'month', label: '本月' },
-                { key: 'week', label: '近7天' },
-                { key: 'custom', label: '自选' },
-              ].map(opt => (
-                <View key={opt.key}
-                  onClick={() => {
-                    setDateRange(opt.key);
-                    if (opt.key !== 'custom') setShowDatePicker(false);
-                    else openDatePicker(opt.key === 'custom' ? 'start' : 'start');
-                  }}
-                  style={{
-                    paddingTop: 8, paddingBottom: 8, paddingLeft: 18, paddingRight: 18, borderRadius: 20,
-                    backgroundColor: dateRange === opt.key ? PRIMARY.solid : '#F0F0F0',
-                  }}
-                >
-                  <Text style={{ fontSize: 13, color: dateRange === opt.key ? '#FFF' : '#666' }}>{opt.label}</Text>
-                </View>
-              ))}
-            </View>
-
-            {/* 自选日期区域：起始 + 结束 在同一行 */}
-            {dateRange === 'custom' && (
-              <>
-                {/* 起始/结束 显示框 */}
-                <View style={{ display: 'flex', flexDirection: 'row', gap: 12, marginBottom: 14 }}>
-                  <View style={{ flex: 1 }}
-                    onClick={() => openDatePicker('start')}
-                  >
-                    <Text style={{ fontSize: 12, color: '#999', display: 'block', marginBottom: 4 }}>起始日期</Text>
-                    <View style={{
-                      paddingTop: 10, paddingBottom: 10, paddingLeft: 12, paddingRight: 12,
-                      borderRadius: 10, borderWidth: 1, borderColor: pickerTarget === 'start' ? PRIMARY.solid : '#E2E8F0',
-                      backgroundColor: pickerTarget === 'start' ? PRIMARY.light : '#FAFBFC',
-                    }}
-                    >
-                      <Text style={{ fontSize: 14, color: customStart ? '#333' : '#CCC' }}>
-                        {customStart ? customStart.replace(/-/g, '/') : '点击选择'}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={{ flex: 1 }}
-                    onClick={() => openDatePicker('end')}
-                  >
-                    <Text style={{ fontSize: 12, color: '#999', display: 'block', marginBottom: 4 }}>结束日期</Text>
-                    <View style={{
-                      paddingTop: 10, paddingBottom: 10, paddingLeft: 12, paddingRight: 12,
-                      borderRadius: 10, borderWidth: 1, borderColor: pickerTarget === 'end' ? PRIMARY.solid : '#E2E8F0',
-                      backgroundColor: pickerTarget === 'end' ? PRIMARY.light : '#FAFBFC',
-                    }}
-                    >
-                      <Text style={{ fontSize: 14, color: customEnd ? '#333' : '#CCC' }}>
-                        {customEnd ? customEnd.replace(/-/g, '/') : '点击选择'}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-
-                {/* 滚轮式年月日选择器（三列模拟滚动选择） */}
-                {pickerTarget && (
-                  <View style={{
-                    backgroundColor: '#FAFBFF', borderRadius: 14,
-                    paddingTop: 14, paddingBottom: 14,
-                    borderWidth: 1, borderColor: '#E8EDF2',
-                  }}
-                  >
-                    <Text style={{ fontSize: 12, color: PRIMARY.solid, textAlign: 'center', marginBottom: 10, display: 'block' }}>
-                      选择{pickerTarget === 'start' ? '起始' : '结束'}日期
-                    </Text>
-
-                    {/* 三列滚轮：年 | 月 | 日 */}
-                    <View style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', gap: 8 }}>
-                      {/* 年列 */}
-                      <View style={{ alignItems: 'center' }}>
-                        <Text style={{ fontSize: 11, color: '#AAA', marginBottom: 4, display: 'block' }}>年</Text>
-                        <ScrollView scrollY enhanced showScrollbar={false} style={{ height: 120, width: 70 }}>
-                          {getYears().map(yr => (
-                            <View key={yr} onClick={() => setPickerYear(yr)} style={{
-                              paddingTop: 8, paddingBottom: 8, alignItems: 'center',
-                              backgroundColor: yr === pickerYear ? PRIMARY.light : 'transparent', borderRadius: 8,
-                            }}
-                            >
-                              <Text style={{ fontSize: yr === pickerYear ? 17 : 14, fontWeight: yr === pickerYear ? '700' : '400', color: yr === pickerYear ? PRIMARY.solid : '#666' }}>{yr}</Text>
-                            </View>
-                          ))}
-                        </ScrollView>
-                      </View>
-
-                      {/* 月列 */}
-                      <View style={{ alignItems: 'center' }}>
-                        <Text style={{ fontSize: 11, color: '#AAA', marginBottom: 4, display: 'block' }}>月</Text>
-                        <ScrollView scrollY enhanced showScrollbar={false} style={{ height: 120, width: 56 }}>
-                          {MONTHS.map(mo => (
-                            <View key={mo} onClick={() => setPickerMonth(mo)} style={{
-                              paddingTop: 8, paddingBottom: 8, alignItems: 'center',
-                              backgroundColor: mo === pickerMonth ? PRIMARY.light : 'transparent', borderRadius: 8,
-                            }}
-                            >
-                              <Text style={{ fontSize: mo === pickerMonth ? 17 : 14, fontWeight: mo === pickerMonth ? '700' : '400', color: mo === pickerMonth ? PRIMARY.solid : '#666' }}>{mo}</Text>
-                            </View>
-                          ))}
-                        </ScrollView>
-                      </View>
-
-                      {/* 日列 */}
-                      <View style={{ alignItems: 'center' }}>
-                        <Text style={{ fontSize: 11, color: '#AAA', marginBottom: 4, display: 'block' }}>日</Text>
-                        <ScrollView scrollY enhanced showScrollbar={false} style={{ height: 120, width: 56 }}>
-                          {getDaysInMonth(Number(pickerYear), Number(pickerMonth)).map(da => (
-                            <View key={da} onClick={() => setPickerDay(da)} style={{
-                              paddingTop: 8, paddingBottom: 8, alignItems: 'center',
-                              backgroundColor: da === pickerDay ? PRIMARY.light : 'transparent', borderRadius: 8,
-                            }}
-                            >
-                              <Text style={{ fontSize: da === pickerDay ? 17 : 14, fontWeight: da === pickerDay ? '700' : '400', color: da === pickerDay ? PRIMARY.solid : '#666' }}>{da}</Text>
-                            </View>
-                          ))}
-                        </ScrollView>
-                      </View>
-                    </View>
-                  </View>
-                )}
-              </>
-            )}
-
-            {/* 取消/确定按钮（仅自选模式下且选择了目标时显示） */}
-            <View style={{ display: 'flex', flexDirection: 'row', gap: 12, marginTop: dateRange === 'custom' ? 16 : 0 }}>
-              <View style={{ flex: 1 }} onClick={() => setShowDatePicker(false)}>
-                <View style={{
-                  paddingTop: 12, paddingBottom: 12, borderRadius: 12,
-                  backgroundColor: '#F0F0F0', alignItems: 'center', display: 'flex',
-                }}
-                >
-                  <Text style={{ fontSize: 14, color: '#666' }}>取消</Text>
-                </View>
-              </View>
-              <View style={{ flex: 1 }} onClick={() => { if (dateRange !== 'custom') setShowDatePicker(false); else confirmDatePick() }}>
-                <View style={{
-                  paddingTop: 12, paddingBottom: 12, borderRadius: 12,
-                  backgroundColor: PRIMARY.solid, alignItems: 'center', display: 'flex',
-                }}
-                >
-                  <Text style={{ fontSize: 14, color: '#FFF' }}>确定</Text>
-                </View>
-              </View>
-            </View>
+            <Text style={{ fontSize: 22, color: '#FFFFFF', fontWeight: '300' }}>+</Text>
           </View>
-        </View>
+        </>
       )}
 
-      {/* ========== 底部固定按钮栏（全宽、选中态色块强化） ========== */}
+      {/* ==================== 统计 Tab ==================== */}
+      {activeTab === 'chart' && (
+        <>
+          {/* 固定绿色Header */}
+          <View style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0,
+            zIndex: 100,
+            background: THEME.headerBg,
+          }}
+          >
+            {/* 标题行 + 日期 */}
+            <View style={{
+              paddingTop: statusBarH,
+              height: capsuleBottom,
+              paddingLeft: 16, paddingRight: 16,
+              display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+            }}
+            >
+              <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8 }}
+                onClick={() => {
+                  const next: Record<string, string> = { month: 'all', all: 'week', week: 'month' }
+                  setDateRange(next[dateRange] || 'month')
+                }}
+              >
+                <Text style={{ fontSize: 17, fontWeight: '600', color: '#FFFFFF' }}>
+                  {{ all: '全部时间', month: currentMonthLabel, week: '近7天' }[dateRange]}
+                </Text>
+                <Text style={{ fontSize: 22, color: 'rgba(255,255,255,0.7)', lineHeight: 1 }}>&#128197;</Text>
+              </View>
+
+              {/* 支出/入账 切换 */}
+              <View style={{ display: 'flex', flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 16 }}>
+                <View style={{
+                  paddingTop: 5, paddingBottom: 5, paddingLeft: 14, paddingRight: 14,
+                  borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.95)',
+                }}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: THEME.primary }}>支出</Text>
+                </View>
+                <View style={{ paddingTop: 5, paddingBottom: 5, paddingLeft: 14, paddingRight: 14 }}>
+                  <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)' }}>入账</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* 金额区 */}
+            <View style={{ paddingLeft: 20, paddingRight: 20, paddingBottom: 20 }}>
+              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)', display: 'block', marginBottom: 2 }}>共支出</Text>
+              <Text style={{ fontSize: 34, fontWeight: '700', color: '#FFFFFF', fontFamily: '"Georgia","Times New Roman",serif' }}>
+                ¥{totalExpense.toFixed(2)}
+              </Text>
+            </View>
+          </View>
+
+          {/* 滚动内容 */}
+          <ScrollView scrollY enhanced showScrollbar={false}
+            style={{ flex: 1, marginTop: chartHeaderH, marginBottom: 70 }}
+          >
+            <View style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* 支出构成标题 */}
+              <Text style={{ fontSize: 17, fontWeight: '600', color: '#333', paddingLeft: 4, display: 'block' }}>支出构成</Text>
+
+              {/* 环形饼图区域 */}
+              {pieData.length > 0 ? (
+                <View style={{
+                  borderRadius: 16, backgroundColor: '#FFFFFF',
+                  padding: 20, paddingBottom: 16,
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center',
+                }}
+                >
+                  {/* 环形图 */}
+                  <View style={{
+                    width: 180, height: 180, borderRadius: 90,
+                    background: conicGradient,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    position: 'relative',
+                  }}
+                  >
+                    {/* 中心白圆 */}
+                    <View style={{
+                      width: 100, height: 100, borderRadius: 50,
+                      backgroundColor: '#FFFFFF',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                    >
+                      {/* 可选中心显示总金额或留空 */}
+                    </View>
+                    {/* 百分比标注 - 上方 */}
+                    {pieData.slice(0, 2).map((item, i) => {
+                      // 简单位置计算：第一个放右上，第二个放下方
+                      const isTop = i === 0
+                      return (
+                        <View key={`lbl-${i}`}
+                          style={{
+                            position: 'absolute',
+                            ...(isTop
+                              ? { top: -4, left: '55%' }
+                              : { bottom: -4, right: '15%' }
+                            ),
+                            display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 4,
+                          }}
+                        >
+                          {/* 连接线 */}
+                          <View style={{
+                            width: isTop ? 14 : 18, height: 1,
+                            backgroundColor: '#DDD',
+                          }}
+                          />
+                          <Text style={{ fontSize: 12, color: '#666' }}>
+                            {item.name} {item.percent}%
+                          </Text>
+                        </View>
+                      )
+                    })}
+                  </View>
+
+                  {/* 分类排行列表 */}
+                  <View style={{ width: '100%', marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {categoryStats.map((cat, i) => {
+                      const cc = getCategoryConfig(cat.name)
+                      const IconComp = cc.icon
+                      return (
+                        <View key={`rank-${i}`}
+                          style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 10 }}
+                        >
+                          {/* 圆形图标 */}
+                          <View style={{
+                            width: 36, height: 36, borderRadius: 18,
+                            backgroundColor: cc.bg,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            flexShrink: 0,
+                          }}
+                          >
+                            <IconComp size={17} color={cc.color} />
+                          </View>
+                          {/* 名称 */}
+                          <Text style={{ fontSize: 15, color: '#333', width: 50, flexShrink: 0 }}>{cat.name}</Text>
+                          {/* 进度条 */}
+                          <View style={{ flex: 1, height: 10, backgroundColor: '#F0F0F0', borderRadius: 5, overflow: 'hidden' }}>
+                            <View style={{
+                              width: `${Math.max(cat.amount / maxCatAmount * 100, 4)}%`,
+                              height: 10,
+                              backgroundColor: cc.color,
+                              borderRadius: 5,
+                              minWidth: cat.amount > 0 ? 16 : 0,
+                            }}
+                            />
+                          </View>
+                          {/* 金额+箭头 */}
+                          <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+                            <Text style={{ fontSize: 15, fontWeight: '600', color: '#333' }}>¥{cat.amount}</Text>
+                            <ChevronRight size={16} color="#CCC" />
+                          </View>
+                        </View>
+                      )
+                    })}
+                  </View>
+                </View>
+              ) : (
+                <View style={{
+                  borderRadius: 16, backgroundColor: '#FFFFFF',
+                  padding: 40, alignItems: 'center',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+                }}
+                >
+                  <Text style={{ fontSize: 36 }}>📊</Text>
+                  <Text style={{ fontSize: 14, color: '#BBB', marginTop: 8, display: 'block' }}>暂无统计数据</Text>
+                  <Text style={{ fontSize: 12, color: '#DDD', marginTop: 2, display: 'block' }}>添加账单后将自动生成图表</Text>
+                </View>
+              )}
+            </View>
+          </ScrollView>
+        </>
+      )}
+
+      {/* ==================== 地图 Tab ==================== */}
+      {activeTab === 'map' && (
+        <>
+          {/* 固定Header */}
+          <View style={{
+            position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
+            background: THEME.headerBg,
+          }}
+          >
+            <View style={{
+              paddingTop: statusBarH,
+              height: capsuleBottom,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+            >
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#FFFFFF', fontFamily: '-apple-system, "SF Pro Display", sans-serif' }}>
+                目的地地图
+              </Text>
+            </View>
+          </View>
+
+          <ScrollView scrollY enhanced showScrollbar={false}
+            style={{ flex: 1, marginTop: capsuleBottom + 10, marginBottom: 70 }}
+          >
+            <View style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* 地图占位卡片 */}
+              <View style={{
+                borderRadius: 16, backgroundColor: '#FFFFFF',
+                overflow: 'hidden',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+              }}
+              >
+                {/* 简化的中国地图示意区域 */}
+                <View style={{
+                  width: '100%',
+                  height: 280,
+                  backgroundColor: '#F0FFF0',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  position: 'relative',
+                  borderBottomWidth: 1, borderBottomColor: '#E8F5E8',
+                }}
+                >
+                  <Text style={{ fontSize: 48, opacity: 0.3 }}>🗺️</Text>
+                  {/* 城市标记点 */}
+                  {destinationList.slice(0, 8).map((dest, i) => {
+                    /* 用简单的散布位置模拟城市分布 */
+                    const positions = [
+                      { top: '18%', left: '38%' },  /* 北京附近 */
+                      { top: '42%', left: '58%' },  /* 上海附近 */
+                      { top: '54%', left: '46%' },  /* 武汉附近 */
+                      { top: '60%', left: '62%' },  /* 广州附近 */
+                      { top: '45%', left: '28%' },  /* 成都附近 */
+                      { top: '30%', left: '68%' },  /* 杭州附近 */
+                      { top: '66%', left: '38%' },  /* 昆明附近 */
+                      { top: '35%', left: '18%' },  /* 兰州附近 */
+                    ]
+                    const pos = positions[i % positions.length]
+                    return (
+                      <View key={`marker-${i}`} style={{
+                        position: 'absolute',
+                        top: pos.top,
+                        left: pos.left,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                      }}
+                      >
+                        <View style={{
+                          width: 10, height: 10, borderRadius: 5,
+                          backgroundColor: THEME.primary,
+                          boxShadow: `0 0 8px ${THEME.primary}40`,
+                        }}
+                        />
+                        <View style={{
+                          marginTop: 2,
+                          paddingTop: 2, paddingBottom: 2, paddingLeft: 5, paddingRight: 5,
+                          borderRadius: 4,
+                          backgroundColor: 'rgba(255,255,255,0.92)',
+                          borderWidth: 1,
+                          borderColor: THEME.primary,
+                        }}
+                        >
+                          <Text style={{ fontSize: 9, color: '#333', fontWeight: '500' }}>{dest.city}</Text>
+                        </View>
+                      </View>
+                    )
+                  })}
+                </View>
+                {/* 图例说明 */}
+                <View style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#333', display: 'block' }}>
+                    📍 已标记 {destinationList.length} 个目的地
+                  </Text>
+                  <Text style={{ fontSize: 12, color: '#888', display: 'block' }}>
+                    根据项目名称中的地名自动识别地级市
+                  </Text>
+                  {destinationList.length > 0 && (
+                    <View style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                      {destinationList.map((d, i) => (
+                        <View key={`dtag-${i}`} style={{
+                          paddingTop: 4, paddingBottom: 4, paddingLeft: 10, paddingRight: 10,
+                          borderRadius: 10,
+                          backgroundColor: '#F0FFF0',
+                          borderLeftWidth: 3, borderLeftColor: THEME.primary,
+                        }}
+                        >
+                          <Text style={{ fontSize: 11, color: '#555' }}>{d.city}</Text>
+                          <Text style={{ fontSize: 10, color: '#AAA' }}> ¥{d.amount}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              </View>
+
+              {/* 目的地排行榜 */}
+              {destinationList.length > 0 && (
+                <View style={{
+                  borderRadius: 16, backgroundColor: '#FFFFFF',
+                  padding: 16,
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+                }}
+                >
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: '#333', marginBottom: 12, display: 'block' }}>
+                    💰 目的地花费排行
+                  </Text>
+                  {destinationList.map((dest, i) => (
+                    <View key={`dlist-${i}`} style={{
+                      display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 10,
+                      paddingTop: i > 0 ? 10 : 0,
+                      borderTopWidth: i > 0 ? 1 : 0, borderTopColor: '#F0F0F0',
+                    }}
+                    >
+                      <View style={{
+                        width: 22, height: 22, borderRadius: 11,
+                        backgroundColor: i < 3 ? THEME.primary : '#E8E8E8',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: '600', color: i < 3 ? '#FFF' : '#888' }}>{i + 1}</Text>
+                      </View>
+                      <Text style={{ fontSize: 14, color: '#333', flex: 1 }}>{dest.city}</Text>
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: THEME.primaryDark }}>¥{dest.amount}</Text>
+                      <Text style={{ fontSize: 11, color: '#AAA' }}>({dest.count}笔)</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {destinationList.length === 0 && (
+                <View style={{
+                  borderRadius: 16, backgroundColor: '#FFFFFF',
+                  padding: 40, alignItems: 'center',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+                }}
+                >
+                  <Text style={{ fontSize: 36 }}>🗺️</Text>
+                  <Text style={{ fontSize: 14, color: '#BBB', marginTop: 8, display: 'block' }}>暂无目的地数据</Text>
+                  <Text style={{ fontSize: 12, color: '#DDD', marginTop: 2, display: 'block' }}>创建项目并填写地点后显示地图</Text>
+                </View>
+              )}
+            </View>
+          </ScrollView>
+        </>
+      )}
+
+      {/* ==================== 三段式底部Tab栏 ==================== */}
       <View style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
-        zIndex: 100, backgroundColor: '#FFFFFF',
-        borderTopWidth: 1, borderTopColor: '#F0F0F0',
-        display: 'flex', flexDirection: 'row', gap: 0,
-        paddingLeft: 12, paddingRight: 12, paddingBottom: 8, paddingTop: 8,
+        zIndex: 200,
+        display: 'flex', flexDirection: 'row',
+        backgroundColor: '#FFFFFF',
+        borderTopWidth: 1, borderTopColor: '#EEE',
+        paddingBottom: isWeapp ? 0 : 4,
       }}
       >
-        {/* 图表按钮 */}
-        <View style={{ flex: 1, marginLeft: 4, marginRight: 4 }}
-          onClick={() => setActiveTab('chart')}
-        >
-          <View style={{
-            paddingTop: 14, paddingBottom: 14, borderRadius: 14,
-            backgroundColor: activeTab === 'chart' ? PRIMARY.gradient : '#FFFFFF',
-            borderWidth: activeTab === 'chart' ? 0 : 1, borderColor: '#E8EDF2',
-            alignItems: 'center',
-            display: 'flex', flexDirection: 'row', justifyContent: 'center', gap: 6,
-            boxShadow: activeTab === 'chart' ? '0 4px 14px rgba(91,141,238,0.25)' : 'none',
-          }}
-          >
-            <Text style={{ fontSize: 17 }}>📊</Text>
-            <Text style={{ fontSize: 15, fontWeight: 600, color: activeTab === 'chart' ? '#FFFFFF' : '#999' }}>图表</Text>
-          </View>
-        </View>
-        {/* 明细按钮 */}
-        <View style={{ flex: 1, marginLeft: 4, marginRight: 4 }}
-          onClick={() => setActiveTab('detail')}
-        >
-          <View style={{
-            paddingTop: 14, paddingBottom: 14, borderRadius: 14,
-            backgroundColor: activeTab === 'detail' ? PRIMARY.gradient : '#FFFFFF',
-            borderWidth: activeTab === 'detail' ? 0 : 1, borderColor: '#E8EDF2',
-            alignItems: 'center',
-            display: 'flex', flexDirection: 'row', justifyContent: 'center', gap: 6,
-            boxShadow: activeTab === 'detail' ? '0 4px 14px rgba(91,141,238,0.25)' : 'none',
-          }}
-          >
-            <Text style={{ fontSize: 17 }}>📋</Text>
-            <Text style={{ fontSize: 15, fontWeight: 600, color: activeTab === 'detail' ? '#FFFFFF' : '#999' }}>明细</Text>
-          </View>
-        </View>
+        {([
+          { key: 'detail' as TabType, label: '明细', Icon: FileText },
+          { key: 'chart' as TabType, label: '统计', Icon: FileChartPie },
+          { key: 'map' as TabType, label: '地图', Icon: MapIcon },
+        ]).map(tab => {
+          const isActive = activeTab === tab.key
+          const TabIcon = tab.Icon
+          return (
+            <View key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              style={{
+                flex: 1,
+                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                justifyContent: 'center',
+                paddingTop: 7, paddingBottom: 5,
+                backgroundColor: isActive ? THEME.primary : '#FFFFFF',
+              }}
+            >
+              <TabIcon size={20} color={isActive ? '#FFFFFF' : '#8C8C8C'} />
+              <Text style={{
+                fontSize: 11,
+                fontWeight: isActive ? '600' : '400',
+                color: isActive ? '#FFFFFF' : '#8C8C8C',
+                marginTop: 2,
+              }}
+              >{tab.label}</Text>
+            </View>
+          )
+        })}
       </View>
     </View>
   )
 }
 
 export default StatsPage
-
-function getCategoryIcon(cat?: string): string {
-  const map: Record<string, string> = { '交通': '🚗', '餐饮': '🍜', '住宿': '🏨', '门票': '🎫', '购物': '🛍', '娱乐': '🎮', '其他': '📦' };
-  if (!cat) return '📦'; for (const k of Object.keys(map)) { if (cat.includes(k)) return map[k]; } return '📦';
-}
