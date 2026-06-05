@@ -94,8 +94,8 @@ export default function ProjectPage() {
   const bottomH = 90;                      // 底部删除按钮+安全距（确保明细窗口圆角可见）
   const topFixedH = headerH + cardGap + cardH + buttonGap + buttonH + (settleH > 0 ? settleGap + settleH : 0) + sectionH;
 
-  /* 分账算法：计算谁该付给谁 */
-  const calculateSettlement = () => {
+  /* 分账算法：计算谁该付给谁（函数声明，可被下方useMemo调用） */
+  function calculateSettlement() {
     const nonTreatBills = bills.filter(b => !b.is_treat);
     if (nonTreatBills.length === 0) return { balances: [], transfers: [] };
 
