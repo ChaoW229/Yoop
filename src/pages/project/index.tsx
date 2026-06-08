@@ -82,31 +82,23 @@ export default function ProjectPage() {
   const cardH = 112;                       // 封面卡片高度
   const buttonGap = 8;                     // 卡片与按钮间距
   const buttonH = 52;                      // 添加花费按钮高度
-  /* 分账算法：计算谁该付给谁 */
-  const { balances, transfers } = useMemo(() => calculateSettlement(), [bills]);
 
-  /* 有非请客账单即展示分账区域（不再要求必须有转账建议） */
-  const hasSettlement = bills.filter(b => !b.is_treat).length > 0;
-  /* 分账卡片高度：根据内容动态计算 */
-  const settleH = hasSettlement ? (transfers.length > 0 ? 120 : 100) : 0;
-  const settleGap = 6;                     // 按钮与分账卡片间距
-  const sectionH = 32;                     // 账单明细标题行高(fixed)
-  const bottomH = 90;                      // 底部删除按钮+安全距（确保明细窗口圆角可见）
-  const topFixedH = headerH + cardGap + cardH + buttonGap + buttonH + (settleH > 0 ? settleGap + settleH : 0) + sectionH;
-
-  /* 分账算法：计算谁该付给谁（函数声明，可被下方useMemo调用） */
+  /* 分账算法：计算谁该付给谁（必须在useMemo之前定义） */
   function calculateSettlement() {
     const nonTreatBills = bills.filter(b => !b.is_treat);
-    if (nonTreatBills.length === 0) return { balances: [], transfers: [] };
+    if (!nonTreatBills || nonTreatBills.length === 0) return { balances: [], transfers: [] };
 
     /* 收集所有参与人 */
     const peopleSet = new Set<string>();
     for (const b of nonTreatBills) {
-      peopleSet.add(b.payer);
+      if (b.payer) peopleSet.add(b.payer);
       const parts = b.participants || [];
-      parts.forEach((p: string) => peopleSet.add(p));
+      if (Array.isArray(parts)) {
+        parts.forEach((p: string) => { if (p) peopleSet.add(p); });
+      }
     }
     const people = Array.from(peopleSet);
+    if (people.length === 0) return { balances: [], transfers: [] };
 
     /* 计算每人应付/已付 */
     const paid: Record<string, number> = {};
@@ -115,37 +107,48 @@ export default function ProjectPage() {
 
     for (const b of nonTreatBills) {
       const amt = Number(b.amount) || 0;
-      paid[b.payer] = (paid[b.payer] || 0) + amt;
-      const parts = (b.participants && b.participants.length > 0) ? b.participants : [b.payer];
+      if (b.payer && paid[b.payer] !== undefined) {
+        paid[b.payer] = (paid[b.payer] || 0) + amt;
+      }
+      const parts = Array.isArray(b.participants) && b.participants.length > 0 ? b.participants : [b.payer];
       const perPerson = amt / parts.length;
-      for (const p of parts) { share[p] = (share[p] || 0) + perPerson; }
+      for (const p of parts) { if (p && share[p] !== undefined) share[p] = (share[p] || 0) + perPerson; }
     }
 
-    /* 结余 = 已付 - 应付 */
-    const _balances: { name: string; balance: number; color: string }[] = [];
-    for (const p of people) {
-      const bal = (paid[p] || 0) - (share[p] || 0);
-      if (Math.abs(bal) > 0.01) _balances.push({ name: p, balance: Math.round(bal * 100) / 100, color: CARD_COLORS[Math.abs(p.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % CARD_COLORS.length].amount });
+    /* 计算每人余额 */
+    const balanceList = people.map(p => ({
+      name: p,
+      balance: Math.round(((paid[p] || 0) - (share[p] || 0)) * 100) / 100,
+    }));
+    /* 转账建议：正余额（多付）转给负余额（少付） */
+    const creditors = balanceList.filter(x => x.balance > 1).sort((a, b) => b.balance - a.balance);
+    const debtors = balanceList.filter(x => x.balance < -1).sort((a, b) => a.balance - b.balance);
+    const transferList: any[] = [];
+    for (const d of debtors) {
+      let remaining = -d.balance;
+      for (const c of creditors) {
+        if (remaining < 1 || c.balance < 1) break;
+        const amount = Math.min(remaining, c.balance);
+        transferList.push({ from: d.name, to: c.name, amount: Math.round(amount * 100) / 100 });
+        remaining -= amount;
+        c.balance -= amount;
+      }
     }
 
-    /* 转账建议：欠钱多的 → 收钱多的 */
-    const debtors = _balances.filter(b => b.balance < -0.01).sort((a, b) => a.balance - b.balance);
-    const creditors = _balances.filter(b => b.balance > 0.01).sort((a, b) => b.balance - a.balance);
-    const _transfers: { from: string; to: string; amount: number }[] = [];
-    let di = 0, ci = 0;
-    while (di < debtors.length && ci < creditors.length) {
-      const owe = -debtors[di].balance;
-      const get = creditors[ci].balance;
-      const amount = Math.min(owe, get);
-      if (amount > 0.01) _transfers.push({ from: debtors[di].name, to: creditors[ci].name, amount: Math.round(amount * 100) / 100 });
-      debtors[di].balance += amount;
-      creditors[ci].balance -= amount;
-      if (Math.abs(debtors[di].balance) <= 0.01) di++;
-      if (Math.abs(creditors[ci].balance) <= 0.01) ci++;
-    }
+    console.log('[分账]', JSON.stringify({ balanceList, transferList }));
+    return { balances: balanceList, transfers: transferList };
+  }
 
-    return { balances: _balances, transfers: _transfers };
-  };
+  const { balances, transfers } = useMemo(() => calculateSettlement(), [bills]);
+
+  /* 有非请客账单即展示分账区域 */
+  const hasSettlement = bills.filter(b => !b.is_treat).length > 0;
+  /* 分账卡片高度：根据内容动态计算 */
+  const settleH = hasSettlement ? (transfers.length > 0 ? 120 : 100) : 0;
+  const settleGap = 6;                     // 按钮与分账卡片间距
+  const sectionH = 32;                     // 账单明细标题行高(fixed)
+  const bottomH = 90;                      // 底部删除按钮+安全距（确保明细窗口圆角可见）
+  const topFixedH = headerH + cardGap + cardH + buttonGap + buttonH + (settleH > 0 ? settleGap + settleH : 0) + sectionH;
 
   const fetchData = async () => {
     try {

@@ -11,10 +11,11 @@ import {
   House,
   Car,
   ShoppingBag,
+  Gamepad2,
   Coffee,
   Plane,
-  Gamepad2,
   Ellipsis,
+  ChevronDown,
   ChevronRight,
 } from 'lucide-react-taro'
 
@@ -23,19 +24,19 @@ const THEME = {
   primary: '#5B9BD5',
   primaryLight: '#7BA8EA',
   primaryDark: '#3A82C8',
-  primaryBg: 'linear-gradient(135deg, #5B9BD5, #7BA8EA)',
-  headerBg: 'linear-gradient(160deg, #5B9BD5, #6BA8D8)',
+  headerBg: 'linear-gradient(160deg, #5B9BD5, #7BA8EA)',
 }
 
-/* 与项目详情页一致的类别配置，环形图使用此颜色 */
+/* 类别配置（与add-bill页面一致，环形图使用此颜色） */
 const CATEGORY_CONFIG: Record<string, { icon: any; color: string; bg: string }> = {
-  '餐饮': { icon: Utensils, color: '#F5A623', bg: '#FFF7E6' },
+  '交通': { icon: Car, color: '#F5A623', bg: '#FFF7E6' },
+  '餐饮': { icon: Utensils, color: '#E85D4F', bg: '#FFF0ED' },
   '住宿': { icon: House, color: '#5B8DEE', bg: '#EEF2FF' },
-  '交通': { icon: Car, color: '#52C41A', bg: '#F0FFF0' },
   '购物': { icon: ShoppingBag, color: '#EB2F96', bg: '#FFF0F6' },
   '娱乐': { icon: Gamepad2, color: '#9254DE', bg: '#F9F0FF' },
   '咖啡': { icon: Coffee, color: '#8B572A', bg: '#FBF5ED' },
   '门票': { icon: Plane, color: '#13C2C2', bg: '#E6FFFE' },
+  '纪念品': { icon: Ellipsis, color: '#FA8C16', bg: '#FFF7E6' },
   '其他': { icon: Ellipsis, color: '#8C8C8C', bg: '#FAFAFA' },
 }
 
@@ -43,13 +44,24 @@ function getCategoryConfig(name: string) {
   return CATEGORY_CONFIG[name] || CATEGORY_CONFIG['其他']
 }
 
-/* ======== 中文地级市数据库（用于地图识别）======== */
+/* ======== 中文地级市数据库 ======== */
 const CITY_DB: Record<string, { name: string; province: string; lat: number; lng: number }> = {
   /* 直辖市 */
   '北京': { name: '北京', province: '北京', lat: 40, lng: 116 },
   '上海': { name: '上海', province: '上海', lat: 31, lng: 121 },
   '天津': { name: '天津', province: '天津', lat: 39, lng: 117 },
   '重庆': { name: '重庆', province: '重庆', lat: 29, lng: 106 },
+  /* 浙江 */
+  '杭州': { name: '杭州', province: '浙江', lat: 30, lng: 120 },
+  '宁波': { name: '宁波', province: '浙江', lat: 29, lng: 121 },
+  '温州': { name: '温州', province: '浙江', lat: 28, lng: 120 },
+  '绍兴': { name: '绍兴', province: '浙江', lat: 30, lng: 120 },
+  '嘉兴': { name: '嘉兴', province: '浙江', lat: 30, lng: 120 },
+  '湖州': { name: '湖州', province: '浙江', lat: 30, lng: 120 },
+  '金华': { name: '金华', province: '浙江', lat: 29, lng: 119 },
+  '台州': { name: '台山', province: '浙江', lat: 28, lng: 121 },
+  '舟山': { name: '舟山', province: '浙江', lat: 30, lng: 122 },
+  '丽水': { name: '丽水', province: '浙江', lat: 28, lng: 119 },
   /* 广东 */
   '广州': { name: '广州', province: '广东', lat: 23, lng: 113 },
   '深圳': { name: '深圳', province: '广东', lat: 22, lng: 114 },
@@ -61,17 +73,6 @@ const CITY_DB: Record<string, { name: string; province: string; lat: number; lng
   '中山': { name: '中山', province: '广东', lat: 22, lng: 113 },
   '江门': { name: '江门', province: '广东', lat: 22, lng: 112 },
   '湛江': { name: '湛江', province: '广东', lat: 21, lng: 110 },
-  /* 浙江 */
-  '杭州': { name: '杭州', province: '浙江', lat: 30, lng: 120 },
-  '宁波': { name: '宁波', province: '浙江', lat: 29, lng: 121 },
-  '温州': { name: '温州', province: '浙江', lat: 28, lng: 120 },
-  '绍兴': { name: '绍兴', province: '浙江', lat: 30, lng: 120 },
-  '嘉兴': { name: '嘉兴', province: '浙江', lat: 30, lng: 120 },
-  '湖州': { name: '湖州', province: '浙江', lat: 30, lng: 120 },
-  '金华': { name: '金华', province: '浙江', lat: 29, lng: 119 },
-  '台州': { name: '台州', province: '浙江', lat: 28, lng: 121 },
-  '舟山': { name: '舟山', province: '浙江', lat: 30, lng: 122 },
-  '丽水': { name: '丽水', province: '浙江', lat: 28, lng: 119 },
   /* 江苏 */
   '南京': { name: '南京', province: '江苏', lat: 32, lng: 118 },
   '苏州': { name: '苏州', province: '江苏', lat: 31, lng: 120 },
@@ -127,14 +128,12 @@ const CITY_DB: Record<string, { name: string; province: string; lat: number; lng
   '阳朔': { name: '阳朔', province: '广西', lat: 24, lng: 110 },
   /* 贵州 */
   '贵阳': { name: '贵阳', province: '贵州', lat: 26, lng: 106 },
-  '黔东南': { name: '黔东南', province: '贵州', lat: 26, lng: 107 },
   /* 西藏 */
   '拉萨': { name: '拉萨', province: '西藏', lat: 29, lng: 91 },
   '林芝': { name: '林芝', province: '西藏', lat: 29, lng: 94 },
   /* 新疆 */
   '乌鲁木齐': { name: '乌鲁木齐', province: '新疆', lat: 43, lng: 87 },
   '喀什': { name: '喀什', province: '新疆', lat: 39, lng: 75 },
-  '伊犁': { name: '伊犁', province: '新疆', lat: 43, lng: 81 },
   /* 内蒙古 */
   '呼和浩特': { name: '呼和浩特', province: '内蒙古', lat: 40, lng: 111 },
   '呼伦贝尔': { name: '呼伦贝尔', province: '内蒙古', lat: 49, lng: 119 },
@@ -145,7 +144,6 @@ const CITY_DB: Record<string, { name: string; province: string; lat: number; lng
   /* 江西 */
   '南昌': { name: '南昌', province: '江西', lat: 28, lng: 115 },
   '景德镇': { name: '景德镇', province: '江西', lat: 29, lng: 117 },
-  '庐山': { name: '庐山', province: '江西', lat: 29, lng: 116 },
   /* 河南 */
   '郑州': { name: '郑州', province: '河南', lat: 34, lng: 113 },
   '洛阳': { name: '洛阳', province: '河南', lat: 34, lng: 112 },
@@ -154,7 +152,6 @@ const CITY_DB: Record<string, { name: string; province: string; lat: number; lng
   '合肥': { name: '合肥', province: '安徽', lat: 31, lng: 117 },
   /* 山西 */
   '大同': { name: '大同', province: '山西', lat: 40, lng: 113 },
-  '平遥': { name: '平遥', province: '山西', lat: 37, lng: 112 },
   /* 辽宁 */
   '大连': { name: '大连', province: '辽宁', lat: 38, lng: 121 },
   '沈阳': { name: '沈阳', province: '辽宁', lat: 41, lng: 123 },
@@ -168,15 +165,13 @@ const CITY_DB: Record<string, { name: string; province: string; lat: number; lng
   '台湾': { name: '台湾', province: '台湾', lat: 23, lng: 121 },
 }
 
-/* 从项目名称或目的地中识别地级市 */
+/* 从文本中识别地级市（精确匹配+包含匹配） */
 function recognizeCity(text: string): typeof CITY_DB[string] | null {
   if (!text) return null
   const t = text.trim()
-  /* 精确匹配 */
   if (CITY_DB[t]) return CITY_DB[t]
-  /* 模糊匹配：检查是否包含城市名 */
   for (const [cityName, cityInfo] of Object.entries(CITY_DB)) {
-    if (t.includes(cityName) || cityName.includes(t)) return cityInfo
+    if (t.includes(cityName)) return cityInfo
   }
   return null
 }
@@ -202,17 +197,33 @@ interface Bill {
   note?: string;
 }
 
+interface ProjectItem {
+  id: string; name: string; destination?: string; total_amount?: number;
+}
+
+/* 时间筛选选项 */
+const TIME_OPTIONS = [
+  { key: 'month', label: '本月' },
+  { key: 'week', label: '近7天' },
+  { key: 'all', label: '全部时间' },
+]
+
+const CATEGORY_LIST = ['all', ...Object.keys(CATEGORY_CONFIG)]
+
 /* ======== 主组件 ======== */
 function StatsPage() {
-  /* 三段式Tab：明细 | 统计 | 地图 */
   type TabType = 'detail' | 'chart' | 'map'
   const [activeTab, setActiveTab] = useState<TabType>('detail')
 
   const [bills, setBills] = useState<Bill[]>([])
+  const [projects, setProjects] = useState<ProjectItem[]>([])
   const [dateRange, setDateRange] = useState<string>('month')
   const [detailCategory, setDetailCategory] = useState<string>('all')
 
-  /* 系统信息 */
+  /* 下拉筛选状态 */
+  const [showTimeDropdown, setShowTimeDropdown] = useState(false)
+  const [showCatDropdown, setShowCatDropdown] = useState(false)
+
   const statusBarH = Taro.getSystemInfoSync().statusBarHeight || 20
   let capsuleBottom = statusBarH + 44
   const isWeapp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT
@@ -223,8 +234,8 @@ function StatsPage() {
     } catch (_) {}
   }
 
-  useEffect(() => { fetchData() }, [])
-  useDidShow(() => { fetchData() })
+  useEffect(() => { fetchData(); fetchProjects() }, [])
+  useDidShow(() => { fetchData(); fetchProjects() })
 
   const filteredBills = useMemo(() => {
     if (!bills.length) return []
@@ -249,18 +260,17 @@ function StatsPage() {
     })
   }, [bills, dateRange])
 
-  /* 明细页分类过滤 */
   const detailFilteredBills = useMemo(() => {
     if (detailCategory === 'all') return filteredBills
     return filteredBills.filter(b => b.category === detailCategory)
   }, [filteredBills, detailCategory])
 
-  /* 只计算支出（不含请客项） */
+  /* 只计算支出 */
   const totalExpense = useMemo(() =>
     filteredBills.filter(b => !b.is_treat).reduce((s, b) => s + Math.abs(Number(b.amount)), 0),
     [filteredBills])
 
-  /* 分类统计（环形图+排行）*/
+  /* 分类统计 */
   const categoryStats = useMemo(() => {
     const m = new Map<string, number>()
     filteredBills.filter(b => !b.is_treat).forEach(b => {
@@ -270,13 +280,13 @@ function StatsPage() {
       .sort((a, b) => b.amount - a.amount)
   }, [filteredBills])
 
-  /* 饼图数据 */
+  /* 环形图数据 —— 使用类别颜色 */
   const pieData = useMemo(() => {
     if (!categoryStats.length) return []
     const total = categoryStats.reduce((s, c) => s + c.amount, 0)
-    return categoryStats.map((c, _i) => ({
+    return categoryStats.map(c => ({
       ...c,
-      percent: total > 0 ? ((c.amount / total) * 100).toFixed(2) : '0',
+      percent: total > 0 ? ((c.amount / total) * 100).toFixed(1) : '0',
       angle: total > 0 ? (c.amount / total) * 360 : 0,
       color: getCategoryConfig(c.name).color,
     }))
@@ -295,29 +305,46 @@ function StatsPage() {
 
   const maxCatAmount = categoryStats.length > 0 ? Math.max(...categoryStats.map(c => c.amount)) : 1
 
-  /* 目的地统计（用于地图）——从项目名称和destination中提取城市 */
+  /* 目的地统计 —— 同时从bill.destination和project.name中识别城市 */
   const destinationList = useMemo(() => {
     const m = new Map<string, { amount: number; count: number; info: ReturnType<typeof recognizeCity> }>()
-    /* 先从bill的destination字段收集 */
+
+    /* 从bill的destination字段收集 */
     filteredBills.forEach(b => {
       const dest = b.destination || ''
-      if (!dest) return
-      const cityInfo = recognizeCity(dest)
-      const key = cityInfo?.name || dest
-      const prev = m.get(key) || { amount: 0, count: 0, info: cityInfo }
-      m.set(key, { amount: prev.amount + Math.abs(Number(b.amount)), count: prev.count + 1, info: cityInfo || prev.info })
+      if (dest) {
+        const cityInfo = recognizeCity(dest)
+        const key = cityInfo?.name || dest
+        const prev = m.get(key) || { amount: 0, count: 0, info: cityInfo }
+        m.set(key, { amount: prev.amount + Math.abs(Number(b.amount)), count: prev.count + 1, info: cityInfo || prev.info })
+      }
     })
-    /* 如果没有destination数据，尝试从项目名称推断（需要额外获取projects） */
+
+    /* 从projects数据中识别城市名 */
+    projects.forEach(p => {
+      const textToCheck = p.destination || p.name || ''
+      if (textToCheck) {
+        const cityInfo = recognizeCity(textToCheck)
+        if (cityInfo) {
+          const key = cityInfo.name
+          const projAmount = p.total_amount ? Number(p.total_amount) : 0
+          const prev = m.get(key) || { amount: 0, count: 0, info: cityInfo }
+          m.set(key, { amount: prev.amount + Math.abs(projAmount), count: prev.count + 1, info: cityInfo })
+        }
+      }
+    })
+
     return Array.from(m.entries())
       .map(([city, v]) => ({ city, ...v }))
       .sort((a, b) => b.amount - a.amount)
-  }, [filteredBills])
+  }, [filteredBills, projects])
 
-  /* 当前月份显示文本 */
   const currentMonthLabel = (() => {
     const now = new Date()
     return `${now.getFullYear()}年${now.getMonth() + 1}月`
   })()
+
+  const dateRangeLabel = TIME_OPTIONS.find(o => o.key === dateRange)?.label || '本月'
 
   const fetchData = async () => {
     try {
@@ -327,35 +354,41 @@ function StatsPage() {
     } catch (e) { console.error(e) }
   }
 
-  /* 切换时间范围 */
-  const cycleDateRange = () => {
-    const next: Record<string, string> = { month: 'week', week: 'all', all: 'month' }
-    setDateRange(next[dateRange] || 'month')
+  const fetchProjects = async () => {
+    try {
+      const res = await Network.request({ url: '/api/projects?limit=50&offset=0' })
+      console.log('[Stats] projects:', JSON.stringify(res.data))
+      setProjects(res.data?.data?.items || res.data?.data || [])
+    } catch (e) { console.error(e) }
   }
 
-  /* 切换明细页分类 */
-  const cycleDetailCategory = () => {
-    const cats = ['all', ...Object.keys(CATEGORY_CONFIG)]
-    const idx = cats.indexOf(detailCategory)
-    setDetailCategory(cats[(idx + 1) % cats.length])
+  /* 选择时间范围 */
+  const selectDateRange = (key: string) => {
+    setDateRange(key)
+    setShowTimeDropdown(false)
+  }
+
+  /* 选择分类 */
+  const selectCategory = (cat: string) => {
+    setDetailCategory(cat)
+    setShowCatDropdown(false)
   }
 
   /* ====== Header高度 ====== */
-  const detailHeaderH = capsuleBottom + 108   // 明细页header
-  const chartHeaderH = capsuleBottom + 120     // 统计页header
-  const mapHeaderH = capsuleBottom + 48        // 地图页header(只有标题)
+  const detailHeaderH = capsuleBottom + 100
+  const chartHeaderH = capsuleBottom + 115
+  const mapHeaderH = capsuleBottom + 48
 
-  /* ====== 底部三段式Tab渲染 ====== */
+  /* ====== 底部三段式Tab ====== */
   const renderBottomTabs = () => (
     <View style={{
       position: 'fixed', bottom: 0, left: 0, right: 0,
       display: 'flex', flexDirection: 'row',
       backgroundColor: '#FFFFFF',
       borderTopWidth: 1, borderTopColor: '#EEF0F4',
-      zIndex: 100,
+      zIndex: 200,
     }}
     >
-      {/* 明细 */}
       <View onClick={() => setActiveTab('detail')}
         style={{
           flex: 1, paddingTop: 10, paddingBottom: 24,
@@ -366,7 +399,6 @@ function StatsPage() {
         <FileText size={22} color={activeTab === 'detail' ? '#FFFFFF' : '#8896A6'} />
         <Text style={{ fontSize: 11, fontWeight: activeTab === 'detail' ? '600' : '400', color: activeTab === 'detail' ? '#FFFFFF' : '#8896A6' }}>明细</Text>
       </View>
-      {/* 统计 */}
       <View onClick={() => setActiveTab('chart')}
         style={{
           flex: 1, paddingTop: 10, paddingBottom: 24,
@@ -377,7 +409,6 @@ function StatsPage() {
         <FileChartPie size={22} color={activeTab === 'chart' ? '#FFFFFF' : '#8896A6'} />
         <Text style={{ fontSize: 11, fontWeight: activeTab === 'chart' ? '600' : '400', color: activeTab === 'chart' ? '#FFFFFF' : '#8896A6' }}>统计</Text>
       </View>
-      {/* 地图 */}
       <View onClick={() => setActiveTab('map')}
         style={{
           flex: 1, paddingTop: 10, paddingBottom: 24,
@@ -391,54 +422,95 @@ function StatsPage() {
     </View>
   )
 
-  /* ====== 渲染 ====== */
+  /* ====== 下拉筛选面板（通用） ====== */
+  const renderDropdownPanel = (visible: boolean, onClose: () => void, title: string, options: { key: string; label: string }[], selected: string, onSelect: (k: string) => void) => {
+    if (!visible) return null
+    return (
+      <>
+        {/* 遮罩 */}
+        <View className="absolute inset-0" style={{ zIndex: 199, top: capsuleBottom }} onClick={onClose}>
+          <View style={{ height: '100%', backgroundColor: 'rgba(0,0,0,0.15)' }} />
+        </View>
+        {/* 面板 */}
+        <View style={{
+          position: 'absolute', left: 0, right: 0, top: capsuleBottom,
+          zIndex: 200, backgroundColor: '#FFFFFF',
+          borderRadius: 12, marginLeft: 12, marginRight: 12,
+          boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+          padding: 8,
+        }}
+        >
+          <Text style={{ fontSize: 13, fontWeight: '600', color: '#333', paddingLeft: 14, paddingRight: 14, paddingTop: 6, paddingBottom: 8 }}>{title}</Text>
+          {options.map(opt => (
+            <View key={opt.key} onClick={() => onSelect(opt.key)}
+              style={{
+                flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                paddingLeft: 14, paddingRight: 14, paddingTop: 11, paddingBottom: 11,
+                borderBottomWidth: options[options.length - 1].key !== opt.key ? 0.5 : 0,
+                borderBottomColor: '#F0F0F0',
+              }}
+            >
+              <Text style={{ fontSize: 14, color: selected === opt.key ? THEME.primary : '#333' }}>{opt.label}</Text>
+              {selected === opt.key && <Text style={{ fontSize: 14, color: THEME.primary, fontWeight: '700' }}>✓</Text>}
+            </View>
+          ))}
+        </View>
+      </>
+    )
+  }
+
   return (
     <View className="flex flex-col h-full" style={{ backgroundColor: '#F5F5F5' }}>
       {/* ==================== 明细 Tab ==================== */}
       {activeTab === 'detail' && (
         <>
-          {/* 固定蓝色Header */}
-          <View style={{
-            position: 'fixed',
-            top: 0, left: 0, right: 0,
-            zIndex: 100,
-            background: THEME.headerBg,
-          }}
-          >
+          {/* 固定Header */}
+          <View style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: showCatDropdown || showTimeDropdown ? 198 : 100, background: THEME.headerBg }}>
             {/* 标题行 */}
             <View style={{
-              paddingTop: statusBarH,
-              height: capsuleBottom,
+              paddingTop: statusBarH, height: capsuleBottom,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              paddingLeft: 16, paddingRight: 16,
             }}
             >
-              <Text style={{ fontSize: 18, fontWeight: '700', color: '#FFFFFF', fontFamily: '-apple-system, "SF Pro Display", sans-serif' }}>记账本</Text>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#FFFFFF' }}>记账本</Text>
             </View>
 
-            {/* 筛选行 —— 可点击切换类型和时间 */}
-            <View style={{ paddingLeft: 16, paddingRight: 16, paddingBottom: 8, display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              {/* 分类筛选按钮（可点击循环切换） */}
-              <View onClick={cycleDetailCategory}
-                style={{
-                  paddingTop: 5, paddingBottom: 5, paddingLeft: 12, paddingRight: 12,
-                  borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.25)',
-                }}
-              >
-                <Text style={{ fontSize: 13, color: '#FFFFFF', fontWeight: '500' }}>
-                  {detailCategory === 'all' ? '全部类型' : detailCategory}
-                </Text>
+            {/* 筛选行：类型下拉 + 时间下拉 */}
+            <View style={{ paddingLeft: 16, paddingRight: 16, paddingBottom: 8, display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              {/* 分类下拉按钮 */}
+              <View style={{ position: 'relative' }}>
+                <View onClick={() => { setShowCatDropdown(!showCatDropdown); setShowTimeDropdown(false) }}
+                  style={{
+                    paddingTop: 5, paddingBottom: 5, paddingLeft: 12, paddingRight: 10,
+                    borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.25)',
+                    display: 'flex', alignItems: 'center', gap: 3,
+                  }}
+                >
+                  <Text style={{ fontSize: 13, color: '#FFFFFF', fontWeight: '500' }}>
+                    {detailCategory === 'all' ? '全部类型' : detailCategory}
+                  </Text>
+                  <ChevronDown size={12} color="#FFFFFF" />
+                </View>
               </View>
-              {/* 时间筛选按钮（可点击循环切换） */}
-              <View onClick={cycleDateRange}
-                style={{
-                  paddingTop: 5, paddingBottom: 5, paddingLeft: 12, paddingRight: 12,
-                  borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.25)',
-                }}
-              >
-                <Text style={{ fontSize: 13, color: '#FFFFFF', fontWeight: '500' }}>
-                  {{ all: '全部时间', month: '本月', week: '近7天' }[dateRange]}
-                </Text>
+
+              {/* 时间下拉按钮 */}
+              <View style={{ position: 'relative' }}>
+                <View onClick={() => { setShowTimeDropdown(!showTimeDropdown); setShowCatDropdown(false) }}
+                  style={{
+                    paddingTop: 5, paddingBottom: 5, paddingLeft: 12, paddingRight: 10,
+                    borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.25)',
+                    display: 'flex', alignItems: 'center', gap: 3,
+                  }}
+                >
+                  <Text style={{ fontSize: 13, color: '#FFFFFF', fontWeight: '500' }}>{dateRangeLabel}</Text>
+                  <ChevronDown size={12} color="#FFFFFF" />
+                </View>
+              </View>
+
+              {/* 日期选择器箭头 */}
+              <View style={{ display: 'flex', alignItems: 'center', gap: 2, marginLeft: 'auto' }}>
+                <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>{currentMonthLabel}</Text>
+                <ChevronDown size={12} color="rgba(255,255,255,0.65)" />
               </View>
             </View>
 
@@ -448,20 +520,25 @@ function StatsPage() {
               display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 12,
             }}
             >
-              <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.9)' }}>{currentMonthLabel}</Text>
-              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)' }}>{'\u25BC'}</Text>
+              <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.85)' }}>总支出</Text>
               <View style={{ flex: 1 }} />
-              <Text style={{ fontSize: 15, fontWeight: '600', color: '#FFFFFF' }}>总支出 \u00a5{totalExpense.toFixed(2)}</Text>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#FFFFFF' }}>¥{totalExpense.toFixed(2)}</Text>
             </View>
           </View>
 
-          {/* 滚动内容区（无浮动记一笔按钮）*/}
+          {/* 下拉面板 */}
+          {renderDropdownPanel(showCatDropdown, () => setShowCatDropdown(false), '选择分类',
+            CATEGORY_LIST.map(k => ({ key: k, label: k === 'all' ? '全部类型' : k })),
+            detailCategory, selectCategory)}
+          {renderDropdownPanel(showTimeDropdown, () => setShowTimeDropdown(false), '选择时间',
+            TIME_OPTIONS, dateRange, selectDateRange)}
+
+          {/* 滚动内容 */}
           <ScrollView scrollY enhanced showScrollbar={false}
             style={{ flex: 1, marginTop: detailHeaderH, marginBottom: 70 }}
           >
             <View style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
               {(() => {
-                /* 按日期分组 */
                 const grouped: Record<string, Bill[]> = {}
                 detailFilteredBills.forEach(b => {
                   const date = (b.bill_date || '').split('T')[0]
@@ -471,12 +548,8 @@ function StatsPage() {
                 const sortedDates = Object.keys(grouped).sort().reverse()
 
                 if (!sortedDates.length) return (
-                  <View style={{
-                    borderRadius: 16, backgroundColor: '#FFFFFF',
-                    padding: 40, alignItems: 'center',
-                  }}
-                  >
-                    <Text style={{ fontSize: 36 }}>\uD83D\uDCCB</Text>
+                  <View style={{ borderRadius: 16, backgroundColor: '#FFFFFF', padding: 40, alignItems: 'center' }}>
+                    <Text style={{ fontSize: 36 }}>📋</Text>
                     <Text style={{ fontSize: 14, color: '#BBB', marginTop: 8, display: 'block' }}>暂无明细</Text>
                   </View>
                 )
@@ -486,17 +559,12 @@ function StatsPage() {
                   const dayOut = items.filter(i => !i.is_treat).reduce((s, i) => s + Math.abs(Number(i.amount)), 0)
 
                   return (
-                    <View key={date} style={{
-                      borderRadius: 16, overflow: 'hidden', backgroundColor: '#FFFFFF',
-                      boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-                    }}
-                    >
+                    <View key={date} style={{ borderRadius: 16, overflow: 'hidden', backgroundColor: '#FFFFFF', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
                       {/* 日期头 */}
                       <View style={{
                         paddingTop: 10, paddingBottom: 10, paddingLeft: 16, paddingRight: 16,
                         display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-                        backgroundColor: '#FAFAFA',
-                        borderBottomWidth: 1, borderBottomColor: '#F0F0F0',
+                        backgroundColor: '#FAFAFA', borderBottomWidth: 1, borderBottomColor: '#F0F0F0',
                       }}
                       >
                         <Text style={{ fontSize: 15, fontWeight: '600', color: '#333', display: 'block' }}>{getDayLabel(date)}</Text>
@@ -511,21 +579,12 @@ function StatsPage() {
                           <View key={`${bill.id}-${bi}`} style={{
                             paddingTop: 12, paddingBottom: 12, paddingLeft: 16, paddingRight: 16,
                             display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 12,
-                            borderBottomWidth: bi < items.length - 1 ? 1 : 0,
-                            borderBottomColor: '#F5F5F5',
+                            borderBottomWidth: bi < items.length - 1 ? 1 : 0, borderBottomColor: '#F5F5F5',
                           }}
                           >
-                            {/* 类别图标圆 */}
-                            <View style={{
-                              width: 40, height: 40, borderRadius: 20,
-                              backgroundColor: cc.bg,
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              flexShrink: 0,
-                            }}
-                            >
+                            <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: cc.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                               <IconComp size={18} color={cc.color} />
                             </View>
-                            {/* 名称+备注 */}
                             <View style={{ flex: 1, minWidth: 0 }}>
                               <Text style={{ fontSize: 15, color: '#333', display: 'block' }}>{bill.name}</Text>
                               {(bill.note || bill.payer) && (
@@ -534,13 +593,9 @@ function StatsPage() {
                                 </Text>
                               )}
                             </View>
-                            {/* 金额 */}
-                            <Text style={{
-                              fontSize: 16, fontWeight: '600',
-                              color: bill.is_treat ? '#F5A623' : '#333',
-                              flexShrink: 0,
-                            }}
-                            >\u00a5{Math.abs(amt).toFixed(2)}</Text>
+                            <Text style={{ fontSize: 16, fontWeight: '600', color: bill.is_treat ? '#F5A623' : '#333', flexShrink: 0 }}>
+                              ¥{Math.abs(amt).toFixed(2)}
+                            </Text>
                           </View>
                         )
                       })}
@@ -556,299 +611,120 @@ function StatsPage() {
       {/* ==================== 统计 Tab ==================== */}
       {activeTab === 'chart' && (
         <>
-          {/* 固定蓝色Header（只显示支出，无入账切换）*/}
-          <View style={{
-            position: 'fixed',
-            top: 0, left: 0, right: 0,
-            zIndex: 100,
-            background: THEME.headerBg,
-          }}
-          >
-            {/* 标题行 + 日期选择器（可点击切换） */}
+          {/* 固定Header（只显示支出） */}
+          <View style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, background: THEME.headerBg }}>
             <View style={{
-              paddingTop: statusBarH,
-              height: capsuleBottom,
+              paddingTop: statusBarH, height: capsuleBottom,
               paddingLeft: 16, paddingRight: 16,
               display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
             }}
             >
-              <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8 }}
-                onClick={cycleDateRange}
-              >
-                <Text style={{ fontSize: 17, fontWeight: '600', color: '#FFFFFF' }}>
-                  {{ all: '全部时间', month: currentMonthLabel, week: '近7天' }[dateRange]}
-                </Text>
-                <Text style={{ fontSize: 22, color: 'rgba(255,255,255,0.7)', lineHeight: 1 }}>📅</Text>
-              </View>
-
-              {/* 只显示"支出"标签，不提供切换 */}
-              <View style={{
-                paddingTop: 5, paddingBottom: 5, paddingLeft: 14, paddingRight: 14,
-                borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.25)',
-              }}
-              >
-                <Text style={{ fontSize: 13, fontWeight: '600', color: '#FFFFFF' }}>支出</Text>
+              {/* 时间下拉按钮 */}
+              <View style={{ position: 'relative' }}>
+                <View onClick={() => setShowTimeDropdown(!showTimeDropdown)}
+                  style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                >
+                  <Text style={{ fontSize: 17, fontWeight: '600', color: '#FFFFFF' }}>{dateRangeLabel}</Text>
+                  <ChevronDown size={14} color="rgba(255,255,255,0.75)" />
+                </View>
               </View>
             </View>
 
-            {/* 金额区 */}
-            <View style={{ paddingLeft: 20, paddingRight: 20, paddingBottom: 20 }}>
-              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)', display: 'block', marginBottom: 2 }}>共支出</Text>
-              <Text style={{ fontSize: 34, fontWeight: '700', color: '#FFFFFF', fontFamily: '"Georgia","Times New Roman",serif' }}>
-                \u00a5{totalExpense.toFixed(2)}
-              </Text>
+            {/* 金额行 */}
+            <View style={{ paddingLeft: 16, paddingRight: 16, paddingBottom: 16 }}>
+              <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', display: 'block' }}>共支出</Text>
+              <Text style={{ fontSize: 32, fontWeight: '700', color: '#FFFFFF', letterSpacing: '-0.5px' }}>¥{totalExpense.toFixed(2)}</Text>
             </View>
           </View>
+
+          {/* 时间下拉面板 */}
+          {renderDropdownPanel(showTimeDropdown, () => setShowTimeDropdown(false), '选择时间范围',
+            TIME_OPTIONS, dateRange, selectDateRange)}
 
           {/* 滚动内容 */}
           <ScrollView scrollY enhanced showScrollbar={false}
             style={{ flex: 1, marginTop: chartHeaderH, marginBottom: 70 }}
           >
             <View style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {/* 支出构成标题 */}
-              <Text style={{ fontSize: 17, fontWeight: '600', color: '#333', paddingLeft: 4, display: 'block' }}>支出构成</Text>
+              {/* 支出构成窗口 */}
+              <View style={{ borderRadius: 16, backgroundColor: '#FFFFFF', padding: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+                <Text style={{ fontSize: 16, fontWeight: '600', color: '#1E293B', display: 'block', marginBottom: 16 }}>支出构成</Text>
 
-              {/* 环形饼图区域 */}
-              {pieData.length > 0 ? (
-                <View style={{
-                  borderRadius: 16, backgroundColor: '#FFFFFF',
-                  padding: 20, paddingBottom: 16,
-                  boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center',
-                }}
-                >
-                  {/* 环形图 */}
-                  <View style={{
-                    width: 180, height: 180, borderRadius: 90,
-                    background: conicGradient,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    position: 'relative',
-                  }}
-                  >
-                    {/* 中心白圆 */}
-                    <View style={{
-                      width: 100, height: 100, borderRadius: 50,
-                      backgroundColor: '#FFFFFF',
-                    }}
-                    />
-                    {/* 百分比标注 */}
-                    {pieData.slice(0, 2).map((item, i) => {
-                      const isTop = i === 0
-                      return (
-                        <View key={`lbl-${i}`}
-                          style={{
-                            position: 'absolute',
-                            ...(isTop ? { top: -4, left: '55%' } : { bottom: -4, right: '15%' }),
-                            display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 4,
-                          }}
-                        >
-                          <View style={{ width: isTop ? 14 : 18, height: 1, backgroundColor: '#DDD' }} />
-                          <Text style={{ fontSize: 12, color: '#666', display: 'block' }}>
-                            {item.name} {item.percent}%
-                          </Text>
-                        </View>
-                      )
-                    })}
-                  </View>
-
-                  {/* 分类排行列表 */}
-                  <View style={{ width: '100%', marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {categoryStats.map((cat, i) => {
-                      const cc = getCategoryConfig(cat.name)
-                      const IconComp = cc.icon
-                      return (
-                        <View key={`rank-${i}`}
-                          style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 10 }}
-                        >
-                          {/* 圆形图标 */}
-                          <View style={{
-                            width: 36, height: 36, borderRadius: 18,
-                            backgroundColor: cc.bg,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            flexShrink: 0,
-                          }}
-                          >
-                            <IconComp size={17} color={cc.color} />
-                          </View>
-                          {/* 名称 */}
-                          <Text style={{ fontSize: 15, color: '#333', width: 50, flexShrink: 0, display: 'block' }}>{cat.name}</Text>
-                          {/* 进度条 */}
-                          <View style={{ flex: 1, height: 10, backgroundColor: '#F0F0F0', borderRadius: 5, overflow: 'hidden' }}>
-                            <View style={{
-                              width: `${Math.max(cat.amount / maxCatAmount * 100, 4)}%`,
-                              height: 10,
-                              backgroundColor: cc.color,
-                              borderRadius: 5,
-                              minWidth: cat.amount > 0 ? 16 : 0,
-                            }}
-                            />
-                          </View>
-                          {/* 金额+箭头 */}
-                          <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 2, flexShrink: 0 }}>
-                            <Text style={{ fontSize: 15, fontWeight: '600', color: '#333', display: 'block' }}>\u00a5{cat.amount.toFixed(0)}</Text>
-                            <ChevronRight size={16} color="#CCC" />
-                          </View>
-                        </View>
-                      )
-                    })}
-                  </View>
-                </View>
-              ) : (
-                <View style={{
-                  borderRadius: 16, backgroundColor: '#FFFFFF',
-                  padding: 40, alignItems: 'center',
-                  boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-                }}
-                >
-                  <Text style={{ fontSize: 36 }}>\uD83D\uDCCA</Text>
-                  <Text style={{ fontSize: 14, color: '#BBB', marginTop: 8, display: 'block' }}>暂无统计数据</Text>
-                  <Text style={{ fontSize: 12, color: '#DDD', marginTop: 2, display: 'block' }}>添加账单后将自动生成图表</Text>
-                </View>
-              )}
-            </View>
-          </ScrollView>
-        </>
-      )}
-
-      {/* ==================== 地图 Tab ==================== */}
-      {activeTab === 'map' && (
-        <>
-          {/* 固定蓝色Header */}
-          <View style={{
-            position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
-            background: THEME.headerBg,
-          }}
-          >
-            <View style={{
-              paddingTop: statusBarH,
-              height: capsuleBottom,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-            >
-              <Text style={{ fontSize: 18, fontWeight: '700', color: '#FFFFFF', fontFamily: '-apple-system, "SF Pro Display", sans-serif' }}>
-                目的地地图
-              </Text>
-            </View>
-          </View>
-
-          <ScrollView scrollY enhanced showScrollbar={false}
-            style={{ flex: 1, marginTop: mapHeaderH + 8, marginBottom: 70 }}
-          >
-            <View style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {/* 中国地图示意卡片 */}
-              <View style={{
-                borderRadius: 16, backgroundColor: '#FFFFFF',
-                overflow: 'hidden',
-                boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-              }}
-              >
-                {/* 地图区域 */}
-                <View style={{
-                  width: '100%',
-                  height: 300,
-                  backgroundColor: '#F0F6FF',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  position: 'relative',
-                  borderBottomWidth: 1, borderBottomColor: '#E4EDF7',
-                }}
-                >
-                  {/* 中国轮廓文字提示 */}
-                  <View style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                    <Text style={{ fontSize: 42, opacity: 0.25 }}>🗺️</Text>
-                    <Text style={{ fontSize: 12, color: '#BBB', opacity: 0.6, display: 'block' }}>中国地级市示意图</Text>
-                  </View>
-
-                  {/* 城市标记点 —— 使用识别到的城市坐标或预设散布位置 */}
-                  {destinationList.slice(0, 10).map((dest, i) => {
-                    const cityInfo = dest.info
-                    let posTop: string
-                    let posLeft: string
-
-                    if (cityInfo) {
-                      /* 有精确城市信息 → 用经纬度映射到相对位置（简化映射） */
-                      posTop = `${Math.max(5, Math.min(90, 95 - cityInfo.lat * 1.8))}%`
-                      posLeft = `${Math.max(5, Math.min(92, (cityInfo.lng - 70) * 3.5))}%`
-                    } else {
-                      /* 无精确信息 → 用散布位置 */
-                      const fallbackPositions = [
-                        { t: '18%', l: '38%' }, { t: '42%', l: '58%' }, { t: '54%', l: '46%' },
-                        { t: '60%', l: '62%' }, { t: '45%', l: '28%' }, { t: '30%', l: '68%' },
-                        { t: '66%', l: '38%' }, { t: '35%', l: '18%' }, { t: '22%', l: '82%' },
-                        { t: '50%', l: '85%' },
-                      ]
-                      const fp = fallbackPositions[i % fallbackPositions.length]
-                      posTop = fp.t; posLeft = fp.l
-                    }
-
-                    return (
-                      <View key={`marker-${i}`} style={{
-                        position: 'absolute',
-                        top: posTop,
-                        left: posLeft,
-                        display: 'flex', flexDirection: 'column', alignItems: 'center',
+                {categoryStats.length > 0 ? (
+                  <>
+                    {/* 环形饼图 */}
+                    <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                      <View style={{
+                        width: 180, height: 180, borderRadius: 90,
+                        background: conicGradient,
+                        position: 'relative',
                       }}
                       >
-                        {/* 标记点圆点 */}
+                        {/* 中心镂空 */}
                         <View style={{
-                          width: 10, height: 10, borderRadius: 5,
-                          backgroundColor: THEME.primary,
-                          borderWidth: 2, borderColor: '#FFFFFF',
-                          boxShadow: '0 2px 6px rgba(91,155,213,0.35)',
+                          position: 'absolute', top: 35, left: 35, right: 35, bottom: 35,
+                          borderRadius: 45, backgroundColor: '#FFFFFF',
                         }}
                         />
-                        {/* 城市名标签 */}
-                        <Text style={{
-                          fontSize: 9, color: THEME.primaryDark,
-                          whiteSpace: 'nowrap', marginTop: 2,
-                          backgroundColor: 'rgba(255,255,255,0.85)',
-                          paddingLeft: 3, paddingRight: 3, borderRadius: 3,
-                        }}
-                        >{dest.city}</Text>
+                        {/* 百分比标注 */}
+                        {pieData.map((d, i) => {
+                          const midAngle = (() => {
+                            let start = 0
+                            for (let j = 0; j < i; j++) start += pieData[j].angle
+                            return start + d.angle / 2
+                          })()
+                          const rad = (midAngle * Math.PI) / 180
+                          const r = 105
+                          const x = 90 + r * Math.cos(rad)
+                          const y = 90 + r * Math.sin(rad)
+                          const labelX = 90 + r * 1.45 * Math.cos(rad)
+                          const labelY = 90 + r * 1.45 * Math.sin(rad)
+                          return (
+                            <View key={`lbl-${d.name}`}>
+                              {/* 连线点 */}
+                              <View style={{ position: 'absolute', left: x - 2, top: y - 2, width: 4, height: 4, borderRadius: 2, backgroundColor: d.color }} />
+                              {/* 标签 */}
+                              <View style={{ position: 'absolute', left: Math.min(labelX, 170), top: labelY - 8 }}>
+                                <Text style={{ fontSize: 11, color: '#666', display: 'block' }}>{d.name} {d.percent}%</Text>
+                              </View>
+                            </View>
+                          )
+                        })}
                       </View>
-                    )
-                  })}
-                </View>
+                    </View>
 
-                {/* 目的地花费排行列表 */}
-                {destinationList.length > 0 ? (
-                  <View style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <Text style={{ fontSize: 14, fontWeight: '600', color: '#555', display: 'block', marginBottom: 2 }}>
-                      目的地花费排行
-                    </Text>
-                    {destinationList.map((dest, i) => (
-                      <View key={`dest-rank-${i}`}
-                        style={{
-                          display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 10,
-                          paddingTop: i > 0 ? 10 : 0,
-                          borderTopWidth: i > 0 ? 1 : 0, borderTopColor: '#F0F0F0',
-                        }}
-                      >
-                        {/* 排名 */}
-                        <Text style={{
-                          fontSize: 14, fontWeight: '700', color: i < 3 ? THEME.primary : '#AAA',
-                          width: 20, textAlign: 'center',
-                        }}
-                        >{i + 1}</Text>
-                        {/* 城市名 + 省份 */}
-                        <View style={{ flex: 1, minWidth: 0 }}>
-                          <Text style={{ fontSize: 14, color: '#333', display: 'block' }}>{dest.city}</Text>
-                          {dest.info?.province && dest.info.province !== dest.city && (
-                            <Text style={{ fontSize: 11, color: '#AAA', display: 'block' }}>{dest.info.province}</Text>
-                          )}
-                        </View>
-                        {/* 金额 */}
-                        <Text style={{ fontSize: 14, fontWeight: '600', color: THEME.primaryDark, flexShrink: 0 }}>
-                          \u00a5{dest.amount.toFixed(2)}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
+                    {/* 分类排行 */}
+                    <View style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {categoryStats.map((cat) => {
+                        const cfg = getCategoryConfig(cat.name)
+                        const IconComp = cfg.icon
+                        const pct = maxCatAmount > 0 ? (cat.amount / maxCatAmount) * 100 : 0
+                        return (
+                          <View key={cat.name} style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                            {/* 圆形图标 */}
+                            <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: cfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              <IconComp size={16} color={cfg.color} />
+                            </View>
+                            {/* 名称 */}
+                            <Text style={{ fontSize: 14, color: '#333', width: 50, flexShrink: 0 }}>{cat.name}</Text>
+                            {/* 进度条 */}
+                            <View style={{ flex: 1, height: 8, borderRadius: 4, backgroundColor: '#F0F0F0', overflow: 'hidden' }}>
+                              <View style={{ width: `${pct}%`, height: '100%', borderRadius: 4, backgroundColor: cfg.color }} />
+                            </View>
+                            {/* 金额 */}
+                            <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+                              <Text style={{ fontSize: 15, fontWeight: '600', color: '#333' }}>¥{cat.amount.toFixed(2)}</Text>
+                              <ChevronRight size={14} color="#CCC" />
+                            </View>
+                          </View>
+                        )
+                      })}
+                    </View>
+                  </>
                 ) : (
-                  <View style={{ padding: 30, alignItems: 'center' }}>
-                    <Text style={{ fontSize: 30 }}>🗺️</Text>
-                    <Text style={{ fontSize: 13, color: '#BBB', marginTop: 8, display: 'block' }}>
-                      暂无目的地数据{'\n'}请在项目中设置目的地
-                    </Text>
+                  <View style={{ alignItems: 'center', paddingTop: 30, paddingBottom: 30 }}>
+                    <Text style={{ fontSize: 40 }}>📊</Text>
+                    <Text style={{ fontSize: 14, color: '#AAA', marginTop: 8, display: 'block' }}>暂无数据</Text>
                   </View>
                 )}
               </View>
@@ -857,7 +733,121 @@ function StatsPage() {
         </>
       )}
 
-      {/* ====== 底部三段式Tab（始终显示）====== */}
+      {/* ==================== 地图 Tab ==================== */}
+      {activeTab === 'map' && (
+        <>
+          <View style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, background: THEME.headerBg }}>
+            <View style={{ paddingTop: statusBarH, height: capsuleBottom, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#FFFFFF' }}>目的地地图</Text>
+            </View>
+          </View>
+
+          <ScrollView scrollY enhanced showScrollbar={false}
+            style={{ flex: 1, marginTop: mapHeaderH, marginBottom: 70 }}
+          >
+            <View style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* 地图区域 */}
+              <View style={{ borderRadius: 16, backgroundColor: '#EBF4FF', padding: 20, minHeight: 280, position: 'relative' }}>
+                {/* 中国地图轮廓示意（用CSS绘制简化形状） */}
+                <View style={{ alignItems: 'center', justifyContent: 'center', minHeight: 240 }}>
+                  {destinationList.length > 0 ? (
+                    <View style={{ position: 'relative', width: '100%', height: 240 }}>
+                      {/* 城市标记点 */}
+                      {destinationList.slice(0, 12).map((dest, i) => {
+                        const info = dest.info
+                        /* 将经纬度映射到相对位置 (lng: 73-136 -> 5%-95%, lat: 18-54 -> 80%-10%) */
+                        const rawLng = info?.lng || (80 + (i % 6) * 10)
+                        const rawLat = info?.lat || (20 + Math.floor(i / 6) * 10)
+                        const x = ((rawLng - 70) / 66) * 85 + 5
+                        const y = ((55 - rawLat) / 38) * 75 + 5
+                        return (
+                          <View key={`marker-${dest.city}-${i}`} style={{ position: 'absolute', left: `${x}%`, top: `${y}%` }}>
+                            <View style={{ alignItems: 'center' }}>
+                              {/* 标记圆点 */}
+                              <View style={{
+                                width: dest.amount > 0 ? 10 : 6, height: dest.amount > 0 ? 10 : 6,
+                                borderRadius: dest.amount > 0 ? 5 : 3,
+                                backgroundColor: dest.amount > 0 ? THEME.primary : '#CCC',
+                                borderWidth: dest.amount > 0 ? 2 : 0, borderColor: '#FFF',
+                                
+                                
+                              }}
+                              />
+                              {/* 城市名标签 */}
+                              {(i < 6 || dest.amount > 0) && (
+                                <Text style={{ fontSize: 9, color: '#444', marginTop: 2, whiteSpace: 'nowrap' }}>
+                                  {dest.city}
+                                </Text>
+                              )}
+                            </View>
+                          </View>
+                        )
+                      })}
+
+                      {/* 无坐标的城市用散布位置 */}
+                      {destinationList.filter(d => !d.info).slice(0, 6).map((dest, i) => {
+                        const positions = [
+                          { x: 25, y: 35 }, { x: 55, y: 25 }, { x: 75, y: 45 },
+                          { x: 35, y: 60 }, { x: 60, y: 65 }, { x: 80, y: 30 },
+                        ]
+                        const pos = positions[i % positions.length]
+                        return (
+                          <View key={`fallback-${dest.city}-${i}`} style={{ position: 'absolute', left: `${pos.x}%`, top: `${pos.y}%` }}>
+                            <View style={{ alignItems: 'center' }}>
+                              <View style={{
+                                width: 8, height: 8, borderRadius: 4, backgroundColor: '#AAA',
+                                borderWidth: 1.5, borderColor: '#FFF',
+                              }}
+                              />
+                              <Text style={{ fontSize: 9, color: '#888', marginTop: 1, whiteSpace: 'nowrap' }}>{dest.city}</Text>
+                            </View>
+                          </View>
+                        )
+                      })}
+                    </View>
+                  ) : (
+                    <View style={{ alignItems: 'center' }}>
+                      <MapIcon size={48} color="#C5DAE8" />
+                      <Text style={{ fontSize: 14, color: '#A0B8CC', marginTop: 12, display: 'block' }}>中国地级市示意图</Text>
+                      <Text style={{ fontSize: 12, color: '#C0D0E0', marginTop: 4, display: 'block' }}>
+                        暂无目的地数据 请在项目中设置目的地
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+
+              {/* 目的地排行榜 */}
+              {destinationList.length > 0 && (
+                <View style={{ borderRadius: 16, backgroundColor: '#FFFFFF', padding: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: '#1E293B', display: 'block', marginBottom: 12 }}>📍 目的地花费</Text>
+                  {destinationList.map((dest, i) => (
+                    <View key={dest.city}
+                      style={{
+                        display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                        paddingTop: 10, paddingBottom: 10,
+                        borderBottomWidth: i < destinationList.length - 1 ? 0.5 : 0,
+                        borderBottomColor: '#F0F0F0',
+                      }}
+                    >
+                      <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={{ fontSize: 15, fontWeight: '700', color: i < 3 ? THEME.primary : '#8896A6', width: 20 }}>#{i + 1}</Text>
+                        <View>
+                          <Text style={{ fontSize: 14, color: '#333', display: 'block' }}>{dest.city}</Text>
+                          <Text style={{ fontSize: 11, color: '#AAA', display: 'block' }}>{dest.info?.province || ''}{dest.count > 1 ? ` (${dest.count}笔)` : ''}</Text>
+                        </View>
+                      </View>
+                      <Text style={{ fontSize: 15, fontWeight: '600', color: '#333' }}>¥{dest.amount.toFixed(2)}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          </ScrollView>
+        </>
+      )}
+
+      {/* 底部Tab */}
       {renderBottomTabs()}
     </View>
   )

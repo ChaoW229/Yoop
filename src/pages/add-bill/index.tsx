@@ -375,37 +375,37 @@ export default function AddBillPage() {
           </Picker>
         </View>
 
-        {/* 支付人 - 支持长按删除，每行4个 */}
+        {/* 支付人 - 每行4个均匀分布 */}
         <View>
           <Text className="block text-xs mb-2" style={{ color: theme.accent }}>支付人 <Text style={{ color: '#C0C8D4', fontSize: 10 }}>(长按删除)</Text></Text>
-          <View style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          <View style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap' }}>
             {participants.map((p, idx) => {
               const payerColors = CARD_COLORS[idx % CARD_COLORS.length];
-              const tagW = (sysInfo.windowWidth || 375) > 0 ? Math.floor(((sysInfo.windowWidth || 375) - 48) / 4) : 82; // 减去左右padding(32)+gap(8*2)
               return (
                 <View
                   key={p}
                   onClick={() => setPayer(p)}
                   onLongPress={() => handleLongPressDeletePayer(p)}
                   style={{
-                    width: tagW,
-                    height: 40,
-                    borderRadius: 12,
+                    /* 每行4个，用flex比例分配宽度 */
+                    width: '23.5%',
+                    height: 38,
+                    borderRadius: 10,
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 6,
-                    paddingLeft: 8,
-                    paddingRight: 8,
+                    justifyContent: 'center',
+                    gap: 4,
+                    marginBottom: 8,
+                    marginRight: idx % 4 === 3 ? 0 : '2%',
                     backgroundColor: payer === p ? `${payerColors.bg}` : `${payerColors.bg}44`,
                     border: payer === p ? `1px solid ${payerColors.amount}66` : `1px solid ${payerColors.bg}`,
-                    boxShadow: payer === p ? `0 4px 12px ${payerColors.name}20` : 'none',
                   }}
                 >
                   <View
                     style={{
-                      width: 12,
-                      height: 12,
-                      borderRadius: 6,
+                      width: 10,
+                      height: 10,
+                      borderRadius: 5,
                       backgroundColor: payerColors.amount,
                       flexShrink: 0,
                     }}
@@ -414,9 +414,9 @@ export default function AddBillPage() {
                     className="block"
                     style={{
                       color: payer === p ? payerColors.name : '#8896A6',
-                      fontSize: 13,
+                      fontSize: 12,
                       overflow: 'hidden', textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap', flex: 1,
+                      whiteSpace: 'nowrap',
                     }}
                   >
                     {p}
@@ -427,9 +427,10 @@ export default function AddBillPage() {
             <View
               onClick={handleAddPayer}
               style={{
-                width: (sysInfo.windowWidth || 375) > 0 ? Math.floor(((sysInfo.windowWidth || 375) - 48) / 4) : 82,
-                height: 40,
-                borderRadius: 12,
+                width: '23.5%',
+                height: 38,
+                borderRadius: 10,
+                marginBottom: 8,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 backgroundColor: `${theme.bg}22`, border: `1px dashed ${theme.bg}`,
               }}
