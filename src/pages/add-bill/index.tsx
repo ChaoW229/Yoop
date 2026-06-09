@@ -547,11 +547,11 @@ export default function AddBillPage() {
               })}
             </View>
 
-            {/* 自定义类别列表 - 支持长按删除 */}
+            {/* 自定义类别列表 - 和预设类别一样的框样式 */}
             {customCategories.length > 0 && (
               <>
                 <Text className="block text-xs mb-2" style={{ color: theme.accent }}>自定义类别 <Text style={{ color: '#C0C8D4', fontSize: 10 }}>(长按删除)</Text></Text>
-                <View className="flex flex-wrap gap-2 mb-3">
+                <View className="grid grid-cols-3 gap-3 mb-3">
                   {customCategories.map(cat => {
                     const isActive = customCategory === cat;
                     return (
@@ -559,14 +559,15 @@ export default function AddBillPage() {
                         key={cat}
                         onClick={() => { setCustomCategory(cat); setCategory(''); setShowCategoryDrawer(false); }}
                         onLongPress={() => handleLongPressDeleteCategory(cat)}
-                        className="px-3 py-2 rounded-xl flex items-center gap-1"
+                        className="flex flex-col items-center gap-2 py-3 rounded-2xl"
                         style={{
-                          backgroundColor: isActive ? theme.name : `${theme.bg}44`,
+                          backgroundColor: isActive ? theme.name : `${theme.bg}33`,
                           border: isActive ? `1px solid ${theme.name}` : `1px solid ${theme.bg}`,
+                          boxShadow: isActive ? `0 4px 12px ${theme.name}30` : 'none',
                         }}
                       >
+                        <Text className="block text-lg">📌</Text>
                         <Text className="block text-xs" style={{ color: isActive ? '#FFFFFF' : theme.name }}>{cat}</Text>
-                        {isActive && <Text className="block text-xs" style={{ color: '#FFFFFF', opacity: 0.7 }}>✓</Text>}
                       </View>
                     );
                   })}

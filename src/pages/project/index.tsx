@@ -557,7 +557,7 @@ export default function ProjectPage() {
         </View>
       </View>
 
-      {/* ========== 3.5 分账情况：固定在添加花费和账单之间（有非请客账单时显示） ========== */}
+      {/* ========== 3.5 分账情况 ========== */}
       {hasSettlement && (
         <View
           style={{
@@ -576,61 +576,87 @@ export default function ProjectPage() {
           }}
         >
           {/* 标题 */}
-          <View style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#1E293B' }}>💰 分账情况</Text>
-            <Text style={{ fontSize: 11, color: '#94A3B8', marginLeft: 8 }}>{balances.length}人参与</Text>
+          <View style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#1E293B' }}>💰 分账结算</Text>
+            <Text style={{ fontSize: 11, color: '#94A3B8', marginLeft: 6 }}>{balances.length}人参与</Text>
           </View>
 
-          {/* 有转账建议时显示转账列表 */}
-          {transfers.length > 0 ? (
-            <ScrollView scrollX enhanced showScrollbar={false}>
-              <View style={{ display: 'flex', flexDirection: 'row', gap: 8 }}>
-                {transfers.map((t, i) => {
-                  const cIdx = i % CARD_COLORS.length;
-                  const sc = CARD_COLORS[cIdx];
-                  return (
-                    <View key={`${t.from}-${t.to}`} style={{
-                      display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 4,
-                      backgroundColor: sc.bg, borderRadius: 20,
-                      paddingTop: 6, paddingBottom: 6, paddingLeft: 12, paddingRight: 12,
-                      border: `1px solid ${sc.accent}`,
-                      flexShrink: 0,
+          {/* ====== A. 每人收支汇总 ====== */}
+          <View style={{ marginBottom: transfers.length > 0 ? 10 : 0 }}>
+            <Text className="block" style={{ fontSize: 11, color: '#8896A6', marginBottom: 6, fontWeight: '500' }}>每人收支</Text>
+            <View style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+              {balances.map((b) => {
+                const cIdx = Math.abs(b.name.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % CARD_COLORS.length;
+                const sc = CARD_COLORS[cIdx];
+                return (
+                  <View key={`bal-${b.name}`} style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center',
+                    backgroundColor: sc.bg, borderRadius: 10,
+                    paddingTop: 6, paddingBottom: 6, paddingLeft: 10, paddingRight: 10,
+                    flexShrink: 0,
+                  }}
+                  >
+                    {/* 名字 */}
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: sc.name }}>{b.name}</Text>
+                    {/* 余额：正数多付(绿)、负数欠钱(红) */}
+                    <Text style={{
+                      fontSize: 13, fontWeight: '700',
+                      color: b.balance > 0.01 ? '#059669' : b.balance < -0.01 ? '#DC2626' : '#6B7280',
+                      marginTop: 2,
                     }}
                     >
-                      <Text style={{ fontSize: 11, fontWeight: '600', color: sc.name }}>{t.from}</Text>
-                      <Text style={{ fontSize: 11, color: '#EF4444' }}>→¥{t.amount.toFixed(0)}→</Text>
-                      <Text style={{ fontSize: 11, fontWeight: '600', color: sc.name }}>{t.to}</Text>
-                    </View>
-                  );
-                })}
+                      {b.balance > 0 ? '+' : ''}{b.balance.toFixed(2)}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* ====== B. 转账建议（谁给谁）===== */}
+          {transfers.length > 0 && (
+            <>
+              <View
+                style={{
+                  borderTopWidth: 1, borderTopColor: '#F0F4F8',
+                  paddingTop: 8, marginTop: 0, marginBottom: 6,
+                }}
+              >
+                <Text className="block" style={{ fontSize: 11, color: '#8896A6', marginBottom: 6, fontWeight: '500' }}>
+                  建议转账
+                </Text>
               </View>
-            </ScrollView>
-          ) : (
-            /* 无转账建议时：显示余额汇总 */
-            <ScrollView scrollX enhanced showScrollbar={false}>
-              <View style={{ display: 'flex', flexDirection: 'row', gap: 8 }}>
-                {balances.map((b, i) => {
-                  const cIdx = i % CARD_COLORS.length;
-                  const sc = CARD_COLORS[cIdx];
-                  return (
-                    <View key={`bal-${b.name}`} style={{
-                      display: 'flex', flexDirection: 'column', alignItems: 'center',
-                      backgroundColor: sc.bg, borderRadius: 14,
-                      paddingTop: 8, paddingBottom: 8, paddingLeft: 14, paddingRight: 14,
-                      border: `1px solid ${sc.accent}`,
-                      flexShrink: 0,
-                      gap: 2,
-                    }}
-                    >
-                      <Text style={{ fontSize: 12, fontWeight: '600', color: sc.name }}>{b.name}</Text>
-                      <Text style={{ fontSize: 13, fontWeight: '700', color: b.balance > 0 ? '#10B981' : b.balance < 0 ? '#EF4444' : '#6B7280' }}>
-                        {b.balance > 0 ? '+' : ''}{b.balance.toFixed(0)}
-                      </Text>
-                    </View>
-                  );
-                })}
-              </View>
-            </ScrollView>
+
+              {transfers.map((t, i) => {
+                const cIdx = i % CARD_COLORS.length;
+                const sc = CARD_COLORS[cIdx];
+                return (
+                  <View key={`${t.from}-${t.to}`} style={{
+                    display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 6,
+                    backgroundColor: `${sc.bg}66`, borderRadius: 20,
+                    paddingTop: 7, paddingBottom: 7, paddingLeft: 12, paddingRight: 12,
+                    marginBottom: i < transfers.length - 1 ? 6 : 0,
+                  }}
+                  >
+                    {/* 付款人 */}
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#EF4444' }}>{t.from}</Text>
+                    <Text style={{ fontSize: 11, color: '#94A3B8' }}>需支付</Text>
+                    {/* 金额 */}
+                    <Text style={{ fontSize: 15, fontWeight: '700', color: '#DC2626' }}>¥{t.amount.toFixed(2)}</Text>
+                    <Text style={{ fontSize: 11, color: '#94A3B8' }}>给</Text>
+                    {/* 收款人 */}
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#059669' }}>{t.to}</Text>
+                  </View>
+                );
+              })}
+            </>
+          )}
+
+          {/* 无转账时提示两清 */}
+          {transfers.length === 0 && (
+            <View style={{ alignItems: 'center', paddingTop: 4 }}>
+              <Text className="block" style={{ fontSize: 12, color: '#10B981', fontWeight: '500' }}>✓ 已结清</Text>
+            </View>
           )}
         </View>
       )}
@@ -671,44 +697,49 @@ export default function ProjectPage() {
             {Object.entries(byDate).map(([date, items]) => (
               <View key={date} style={{ marginBottom: 12 }}>
                 <Text className="block mb-2" style={{ fontSize: 11, color: '#8896A6', fontWeight: '500' }}>{date}</Text>
-                {items.map(b => (
-                  <View
-                    key={b.id}
-                    className="flex items-center justify-between rounded-xl p-3 mb-2"
-                    style={{
-                      backgroundColor: '#FAFBFD',
-                      border: '1px solid #F0F4F8',
-                    }}
-                    onClick={() => goEditBill(b.id)}
-                    onLongPress={() => handleDeleteBill(b.id, b.name)}
-                  >
-                    <View className="flex items-center gap-3">
-                      <View
-                        className="w-7 h-7 rounded-lg flex items-center justify-center"
-                        style={{ backgroundColor: '#F0F6FC' }}
-                      >
-                        <Text className="block text-xs">{CATEGORY_ICONS[b.category] || '\uD83D\uDCCC'}</Text>
-                      </View>
-                      <View>
-                        <Text className="block text-sm" style={{ color: '#2D3748' }}>{b.name}</Text>
-                        <Text className="block" style={{ fontSize: 11, color: '#A0ABB8' }}>{b.payer}</Text>
-                      </View>
-                    </View>
-                    <View className="flex items-center gap-2">
-                      {b.is_treat && (
+                {items.map(b => {
+                  const isTreat = !!b.is_treat;
+                  return (
+                    <View
+                      key={b.id}
+                      className="flex items-center justify-between rounded-xl p-3 mb-2"
+                      style={{
+                        backgroundColor: isTreat ? '#FFFBEB' : '#FAFBFD',
+                        border: `1px solid ${isTreat ? '#FEF3C7' : '#F0F4F8'}`,
+                      }}
+                      onClick={() => goEditBill(b.id)}
+                      onLongPress={() => handleDeleteBill(b.id, b.name)}
+                    >
+                      <View className="flex items-center gap-3">
                         <View
-                          className="rounded-full px-2 py-1"
-                          style={{ backgroundColor: '#F0F6FC', border: '1px solid #E4EDF7' }}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center"
+                          style={{ backgroundColor: isTreat ? '#FEF3C7' : '#F0F6FC' }}
                         >
-                          <Text className="block" style={{ fontSize: 10, color: cc.name }}>请客</Text>
+                          <Text className="block text-xs">{CATEGORY_ICONS[b.category] || '\uD83D\uDCCC'}</Text>
                         </View>
-                      )}
-                      <Text className="block text-sm font-semibold" style={{ color: b.is_treat ? cc.name : '#2D3748' }}>
-                        ¥{Number(b.amount).toFixed(0)}
-                      </Text>
+                        <View>
+                          {/* 请客账单名称用橙黄色 */}
+                          <Text className="block text-sm" style={{ color: isTreat ? '#D97706' : '#2D3748' }}>{b.name}</Text>
+                          <Text className="block" style={{ fontSize: 11, color: isTreat ? '#B45309' : '#A0ABB8' }}>{b.payer}{isTreat ? ' · 请客' : ''}</Text>
+                        </View>
+                      </View>
+                      <View className="flex items-center gap-2">
+                        {isTreat && (
+                          <View
+                            className="rounded-full px-2 py-1"
+                            style={{ backgroundColor: '#FDE68A', border: '1px solid #F59E0B' }}
+                          >
+                            <Text className="block" style={{ fontSize: 10, fontWeight: '600', color: '#92400E' }}>请客</Text>
+                          </View>
+                        )}
+                        {/* 请客金额用橙色 */}
+                        <Text className="block text-sm font-semibold" style={{ color: isTreat ? '#D97706' : '#2D3748' }}>
+                          ¥{Number(b.amount).toFixed(2)}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
-                ))}
+                  )
+                })}
               </View>
             ))}
 

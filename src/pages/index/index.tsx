@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import Taro, { useDidShow } from '@tarojs/taro';
 /* eslint-disable-next-line no-restricted-syntax */
-import { View, Text, Image, ScrollView, Input } from '@tarojs/components';
+import { View, Text, Image, ScrollView, Input, Picker } from '@tarojs/components';
 import { Network } from '@/network';
 import { Search, User, ChartPie, Plus } from 'lucide-react-taro';
 
@@ -60,6 +60,12 @@ export default function IndexPage() {
   const [newCoverTemp, setNewCoverTemp] = useState('');
   const [newCoverUrl, setNewCoverUrl] = useState('');
   const [uploading, setUploading] = useState(false);
+
+  /* 项目日期（新建时使用） */
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const [newStartDate, setNewStartDate] = useState(todayStr);
+  const [newEndDate, setNewEndDate] = useState(todayStr);
 
   /* 动画状态 */
   const [cardVisible, setCardVisible] = useState<Record<string, boolean>>({});
@@ -127,16 +133,22 @@ export default function IndexPage() {
   const handleCreateProject = async () => {
     if (!newName.trim()) { Taro.showToast({ title: '请输入名称', icon: 'none' }); return; }
     if (uploading) { Taro.showToast({ title: '图片上传中...', icon: 'none' }); return; }
+    /* 终止时间不能早于起始时间 */
+    if (newEndDate < newStartDate) {
+      Taro.showToast({ title: '终止时间不能早于起始时间', icon: 'none' });
+      return;
+    }
     try {
       const coverUrl = newCoverUrl || '';
       console.log('[CreateProject] name=', newName.trim(), 'cover_url=', coverUrl);
       const res = await Network.request({
         url: '/api/projects',
         method: 'POST',
-        data: { name: newName.trim(), cover_url: coverUrl },
+        data: { name: newName.trim(), cover_url: coverUrl, start_date: newStartDate, end_date: newEndDate },
       });
       console.log('[CreateProject] response:', JSON.stringify(res.data)?.substring(0, 200));
       setShowAddModal(false); setNewName(''); setNewCoverTemp(''); setNewCoverUrl('');
+      setNewStartDate(todayStr); setNewEndDate(todayStr);
       fetchProjects();
       Taro.eventCenter.trigger('yoop_project_updated');
       Taro.showToast({ title: '创建成功', icon: 'success' });
@@ -396,6 +408,44 @@ export default function IndexPage() {
                     )}
                     <Text style={{ fontSize: 13, color: '#8896A6' }}>{newCoverTemp ? '点击更换图片' : '点击选择封面'}</Text>
                   </View>
+                </View>
+
+                {/* 起止时间 */}
+                <View>
+                  <Text className="block" style={{ fontSize: 13, color: '#94A3B8', marginBottom: 8, fontWeight: '500' }}>起止时间</Text>
+                  <View style={{ display: 'flex', flexDirection: 'row', gap: 10 }}>
+                    <Picker mode="date" value={newStartDate} onChange={(e) => setNewStartDate(e.detail.value)}>
+                      <View
+                        className="flex-1 rounded-xl flex items-center justify-between"
+                        style={{
+                          height: 46, backgroundColor: '#F8FAFC',
+                          padding: '0 14px',
+                          borderWidth: 1, borderColor: newStartDate > newEndDate ? '#DC2626' : '#E2E8F0', borderStyle: 'solid',
+                          borderRadius: 12,
+                        }}
+                      >
+                        <Text style={{ fontSize: 14, color: newStartDate > newEndDate ? '#DC2626' : '#2D3748' }}>起始：{newStartDate}</Text>
+                        <Text style={{ fontSize: 12, color: '#94A3B8' }}>▾</Text>
+                      </View>
+                    </Picker>
+                    <Picker mode="date" value={newEndDate} onChange={(e) => setNewEndDate(e.detail.value)}>
+                      <View
+                        className="flex-1 rounded-xl flex items-center justify-between"
+                        style={{
+                          height: 46, backgroundColor: '#F8FAFC',
+                          padding: '0 14px',
+                          borderWidth: 1, borderColor: newEndDate < newStartDate ? '#DC2626' : '#E2E8F0', borderStyle: 'solid',
+                          borderRadius: 12,
+                        }}
+                      >
+                        <Text style={{ fontSize: 14, color: newEndDate < newStartDate ? '#DC2626' : '#2D3748' }}>终止：{newEndDate}</Text>
+                        <Text style={{ fontSize: 12, color: '#94A3B8' }}>▾</Text>
+                      </View>
+                    </Picker>
+                  </View>
+                  {newEndDate < newStartDate && (
+                    <Text className="block mt-1" style={{ fontSize: 11, color: '#DC2626' }}>⚠ 终止时间不能早于起始时间</Text>
+                  )}
                 </View>
               </View>
             </ScrollView>
