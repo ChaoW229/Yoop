@@ -234,6 +234,7 @@ export default function AddBillPage() {
         payer,
         billDate: date,
         isTreat,
+        participants,  // 传递参与人列表用于分账计算
       };
 
       if (isEditMode && billId) {

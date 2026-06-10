@@ -144,7 +144,10 @@ export default function ProjectPage() {
   /* 有非请客账单即展示分账区域 */
   const hasSettlement = bills.filter(b => !b.is_treat).length > 0;
   /* 分账卡片高度：根据内容动态计算 */
-  const settleH = hasSettlement ? (transfers.length > 0 ? 120 : 100) : 0;
+  const baseH = 36;                       // 标题行高
+  const rowH = balances.length > 0 ? Math.ceil(balances.length / 3) * 52 : 0; // 余额行（每行3个）
+  const transferH = transfers.length > 0 ? 24 + transfers.length * 38 : 0;   // 转账建议
+  const settleH = hasSettlement ? (baseH + rowH + transferH + 16) : 0;
   const settleGap = 6;                     // 按钮与分账卡片间距
   const sectionH = 32;                     // 账单明细标题行高(fixed)
   const bottomH = 90;                      // 底部删除按钮+安全距（确保明细窗口圆角可见）
@@ -249,6 +252,11 @@ export default function ProjectPage() {
   };
 
   const onEndDateChange = async (e: any) => {
+    const newEnd = e.detail.value;
+    if (project?.start_date && newEnd < project.start_date) {
+      Taro.showToast({ title: '终止时间不能早于起始时间', icon: 'none' });
+      return;
+    }
     try {
       await Network.request({
         url: `/api/projects/${project.id}`,
@@ -651,13 +659,6 @@ export default function ProjectPage() {
               })}
             </>
           )}
-
-          {/* 无转账时提示两清 */}
-          {transfers.length === 0 && (
-            <View style={{ alignItems: 'center', paddingTop: 4 }}>
-              <Text className="block" style={{ fontSize: 12, color: '#10B981', fontWeight: '500' }}>✓ 已结清</Text>
-            </View>
-          )}
         </View>
       )}
 
@@ -704,8 +705,8 @@ export default function ProjectPage() {
                       key={b.id}
                       className="flex items-center justify-between rounded-xl p-3 mb-2"
                       style={{
-                        backgroundColor: isTreat ? '#FFFBEB' : '#FAFBFD',
-                        border: `1px solid ${isTreat ? '#FEF3C7' : '#F0F4F8'}`,
+                        backgroundColor: '#FAFBFD',
+                        border: '1px solid #F0F4F8',
                       }}
                       onClick={() => goEditBill(b.id)}
                       onLongPress={() => handleDeleteBill(b.id, b.name)}
@@ -713,14 +714,13 @@ export default function ProjectPage() {
                       <View className="flex items-center gap-3">
                         <View
                           className="w-7 h-7 rounded-lg flex items-center justify-center"
-                          style={{ backgroundColor: isTreat ? '#FEF3C7' : '#F0F6FC' }}
+                          style={{ backgroundColor: '#F0F6FC' }}
                         >
                           <Text className="block text-xs">{CATEGORY_ICONS[b.category] || '\uD83D\uDCCC'}</Text>
                         </View>
                         <View>
-                          {/* 请客账单名称用橙黄色 */}
                           <Text className="block text-sm" style={{ color: isTreat ? '#D97706' : '#2D3748' }}>{b.name}</Text>
-                          <Text className="block" style={{ fontSize: 11, color: isTreat ? '#B45309' : '#A0ABB8' }}>{b.payer}{isTreat ? ' · 请客' : ''}</Text>
+                          <Text className="block" style={{ fontSize: 11, color: '#A0ABB8' }}>{b.payer}{isTreat ? ' · 请客' : ''}</Text>
                         </View>
                       </View>
                       <View className="flex items-center gap-2">
