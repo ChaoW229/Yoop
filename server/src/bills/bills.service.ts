@@ -38,10 +38,29 @@ export class BillsService {
       .select()
       .single();
     if (error) throw new Error(`创建失败: ${error.message}`);
-    // Update project total
-    const { data: project } = await this.client.from('projects').select('total_amount').eq('id', body.project_id).single();
+    // Update project total & auto-merge new participants into project
+    const { data: project } = await this.client.from('projects').select('total_amount,participants').eq('id', body.project_id).single();
     const newTotal = (Number(project?.total_amount) || 0) + Number(body.amount);
-    await this.client.from('projects').update({ total_amount: newTotal.toFixed(2) }).eq('id', body.project_id);
+    const updateData: Record<string, any> = { total_amount: newTotal.toFixed(2) };
+
+    /* Auto-merge new payers into project's participant list */
+    if (body.payer && body.participants && body.participants.length > 0) {
+      const existingParticipants: string[] = Array.isArray(project?.participants) ? project.participants : [];
+      /* Collect all unique names from payer + participants */
+      const newNames = new Set<string>([body.payer, ...body.participants]);
+      let merged = false;
+      for (const nm of newNames) {
+        if (!existingParticipants.includes(nm)) {
+          existingParticipants.push(nm);
+          merged = true;
+        }
+      }
+      if (merged) {
+        updateData.participants = existingParticipants;
+      }
+    }
+
+    await this.client.from('projects').update(updateData).eq('id', body.project_id);
     return data;
   }
 

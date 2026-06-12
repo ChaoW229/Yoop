@@ -17,7 +17,7 @@ interface Bill {
   participants?: string[];
 }
 
-/* 与首页一致的8种低饱和度配色 */
+/* 12种低饱和度配色（含粉紫橙） */
 const CARD_COLORS = [
   { bg: '#EDE7D9', name: '#6B5E4A', amount: '#A89068', accent: '#D4C4A0' },
   { bg: '#DDBEC8', name: '#6B4555', amount: '#B87A92', accent: '#C8A0AC' },
@@ -27,7 +27,32 @@ const CARD_COLORS = [
   { bg: '#E0DDD1', name: '#565342', amount: '#8E8968', accent: '#C4BF9E' },
   { bg: '#D4E2DD', name: '#3D554F', amount: '#6B9288', accent: '#98C8BC' },
   { bg: '#E2DCD8', name: '#584842', amount: '#987870', accent: '#C8B8AE' },
+  /* 粉色系 */
+  { bg: '#F5DEEB', name: '#7B4560', amount: '#CC7A9C', accent: '#EAB8CD' },
+  { bg: '#EAD4EC', name: '#604075', amount: '#B088C0', accent: '#D4B8DA' },
+  /* 橙色系 */
+  { bg: '#F5DFD4', name: '#7A5038', amount: '#CC885A', accent: '#E8BC98' },
+  { bg: '#FAE6D4', name: '#806030', amount: '#CCA05A', accent: '#EDCBA8' },
 ];
+
+/* 固定调色板：基于人名哈希分配，位置变化颜色不变 */
+const PERSON_PALETTE = [
+  { dotColor: '#5B9BD5', cardColor: { bg: '#E8F4FD', name: '#2D5F8A', amount: '#5B9BD5' } },    // 蓝
+  { dotColor: '#52C41A', cardColor: { bg: '#F0FBE8', name: '#2D6A10', amount: '#52C41A' } },     // 绿
+  { dotColor: '#F5A623', cardColor: { bg: '#FEF6E6', name: '#996600', amount: '#F5A623' } },      // 橙
+  { dotColor: '#EB2F96', cardColor: { bg: '#FCE8F5', name: '#8A1A68', amount: '#EB2F96' } },     // 粉
+  { dotColor: '#9254DE', cardColor: { bg: '#F3EEFD', name: '#4D2580', amount: '#9254DE' } },     // 紫
+  { dotColor: '#13C2C2', cardColor: { bg: '#E6FCFF', name: '#086666', amount: '#13C2C2' } },     // 青
+  { dotColor: '#F56C6C', cardColor: { bg: '#FEEEEE', name: '#8B2020', amount: '#F56C6C' } },     // 红
+  { dotColor: '#909399', cardColor: { bg: '#F5F5F5', name: '#555555', amount: '#909399' } },     // 灰
+  { dotColor: '#8B572A', cardColor: { bg: '#FAF0E6', name: '#6B3410', amount: '#8B572A' } },    // 棕
+  { dotColor: '#36CBCB', cardColor: { bg: '#E5FFFF', name: '#006666', amount: '#36CBCB' } },    // 蓝绿
+];
+
+function getPersonColor(name: string): typeof PERSON_PALETTE[0] {
+  const idx = Math.abs(name.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % PERSON_PALETTE.length;
+  return PERSON_PALETTE[idx];
+}
 
 function getCardStyle(id: string) {
   const idx = Math.abs(id.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % CARD_COLORS.length;
@@ -545,7 +570,34 @@ export default function ProjectPage() {
                 )}
               </View>
             </View>
-          </View>
+
+
+              {/* 分账人行（显示固定颜色标签） */}
+              {Array.isArray(project?.participants) && project.participants.length > 0 && (
+                <View className="mt-1">
+                  <Text className="block" style={{ fontSize: 10, color: '#94A3B8', marginBottom: 4 }}>
+                    🧑‍🤝‍🧑 分账人 ({project.participants.length}人)
+                  </Text>
+                  <View style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
+                    {project.participants.map((p) => {
+                      const pc = getPersonColor(p);
+                      return (
+                        <View key={p} style={{
+                          display: 'flex', alignItems: 'center', gap: 3,
+                          backgroundColor: pc.cardColor.bg,
+                          borderRadius: 10,
+                          paddingTop: 2, paddingBottom: 2,
+                          paddingLeft: 6, paddingRight: 6,
+                        }}
+                        >
+                          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: pc.dotColor }} />
+                          <Text style={{ fontSize: 10, color: pc.cardColor.name }}>{p}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </View>
+              )}          </View>
         </View>
       </View>
 

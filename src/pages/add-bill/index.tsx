@@ -15,7 +15,7 @@ const CATEGORIES = [
   { name: '其他', emoji: '📌' },
 ];
 
-/* 卡片配色 - 与首页一致 */
+/* 12种低饱和度配色 - 含粉紫橙暖色调 */
 const CARD_COLORS = [
   { bg: '#EDE7D9', name: '#6B5E4A', amount: '#A89068', accent: '#D4C4A0' },
   { bg: '#DDBEC8', name: '#6B4555', amount: '#B87A92', accent: '#C8A0AC' },
@@ -24,8 +24,28 @@ const CARD_COLORS = [
   { bg: '#D9D4E8', name: '#50486B', amount: '#8880AA', accent: '#B8B0D0' },
   { bg: '#E0DDD1', name: '#565342', amount: '#8E8968', accent: '#C4BF9E' },
   { bg: '#D4E2DD', name: '#3D554F', amount: '#6B9288', accent: '#98C8BC' },
-  { bg: '#E2DCD8', name: '#584842', amount: '#987870', accent: '#C8B8AE' },
+  { bg: '#E8DDE0', name: '#6B4555', amount: '#C08595', accent: '#D8B8C0' },
+  { bg: '#DDD4E8', name: '#4A406B', amount: '#9080BB', accent: '#C0B0DD' },
+  { bg: '#E8DFD4', name: '#6B5030', amount: '#C09050', accent: '#DDB89A' },
+  { bg: '#D4E0E8', name: '#3D5566', amount: '#6090B0', accent: '#A0C0DC' },
+  { bg: '#E0E4DD', name: '#4A5540', amount: '#809068', accent: '#B8C8A8' },
 ];
+
+/* 自定义调色板 - 用户可选择的颜色 */
+const PALETTE_COLORS = [
+  '#E57373', '#F06292', '#BA68C8', '#9575CD',
+  '#64B5F6', '#4FC3F7', '#4DB6AC', '#81C784',
+  '#FFD54F', '#FFB74D', '#FF8A65', '#A1887F',
+];
+
+/* 根据人名计算固定颜色（不随位置变化） */
+function getPersonColor(name: string) {
+  const hash = Math.abs(name.split('').reduce((a, c) => a + c.charCodeAt(0), 0));
+  return {
+    cardColor: CARD_COLORS[hash % CARD_COLORS.length],
+    dotColor: PALETTE_COLORS[hash % PALETTE_COLORS.length],
+  };
+}
 
 function getCardStyle(id: string) {
   const idx = Math.abs(id.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % CARD_COLORS.length;
@@ -86,20 +106,27 @@ export default function AddBillPage() {
     } catch (_) {}
   }
 
-  /* 初始化时从本地存储加载持久化数据 */
+  /* 初始化时从本地存储加载持久化数据 + 项目分账人 */
   useEffect(() => {
     const savedCategories = loadFromStorage<string[]>(STORAGE_KEYS.customCategories, []);
-    const savedPayers = loadFromStorage<string[]>(STORAGE_KEYS.payers, []);
     if (savedCategories.length > 0) setCustomCategories(savedCategories);
-    if (savedPayers.length > 0) { setParticipants(savedPayers); if (!payer) setPayer(savedPayers[0]); }
+    /* 注意：支付人不再从全局 Storage 加载，改为从项目继承 */
   }, []);
 
   useEffect(() => {
     if (projectId) {
       try {
         Network.request({ url: `/api/projects/${projectId}` }).then((res: any) => {
-          if (res.data?.data?.id) {
-            setProjectColor(getCardStyle(res.data.data.id));
+          const proj = res.data?.data;
+          if (proj?.id) {
+            setProjectColor(getCardStyle(proj.id));
+            /* 继承项目的分账人列表作为支付人（如果当前还没设置） */
+            const projParticipants = Array.isArray(proj.participants) ? proj.participants : [];
+            if (projParticipants.length > 0 && participants.length === 0) {
+              setParticipants(projParticipants);
+              if (!payer) setPayer(projParticipants[0]);
+              console.log('[AddBill] 从项目继承分账人:', projParticipants);
+            }
           }
         }).catch(() => {});
       } catch (_) {}
@@ -380,15 +407,14 @@ export default function AddBillPage() {
         <View>
           <Text className="block text-xs mb-2" style={{ color: theme.accent }}>支付人 <Text style={{ color: '#C0C8D4', fontSize: 10 }}>(长按删除)</Text></Text>
           <View style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap' }}>
-            {participants.map((p, idx) => {
-              const payerColors = CARD_COLORS[idx % CARD_COLORS.length];
+            {participants.map((p) => {
+              const pc = getPersonColor(p);
               return (
                 <View
                   key={p}
                   onClick={() => setPayer(p)}
                   onLongPress={() => handleLongPressDeletePayer(p)}
                   style={{
-                    /* 每行4个，用flex比例分配宽度 */
                     width: '23.5%',
                     height: 38,
                     borderRadius: 10,
@@ -397,24 +423,22 @@ export default function AddBillPage() {
                     justifyContent: 'center',
                     gap: 4,
                     marginBottom: 8,
-                    marginRight: idx % 4 === 3 ? 0 : '2%',
-                    backgroundColor: payer === p ? `${payerColors.bg}` : `${payerColors.bg}44`,
-                    border: payer === p ? `1px solid ${payerColors.amount}66` : `1px solid ${payerColors.bg}`,
+                    marginRight: (participants.indexOf(p) + 1) % 4 === 0 ? 0 : '2%',
+                    backgroundColor: payer === p ? `${pc.cardColor.bg}` : `${pc.cardColor.bg}44`,
+                    border: payer === p ? `1px solid ${pc.dotColor}66` : `1px solid ${pc.cardColor.bg}`,
                   }}
                 >
                   <View
                     style={{
-                      width: 10,
-                      height: 10,
-                      borderRadius: 5,
-                      backgroundColor: payerColors.amount,
+                      width: 10, height: 10, borderRadius: 5,
+                      backgroundColor: pc.dotColor,
                       flexShrink: 0,
                     }}
                   />
                   <Text
                     className="block"
                     style={{
-                      color: payer === p ? payerColors.name : '#8896A6',
+                      color: payer === p ? pc.cardColor.name : '#8896A6',
                       fontSize: 12,
                       overflow: 'hidden', textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap',

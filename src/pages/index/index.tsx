@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import Taro, { useDidShow } from '@tarojs/taro';
 /* eslint-disable-next-line no-restricted-syntax */
-import { View, Text, Image, ScrollView, Input, Picker } from '@tarojs/components';
+import { View, Text, Image, ScrollView, Input } from '@tarojs/components';
 import { Network } from '@/network';
-import { Search, User, ChartPie, Plus } from 'lucide-react-taro';
+import { Search, User, ChartPie, Plus, X } from 'lucide-react-taro';
 
 interface Project {
   id: string;
@@ -14,16 +14,20 @@ interface Project {
   end_date: string;
 }
 
-/* 与项目详情页/添加花费页一致的8种低饱和度配色 */
+/* 12种低饱和度配色 - 含粉紫橙暖色调 */
 const CARD_COLORS = [
-  { bg: '#EDE7D9', name: '#6B5E4A', amount: '#A89068', accent: '#D4C4A0' },
-  { bg: '#DDBEC8', name: '#6B4555', amount: '#B87A92', accent: '#C8A0AC' },
-  { bg: '#C8DAE2', name: '#3D5A66', amount: '#6B99B0', accent: '#98C0D4' },
-  { bg: '#DFDCC8', name: '#5A5638', amount: '#99905A', accent: '#C8C498' },
-  { bg: '#D9D4E8', name: '#50486B', amount: '#8880AA', accent: '#B8B0D0' },
-  { bg: '#E0DDD1', name: '#565342', amount: '#8E8968', accent: '#C4BF9E' },
-  { bg: '#D4E2DD', name: '#3D554F', amount: '#6B9288', accent: '#98C8BC' },
-  { bg: '#E2DCD8', name: '#584842', amount: '#987870', accent: '#C8B8AE' },
+  { bg: '#EDE7D9', name: '#6B5E4A', amount: '#A89068', accent: '#D4C4A0' }, /* 暖黄 */
+  { bg: '#DDBEC8', name: '#6B4555', amount: '#B87A92', accent: '#C8A0AC' }, /* 玫粉 */
+  { bg: '#C8DAE2', name: '#3D5A66', amount: '#6B99B0', accent: '#98C0D4' }, /* 雾蓝 */
+  { bg: '#DFDCC8', name: '#5A5638', amount: '#99905A', accent: '#C8C498' }, /* 卡其 */
+  { bg: '#D9D4E8', name: '#50486B', amount: '#8880AA', accent: '#B8B0D0' }, /* 薰衣紫 */
+  { bg: '#E0DDD1', name: '#565342', amount: '#8E8968', accent: '#C4BF9E' }, /* 灰绿 */
+  { bg: '#D4E2DD', name: '#3D554F', amount: '#6B9288', accent: '#98C8BC' }, /* 薄荷 */
+  { bg: '#E8DDE0', name: '#6B4555', amount: '#C08595', accent: '#D8B8C0' }, /* 樱花粉 */
+  { bg: '#DDD4E8', name: '#4A406B', amount: '#9080BB', accent: '#C0B0DD' }, /* 藤紫 */
+  { bg: '#E8DFD4', name: '#6B5030', amount: '#C09050', accent: '#DDB89A' }, /* 杏橙 */
+  { bg: '#D4E0E8', name: '#3D5566', amount: '#6090B0', accent: '#A0C0DC' }, /* 天青 */
+  { bg: '#E0E4DD', name: '#4A5540', amount: '#809068', accent: '#B8C8A8' }, /* 苔绿 */
 ];
 
 function getCardStyle(id: string) {
@@ -60,12 +64,8 @@ export default function IndexPage() {
   const [newCoverTemp, setNewCoverTemp] = useState('');
   const [newCoverUrl, setNewCoverUrl] = useState('');
   const [uploading, setUploading] = useState(false);
-
-  /* 项目日期（新建时使用） */
-  const today = new Date();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  const [newStartDate, setNewStartDate] = useState(todayStr);
-  const [newEndDate, setNewEndDate] = useState(todayStr);
+  /* 新建项目的分账人列表 */
+  const [newParticipants, setNewParticipants] = useState<string[]>([]);
 
   /* 动画状态 */
   const [cardVisible, setCardVisible] = useState<Record<string, boolean>>({});
@@ -133,22 +133,17 @@ export default function IndexPage() {
   const handleCreateProject = async () => {
     if (!newName.trim()) { Taro.showToast({ title: '请输入名称', icon: 'none' }); return; }
     if (uploading) { Taro.showToast({ title: '图片上传中...', icon: 'none' }); return; }
-    /* 终止时间不能早于起始时间 */
-    if (newEndDate < newStartDate) {
-      Taro.showToast({ title: '终止时间不能早于起始时间', icon: 'none' });
-      return;
-    }
     try {
       const coverUrl = newCoverUrl || '';
-      console.log('[CreateProject] name=', newName.trim(), 'cover_url=', coverUrl);
+      console.log('[CreateProject] name=', newName.trim(), 'cover_url=', coverUrl, 'participants=', newParticipants);
       const res = await Network.request({
         url: '/api/projects',
         method: 'POST',
-        data: { name: newName.trim(), cover_url: coverUrl, start_date: newStartDate, end_date: newEndDate },
+        data: { name: newName.trim(), cover_url: coverUrl, participants: newParticipants },
       });
       console.log('[CreateProject] response:', JSON.stringify(res.data)?.substring(0, 200));
       setShowAddModal(false); setNewName(''); setNewCoverTemp(''); setNewCoverUrl('');
-      setNewStartDate(todayStr); setNewEndDate(todayStr);
+      setNewParticipants([]);
       fetchProjects();
       Taro.eventCenter.trigger('yoop_project_updated');
       Taro.showToast({ title: '创建成功', icon: 'success' });
@@ -410,42 +405,65 @@ export default function IndexPage() {
                   </View>
                 </View>
 
-                {/* 起止时间 */}
+                {/* 选择分账人 */}
                 <View>
-                  <Text className="block" style={{ fontSize: 13, color: '#94A3B8', marginBottom: 8, fontWeight: '500' }}>起止时间</Text>
-                  <View style={{ display: 'flex', flexDirection: 'row', gap: 10 }}>
-                    <Picker mode="date" value={newStartDate} onChange={(e) => setNewStartDate(e.detail.value)}>
-                      <View
-                        className="flex-1 rounded-xl flex items-center justify-between"
-                        style={{
-                          height: 46, backgroundColor: '#F8FAFC',
-                          padding: '0 14px',
-                          borderWidth: 1, borderColor: newStartDate > newEndDate ? '#DC2626' : '#E2E8F0', borderStyle: 'solid',
-                          borderRadius: 12,
-                        }}
-                      >
-                        <Text style={{ fontSize: 14, color: newStartDate > newEndDate ? '#DC2626' : '#2D3748' }}>起始：{newStartDate}</Text>
-                        <Text style={{ fontSize: 12, color: '#94A3B8' }}>▾</Text>
-                      </View>
-                    </Picker>
-                    <Picker mode="date" value={newEndDate} onChange={(e) => setNewEndDate(e.detail.value)}>
-                      <View
-                        className="flex-1 rounded-xl flex items-center justify-between"
-                        style={{
-                          height: 46, backgroundColor: '#F8FAFC',
-                          padding: '0 14px',
-                          borderWidth: 1, borderColor: newEndDate < newStartDate ? '#DC2626' : '#E2E8F0', borderStyle: 'solid',
-                          borderRadius: 12,
-                        }}
-                      >
-                        <Text style={{ fontSize: 14, color: newEndDate < newStartDate ? '#DC2626' : '#2D3748' }}>终止：{newEndDate}</Text>
-                        <Text style={{ fontSize: 12, color: '#94A3B8' }}>▾</Text>
-                      </View>
-                    </Picker>
-                  </View>
-                  {newEndDate < newStartDate && (
-                    <Text className="block mt-1" style={{ fontSize: 11, color: '#DC2626' }}>⚠ 终止时间不能早于起始时间</Text>
+                  <Text className="block" style={{ fontSize: 13, color: '#94A3B8', marginBottom: 8, fontWeight: '500' }}>
+                    选择分账人 <Text style={{ color: '#C0C8D4', fontSize: 11 }}>(添加花费时自动继承)</Text>
+                  </Text>
+
+                  {/* 已选分账人标签 */}
+                  {newParticipants.length > 0 && (
+                    <View style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                      {newParticipants.map((p) => {
+                        const cIdx = Math.abs(p.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % CARD_COLORS.length;
+                        const sc = CARD_COLORS[cIdx];
+                        return (
+                          /* eslint-disable-next-line no-restricted-syntax */
+                          <View key={p} style={{
+                            display: 'flex', alignItems: 'center', gap: 4,
+                            backgroundColor: `${sc.bg}88`, borderRadius: 14,
+                            paddingTop: 5, paddingBottom: 5, paddingLeft: 10, paddingRight: 8,
+                          }}
+                          >
+                            <Text className="block" style={{ fontSize: 12, fontWeight: '600', color: sc.name }}>{p}</Text>
+                            {/* eslint-disable-next-line no-restricted-syntax */}
+                            <View onClick={() => setNewParticipants(prev => prev.filter(x => x !== p))}
+                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                              <X size={12} color="#94A3B8" />
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
                   )}
+
+                  {/* 添加按钮 */}
+                  <View
+                    onClick={() => {
+                      (Taro as any).showModal({
+                        title: '添加分账人',
+                        editable: true,
+                        placeholderText: '输入姓名',
+                        success: (res2: any) => {
+                          if (res2.confirm && res2.content) {
+                            const nm = res2.content.trim();
+                            if (nm && !newParticipants.includes(nm)) {
+                              setNewParticipants(prev => [...prev, nm]);
+                            }
+                          }
+                        },
+                      });
+                    }}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      height: 40, borderRadius: 12,
+                      border: '1px dashed #D1D9E0', backgroundColor: '#FAFBFD',
+                    }}
+                  >
+                    <Plus size={16} color="#A0ABB8" />
+                    <Text className="block text-xs" style={{ color: '#A0ABB8' }}>添加成员</Text>
+                  </View>
                 </View>
               </View>
             </ScrollView>
