@@ -35,24 +35,6 @@ const CARD_COLORS = [
   { bg: '#FAE6D4', name: '#806030', amount: '#CCA05A', accent: '#EDCBA8' },
 ];
 
-/* 固定调色板：基于人名哈希分配，位置变化颜色不变 */
-const PERSON_PALETTE = [
-  { dotColor: '#5B9BD5', cardColor: { bg: '#E8F4FD', name: '#2D5F8A', amount: '#5B9BD5' } },    // 蓝
-  { dotColor: '#52C41A', cardColor: { bg: '#F0FBE8', name: '#2D6A10', amount: '#52C41A' } },     // 绿
-  { dotColor: '#F5A623', cardColor: { bg: '#FEF6E6', name: '#996600', amount: '#F5A623' } },      // 橙
-  { dotColor: '#EB2F96', cardColor: { bg: '#FCE8F5', name: '#8A1A68', amount: '#EB2F96' } },     // 粉
-  { dotColor: '#9254DE', cardColor: { bg: '#F3EEFD', name: '#4D2580', amount: '#9254DE' } },     // 紫
-  { dotColor: '#13C2C2', cardColor: { bg: '#E6FCFF', name: '#086666', amount: '#13C2C2' } },     // 青
-  { dotColor: '#F56C6C', cardColor: { bg: '#FEEEEE', name: '#8B2020', amount: '#F56C6C' } },     // 红
-  { dotColor: '#909399', cardColor: { bg: '#F5F5F5', name: '#555555', amount: '#909399' } },     // 灰
-  { dotColor: '#8B572A', cardColor: { bg: '#FAF0E6', name: '#6B3410', amount: '#8B572A' } },    // 棕
-  { dotColor: '#36CBCB', cardColor: { bg: '#E5FFFF', name: '#006666', amount: '#36CBCB' } },    // 蓝绿
-];
-
-function getPersonColor(name: string): typeof PERSON_PALETTE[0] {
-  const idx = Math.abs(name.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % PERSON_PALETTE.length;
-  return PERSON_PALETTE[idx];
-}
 
 function getCardStyle(id: string) {
   const idx = Math.abs(id.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % CARD_COLORS.length;
@@ -140,9 +122,11 @@ export default function ProjectPage() {
       for (const p of parts) { if (p && share[p] !== undefined) share[p] = (share[p] || 0) + perPerson; }
     }
 
-    /* 计算每人余额 */
+    /* 计算每人余额（含支出/收入明细） */
     let balanceList = people.map(p => ({
       name: p,
+      paid: Math.round((paid[p] || 0) * 100) / 100,       // 实际支付金额（支出）
+      share: Math.round((share[p] || 0) * 100) / 100,      // 应付份额（收入/应摊）
       balance: Math.round(((paid[p] || 0) - (share[p] || 0)) * 100) / 100,
     }));
 
@@ -183,7 +167,7 @@ export default function ProjectPage() {
   const settleH = hasSettlement ? 230 : 0;
   const settleGap = 8;                     // 按钮与分账卡片间距
   /* 底部删除按钮区域：按钮本身约48px + 上下padding = ~70 */
-  const bottomH = 72;
+  const bottomH = 10;
   const topFixedH = headerH + cardGap + cardH + buttonGap + buttonH + (settleH > 0 ? settleGap + settleH : 0) + 6;
 
   const fetchData = async () => {
@@ -566,38 +550,13 @@ export default function ProjectPage() {
               >
                 <Text className="block text-xs" style={{ color: cc.name }}>人均 ¥{perPerson.toFixed(2)}</Text>
                 {treatAmount > 0 && (
-                  <Text className="block text-xs mt-1" style={{ color: '#8896A6' }}>含请客 ¥{treatAmount.toFixed(0)}</Text>
+                  <Text className="block text-xs mt-1" style={{ color: '#8896A6' }}>请客共 ¥{treatAmount.toFixed(0)}</Text>
                 )}
               </View>
             </View>
 
 
-              {/* 分账人行（显示固定颜色标签） */}
-              {Array.isArray(project?.participants) && project.participants.length > 0 && (
-                <View className="mt-1">
-                  <Text className="block" style={{ fontSize: 10, color: '#94A3B8', marginBottom: 4 }}>
-                    🧑‍🤝‍🧑 分账人 ({project.participants.length}人)
-                  </Text>
-                  <View style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
-                    {project.participants.map((p) => {
-                      const pc = getPersonColor(p);
-                      return (
-                        <View key={p} style={{
-                          display: 'flex', alignItems: 'center', gap: 3,
-                          backgroundColor: pc.cardColor.bg,
-                          borderRadius: 10,
-                          paddingTop: 2, paddingBottom: 2,
-                          paddingLeft: 6, paddingRight: 6,
-                        }}
-                        >
-                          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: pc.dotColor }} />
-                          <Text style={{ fontSize: 10, color: pc.cardColor.name }}>{p}</Text>
-                        </View>
-                      );
-                    })}
-                  </View>
-                </View>
-              )}          </View>
+          </View>
         </View>
       </View>
 
@@ -650,7 +609,7 @@ export default function ProjectPage() {
                 <Text style={{ fontSize: 11, color: '#94A3B8', marginLeft: 6 }}>{balances.length}人参与</Text>
               </View>
 
-              {/* ====== A. 每人收支汇总 ====== */}
+              {/* ====== A. 每人收支（支出+收入+净额） ====== */}
               <View style={{ marginBottom: transfers.length > 0 ? 10 : 0 }}>
                 <Text className="block" style={{ fontSize: 11, color: '#8896A6', marginBottom: 6, fontWeight: '500' }}>每人收支</Text>
                 <View style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
@@ -659,19 +618,29 @@ export default function ProjectPage() {
                     const sc = CARD_COLORS[cIdx];
                     return (
                       <View key={`bal-${b.name}`} style={{
-                        display: 'flex', flexDirection: 'column', alignItems: 'center',
+                        display: 'flex', flexDirection: 'column',
                         backgroundColor: sc.bg, borderRadius: 10,
-                        paddingTop: 6, paddingBottom: 6, paddingLeft: 10, paddingRight: 10,
-                        flexShrink: 0,
+                        paddingTop: 6, paddingBottom: 6, paddingLeft: 8, paddingRight: 8,
+                        flexShrink: 0, minWidth: 80,
                       }}
                       >
                         {/* 名字 */}
                         <Text style={{ fontSize: 11, fontWeight: '600', color: sc.name }}>{b.name}</Text>
-                        {/* 余额：正数多付(绿)、负数欠钱(红) */}
+                        {/* 支出：实际垫付的金额 */}
+                        <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 2 }}>
+                          <Text style={{ fontSize: 9, color: '#94A3B8' }}>支出</Text>
+                          <Text style={{ fontSize: 12, color: '#EF4444', fontWeight: '600' }}>-{b.paid.toFixed(2)}</Text>
+                        </View>
+                        {/* 收入：应摊的金额 */}
+                        <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
+                          <Text style={{ fontSize: 9, color: '#94A3B8' }}>收入</Text>
+                          <Text style={{ fontSize: 12, color: '#059669', fontWeight: '600' }}>+{b.share.toFixed(2)}</Text>
+                        </View>
+                        {/* 净额：正数多付(绿) / 负数欠钱(红) */}
                         <Text style={{
                           fontSize: 13, fontWeight: '700',
                           color: b.balance > 0.01 ? '#059669' : b.balance < -0.01 ? '#DC2626' : '#6B7280',
-                          marginTop: 2,
+                          marginTop: 1,
                         }}
                         >
                           {b.balance > 0 ? '+' : ''}{b.balance.toFixed(2)}
