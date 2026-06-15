@@ -167,7 +167,6 @@ export default function ProjectPage() {
   const settleH = hasSettlement ? 230 : 0;
   const settleGap = 8;                     // 按钮与分账卡片间距
   /* 底部删除按钮区域：按钮本身约48px + 上下padding = ~70 */
-  const bottomH = 10;
   const topFixedH = headerH + cardGap + cardH + buttonGap + buttonH + (settleH > 0 ? settleGap + settleH : 0) + 6;
 
   const fetchData = async () => {
@@ -542,7 +541,7 @@ export default function ProjectPage() {
             <View className="flex items-end justify-between mt-1">
               <View>
                 <Text className="block text-xs" style={{ color: '#8896A6' }}>总金额</Text>
-                <Text className="block text-xl font-bold" style={{ color: cc.name }}>¥{totalAmount.toFixed(0)}</Text>
+                <Text className="block text-xl font-bold" style={{ color: cc.name }}>¥{totalAmount.toFixed(2)}</Text>
               </View>
               <View
                 className="rounded-xl px-3 py-2"
@@ -550,7 +549,7 @@ export default function ProjectPage() {
               >
                 <Text className="block text-xs" style={{ color: cc.name }}>人均 ¥{perPerson.toFixed(2)}</Text>
                 {treatAmount > 0 && (
-                  <Text className="block text-xs mt-1" style={{ color: '#8896A6' }}>请客共 ¥{treatAmount.toFixed(0)}</Text>
+                  <Text className="block text-xs mt-1" style={{ color: '#8896A6' }}>请客共 ¥{treatAmount.toFixed(2)}</Text>
                 )}
               </View>
             </View>
@@ -584,26 +583,103 @@ export default function ProjectPage() {
         </View>
       </View>
 
-      {/* ========== 分账结算标题（独立显示在卡片外） ========== */}      {hasSettlement && (        <Text className="block text-sm font-semibold" style={{          position: 'fixed',          top: headerH + cardGap + cardH + buttonGap + buttonH + settleGap - 28,          left: 12,          zIndex: 86,          color: '#2D3748',        }}>💰 分账结算</Text>      )}      {/* ========== 3.5 分账情况（固定高度，内部滚动） ========== */}      {hasSettlement && (        <View          style={{            position: 'fixed',            top: headerH + cardGap + cardH + buttonGap + buttonH + settleGap,            left: 12,            right: 12,            zIndex: 85,            borderRadius: 16,            overflow: 'hidden',            backgroundColor: '#FFFFFF',            border: '1px solid #E8EDF2',            boxShadow: '0 2px 12px rgba(91,155,213,0.04)',            height: settleH,          }}        >          <ScrollView scrollY enhanced showScrollbar={false} style={{ flex: 1, height: '100%' }}>            <View style={{ padding: 14, paddingTop: 20 }}>              {/* ====== A. 每人净额（单行：名字+金额） ====== */}              <View style={{ marginBottom: transfers.length > 0 ? 10 : 0 }}>                <Text className="block" style={{ fontSize: 11, color: '#8896A6', marginBottom: 6, fontWeight: '500' }}>每人收支</Text>                <View style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>                  {balances.map((b) => {                    const cIdx = Math.abs(b.name.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % CARD_COLORS.length;                    const sc = CARD_COLORS[cIdx];                    return (                      <View key={`bal-${b.name}`} style={{                        display: 'flex', flexDirection: 'column', alignItems: 'center',                        backgroundColor: sc.bg, borderRadius: 10,                        paddingTop: 6, paddingBottom: 6, paddingLeft: 12, paddingRight: 12,                        flexShrink: 0, minWidth: 70,                      }}                      >                        {/* 名字 */}                        <Text style={{ fontSize: 11, fontWeight: '600', color: sc.name }}>{b.name}</Text>                        {/* 净额：正数多付(绿+号) / 负数欠钱(红负号) / 零(灰) */}                        <Text style={{                          fontSize: 15, fontWeight: '700',                          color: b.balance > 0.01 ? '#059669' : b.balance < -0.01 ? '#DC2626' : '#9CA3AF',                          marginTop: 2,                        }}                        >                          {b.balance > 0 ? '+' : ''}{b.balance.toFixed(2)}                        </Text>                      </View>                    );                  })}                </View>              </View>              {/* ====== B. 转账建议（谁给谁）===== */}              {transfers.length > 0 && (                <>                  <View                    style={{                      borderTopWidth: 1, borderTopColor: '#F0F4F8',                      paddingTop: 8, marginTop: 2, marginBottom: 6,                    }}                  >                    <Text className="block" style={{ fontSize: 11, color: '#8896A6', marginBottom: 6, fontWeight: '500' }}>                      建议转账                    </Text>                  </View>                  {transfers.map((t, i) => {                    const cIdx = i % CARD_COLORS.length;                    const sc = CARD_COLORS[cIdx];                    return (                      <View key={`${t.from}-${t.to}`} style={{                        display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 6,                        backgroundColor: `${sc.bg}66`, borderRadius: 20,                        paddingTop: 7, paddingBottom: 7, paddingLeft: 12, paddingRight: 12,                        marginBottom: i < transfers.length - 1 ? 6 : 0,                      }}                      >                        {/* 付款人 */}                        <Text style={{ fontSize: 12, fontWeight: '600', color: '#EF4444' }}>{t.from}</Text>                        <Text style={{ fontSize: 11, color: '#94A3B8' }}>需支付</Text>                        {/* 金额 */}                        <Text style={{ fontSize: 15, fontWeight: '700', color: '#DC2626' }}>¥{t.amount.toFixed(2)}</Text>                        <Text style={{ fontSize: 11, color: '#94A3B8' }}>给</Text>                        {/* 收款人 */}                        <Text style={{ fontSize: 12, fontWeight: '600', color: '#059669' }}>{t.to}</Text>                      </View>                    );                  })}                </>              )}            </View>          </ScrollView>        </View>      )}
+      {/* ========== 分账情况（标题在卡片内部顶部） ========== */}
+      {hasSettlement && (
+        <View
+          style={{
+            position: 'fixed',
+            top: headerH + cardGap + cardH + buttonGap + buttonH + settleGap,
+            left: 12,
+            right: 12,
+            zIndex: 85,
+            borderRadius: 16,
+            overflow: 'hidden',
+            backgroundColor: '#FFFFFF',
+            border: '1px solid #E8EDF2',
+            boxShadow: '0 2px 12px rgba(91,155,213,0.04)',
+            height: settleH,
+          }}
+        >
+          <ScrollView scrollY enhanced showScrollbar={false} style={{ flex: 1, height: '100%' }}>
+            <View style={{ padding: 10, paddingTop: 12 }}>
+              {/* 标题行 */}
+              <View className="flex items-center gap-2 mb-2">
+                <Text className="block text-sm font-semibold" style={{ color: '#2D3748' }}>💰 分账结算</Text>
+                {balances.length > 0 && (
+                  <Text className="text-xs" style={{ color: '#94A3B8' }}>{balances.length}人参与</Text>
+                )}
+              </View>
 
-      {/* ========== 账单明细标题（独立显示在卡片外） ========== */}
-      <Text className="block text-sm font-semibold" style={{
-        position: 'fixed',
-        top: topFixedH - 28,
-        left: 12,
-        zIndex: 81,
-        color: '#2D3748',
-      }}
-      >账单明细</Text>
+              {/* 每人净额（单行） */}
+              <View style={{ marginBottom: transfers.length > 0 ? 8 : 0 }}>
+                <Text className="block" style={{ fontSize: 11, color: '#8896A6', marginBottom: 4, fontWeight: '500' }}>每人收支</Text>
+                <View style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  {balances.map((b) => {
+                    const cIdx = Math.abs(b.name.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % CARD_COLORS.length;
+                    const sc = CARD_COLORS[cIdx];
+                    return (
+                      <View key={`bal-${b.name}`} style={{
+                        display: 'flex', flexDirection: 'column', alignItems: 'center',
+                        backgroundColor: sc.bg, borderRadius: 10,
+                        paddingTop: 5, paddingBottom: 5, paddingLeft: 12, paddingRight: 12,
+                        flexShrink: 0, minWidth: 70,
+                      }}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: '600', color: sc.name }}>{b.name}</Text>
+                        <Text style={{
+                          fontSize: 15, fontWeight: '700',
+                          color: b.balance > 0.01 ? '#059669' : b.balance < -0.01 ? '#DC2626' : '#9CA3AF',
+                          marginTop: 1,
+                        }}
+                        >
+                          {b.balance > 0 ? '+' : ''}{b.balance.toFixed(2)}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
 
-      {/* ========== 5. 账单列表：带边框窗口容器内滚动 ========== */}
+              {/* 转账建议 */}
+              {transfers.length > 0 && (
+                <>
+                  <View style={{ borderTopWidth: 1, borderTopColor: '#F0F4F8', paddingTop: 6, marginTop: 2, marginBottom: 4 }}>
+                    <Text className="block" style={{ fontSize: 11, color: '#8896A6', marginBottom: 4, fontWeight: '500' }}>建议转账</Text>
+                  </View>
+                  {transfers.map((t, i) => {
+                    const cIdx = i % CARD_COLORS.length;
+                    const sc = CARD_COLORS[cIdx];
+                    return (
+                      <View key={`${t.from}-${t.to}`} style={{
+                        display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 6,
+                        backgroundColor: `${sc.bg}66`, borderRadius: 20,
+                        paddingTop: 6, paddingBottom: 6, paddingLeft: 12, paddingRight: 12,
+                        marginBottom: i < transfers.length - 1 ? 5 : 0,
+                      }}
+                      >
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: '#EF4444' }}>{t.from}</Text>
+                        <Text style={{ fontSize: 11, color: '#94A3B8' }}>需支付</Text>
+                        <Text style={{ fontSize: 15, fontWeight: '700', color: '#DC2626' }}>¥{t.amount.toFixed(2)}</Text>
+                        <Text style={{ fontSize: 11, color: '#94A3B8' }}>给</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: '#059669' }}>{t.to}</Text>
+                      </View>
+                    );
+                  })}
+                </>
+              )}
+            </View>
+          </ScrollView>
+        </View>
+      )}
+
+      {/* ========== 账单明细 ========== */}
       <View
         style={{
           position: 'fixed',
           top: topFixedH,
           left: 12,
           right: 12,
-          bottom: bottomH,
+          bottom: 56,
           zIndex: 80,
           borderRadius: 16,
           overflow: 'hidden',
@@ -612,10 +688,15 @@ export default function ProjectPage() {
           boxShadow: '0 4px 20px rgba(91,155,213,0.05)',
         }}
       >
+        {/* 卡片内顶部标题 */}
+        <View style={{ padding: '10px 12px 0 12px', borderBottomWidth: 1, borderBottomColor: '#F0F4F8' }}>
+          <Text className="block text-sm font-semibold" style={{ color: '#2D3748' }}>账单明细</Text>
+        </View>
+
         <ScrollView scrollY enhanced showScrollbar={false} style={{ flex: 1, height: '100%' }}>
-          <View style={{ padding: 12, paddingTop: 16 }}>
+          <View style={{ padding: 12 }}>
             {Object.entries(byDate).map(([date, items]) => (
-              <View key={date} style={{ marginBottom: 12 }}>
+              <View key={date} style={{ marginBottom: 10 }}>
                 <Text className="block mb-2" style={{ fontSize: 11, color: '#8896A6', fontWeight: '500' }}>{date}</Text>
                 {items.map(b => {
                   const isTreat = !!b.is_treat;
@@ -623,19 +704,13 @@ export default function ProjectPage() {
                     <View
                       key={b.id}
                       className="flex items-center justify-between rounded-xl p-3 mb-2"
-                      style={{
-                        backgroundColor: '#FAFBFD',
-                        border: '1px solid #F0F4F8',
-                      }}
+                      style={{ backgroundColor: '#FAFBFD', border: '1px solid #F0F4F8' }}
                       onClick={() => goEditBill(b.id)}
                       onLongPress={() => handleDeleteBill(b.id, b.name)}
                     >
                       <View className="flex items-center gap-3">
-                        <View
-                          className="w-7 h-7 rounded-lg flex items-center justify-center"
-                          style={{ backgroundColor: '#F0F6FC' }}
-                        >
-                          <Text className="block text-xs">{CATEGORY_ICONS[b.category] || '\ud83d\udccc'}</Text>
+                        <View className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#F0F6FC' }}>
+                          <Text className="block text-xs">{CATEGORY_ICONS[b.category] || '📎'}</Text>
                         </View>
                         <View>
                           <Text className="block text-sm" style={{ color: isTreat ? '#D97706' : '#2D3748' }}>{b.name}</Text>
@@ -644,15 +719,12 @@ export default function ProjectPage() {
                       </View>
                       <View className="flex items-center gap-2">
                         {isTreat && (
-                          <View
-                            className="rounded-full px-2 py-1"
-                            style={{ backgroundColor: '#FDE68A', border: '1px solid #F59E0B' }}
-                          >
+                          <View className="rounded-full px-2 py-1" style={{ backgroundColor: '#FDE68A', border: '1px solid #F59E0B' }}>
                             <Text className="block" style={{ fontSize: 10, fontWeight: '600', color: '#92400E' }}>请客</Text>
                           </View>
                         )}
                         <Text className="block text-sm font-semibold" style={{ color: isTreat ? '#D97706' : '#2D3748' }}>
-                          {Number(b.amount).toFixed(2)}
+                          ¥{Number(b.amount).toFixed(2)}
                         </Text>
                       </View>
                     </View>
@@ -666,15 +738,12 @@ export default function ProjectPage() {
                 <Text className="block text-sm" style={{ color: '#A0ABB8' }}>暂无账单，点击上方添加</Text>
               </View>
             )}
-            {/* 底部留白确保最后一条圆角可见 */}
             <View style={{ height: 8 }} />
           </View>
         </ScrollView>
       </View>
 
-
-
-      {/* ========== 6. 删除此项目（底部固定） ========== */}
+      {/* ========== 删除此项目 ========== */}
       <View
         className="rounded-xl flex items-center justify-center"
         style={{
@@ -694,3 +763,4 @@ export default function ProjectPage() {
     </View>
   )
 }
+

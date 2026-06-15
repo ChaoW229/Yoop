@@ -300,7 +300,7 @@ export default function IndexPage() {
                   <View style={{ flex: 1, padding: '10px 12px 8px', display: 'flex', flexDirection: 'column' }}>
                     {/* 金额 - 右上 */}
                     <View style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                      <Text style={{ fontSize: 17, fontWeight: '700', color: cs.amount }}>¥{Number(p.total_amount || 0).toFixed(0)}</Text>
+                      <Text style={{ fontSize: 17, fontWeight: '700', color: cs.amount }}>¥{Number(p.total_amount || 0).toFixed(2)}</Text>
                     </View>
                     {/* 项目名：居中 */}
                     <View style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 32 }}>
