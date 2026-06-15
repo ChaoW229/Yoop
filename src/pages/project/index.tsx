@@ -117,7 +117,9 @@ export default function ProjectPage() {
       if (b.payer && paid[b.payer] !== undefined) {
         paid[b.payer] = (paid[b.payer] || 0) + amt;
       }
-      const parts = Array.isArray(b.participants) && b.participants.length > 0 ? b.participants : [b.payer];
+      // 参与人：优先用账单自己的，否则继承项目分账人，最后fallback到支付人自己
+        const projParts = Array.isArray(project?.participants) && project.participants.length > 0 ? project.participants : null;
+        const parts = Array.isArray(b.participants) && b.participants.length > 0 ? b.participants : (projParts || [b.payer]);
       const perPerson = amt / parts.length;
       for (const p of parts) { if (p && share[p] !== undefined) share[p] = (share[p] || 0) + perPerson; }
     }
@@ -584,6 +586,19 @@ export default function ProjectPage() {
       </View>
 
       {/* ========== 分账情况（标题在卡片内部顶部） ========== */}
+      {/* ========== 分账结算（标题在窗口上方间隙） ========== */}
+      {hasSettlement && (
+        <Text className="block text-sm font-semibold" style={{
+          position: 'fixed',
+          top: headerH + cardGap + cardH + buttonGap + buttonH + settleGap - 24,
+          left: 12,
+          zIndex: 86,
+          color: '#2D3748',
+        }}
+        >💰 分账结算</Text>
+      )}
+
+      {/* ========== 分账情况（白色卡片，标题在外部上方） ========== */}
       {hasSettlement && (
         <View
           style={{
@@ -601,17 +616,9 @@ export default function ProjectPage() {
           }}
         >
           <ScrollView scrollY enhanced showScrollbar={false} style={{ flex: 1, height: '100%' }}>
-            <View style={{ padding: 10, paddingTop: 12 }}>
-              {/* 标题行 */}
-              <View className="flex items-center gap-2 mb-2">
-                <Text className="block text-sm font-semibold" style={{ color: '#2D3748' }}>💰 分账结算</Text>
-                {balances.length > 0 && (
-                  <Text className="text-xs" style={{ color: '#94A3B8' }}>{balances.length}人参与</Text>
-                )}
-              </View>
-
-              {/* 每人净额（单行） */}
-              <View style={{ marginBottom: transfers.length > 0 ? 8 : 0 }}>
+            <View style={{ padding: 10, paddingTop: 14 }}>
+              {/* 每人净额 */}
+              <View style={{ marginBottom: transfers.length > 0 ? 10 : 0 }}>
                 <Text className="block" style={{ fontSize: 11, color: '#8896A6', marginBottom: 4, fontWeight: '500' }}>每人收支</Text>
                 <View style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                   {balances.map((b) => {
@@ -643,7 +650,7 @@ export default function ProjectPage() {
               {/* 转账建议 */}
               {transfers.length > 0 && (
                 <>
-                  <View style={{ borderTopWidth: 1, borderTopColor: '#F0F4F8', paddingTop: 6, marginTop: 2, marginBottom: 4 }}>
+                  <View style={{ borderTopWidth: 1, borderTopColor: '#F0F4F8', paddingTop: 6, marginTop: 4, marginBottom: 4 }}>
                     <Text className="block" style={{ fontSize: 11, color: '#8896A6', marginBottom: 4, fontWeight: '500' }}>建议转账</Text>
                   </View>
                   {transfers.map((t, i) => {
@@ -672,7 +679,17 @@ export default function ProjectPage() {
         </View>
       )}
 
-      {/* ========== 账单明细 ========== */}
+      {/* ========== 账单明细（标题在窗口上方间隙） ========== */}
+      <Text className="block text-sm font-semibold" style={{
+        position: 'fixed',
+        top: topFixedH - 24,
+        left: 12,
+        zIndex: 81,
+        color: '#2D3748',
+      }}
+      >账单明细</Text>
+
+      {/* ========== 账单明细（白色卡片） ========== */}
       <View
         style={{
           position: 'fixed',
@@ -688,11 +705,6 @@ export default function ProjectPage() {
           boxShadow: '0 4px 20px rgba(91,155,213,0.05)',
         }}
       >
-        {/* 卡片内顶部标题 */}
-        <View style={{ padding: '10px 12px 0 12px', borderBottomWidth: 1, borderBottomColor: '#F0F4F8' }}>
-          <Text className="block text-sm font-semibold" style={{ color: '#2D3748' }}>账单明细</Text>
-        </View>
-
         <ScrollView scrollY enhanced showScrollbar={false} style={{ flex: 1, height: '100%' }}>
           <View style={{ padding: 12 }}>
             {Object.entries(byDate).map(([date, items]) => (
@@ -710,7 +722,7 @@ export default function ProjectPage() {
                     >
                       <View className="flex items-center gap-3">
                         <View className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#F0F6FC' }}>
-                          <Text className="block text-xs">{CATEGORY_ICONS[b.category] || '📎'}</Text>
+                          <Text className="block text-xs">{CATEGORY_ICONS[b.category] || '\ud83d\udccc'}</Text>
                         </View>
                         <View>
                           <Text className="block text-sm" style={{ color: isTreat ? '#D97706' : '#2D3748' }}>{b.name}</Text>
