@@ -158,19 +158,23 @@ export default function ProjectPage() {
       }
     }
 
+    console.log('[分账调试]', JSON.stringify({
+      projectParticipants: project?.participants,
+      bills: nonTreatBills.map(b => ({ name: b.name, payer: b.payer, participants: b.participants, amount: b.amount })),
+    }));
     console.log('[分账]', JSON.stringify({ balanceList, transferList }));
     return { balances: balanceList, transfers: transferList };
   }
 
-  const { balances, transfers } = useMemo(() => calculateSettlement(), [bills]);
+  const { balances, transfers } = useMemo(() => calculateSettlement(), [bills, project]);
 
   /* 有非请客账单即展示分账区域 */
   const hasSettlement = bills.filter(b => !b.is_treat).length > 0;
-  /* 分账卡片固定高度：标题36 + 余额行(1-2行)52*2 + 转账建议(最多3条)38*3 + padding28 = ~240 */
-  const settleH = hasSettlement ? 178 : 0;
-  const settleGap = 8;                     // 按钮与分账卡片间距
-  /* 底部删除按钮区域：按钮本身约48px + 上下padding = ~70 */
-  const topFixedH = headerH + cardGap + cardH + buttonGap + buttonH + (settleH > 0 ? settleGap + settleH : 0) + 6;
+  /* 分账卡片固定高度 */
+  const settleH = hasSettlement ? 195 : 0;
+  const settleGap = 16;                    // 按钮与分账区域间距（需容纳标题）
+  const detailTopGap = 8;                  // 分账卡片与明细标题间距
+  const topFixedH = headerH + cardGap + cardH + buttonGap + buttonH + (settleH > 0 ? settleGap + settleH + detailTopGap : 0);
 
   const fetchData = async () => {
     try {
@@ -590,7 +594,7 @@ export default function ProjectPage() {
       {hasSettlement && (
         <Text className="block text-sm font-semibold" style={{
           position: 'fixed',
-          top: headerH + cardGap + cardH + buttonGap + buttonH + settleGap - 24,
+          top: headerH + cardGap + cardH + buttonGap + buttonH + settleGap - 20,
           left: 12,
           zIndex: 86,
           color: '#2D3748',
@@ -679,10 +683,10 @@ export default function ProjectPage() {
         </View>
       )}
 
-      {/* ========== 账单明细（标题在窗口上方间隙） ========== */}
+      {/* ========== 账单明细标题（窗口上方间隙） ========== */}
       <Text className="block text-sm font-semibold" style={{
         position: 'fixed',
-        top: topFixedH - 24,
+        top: topFixedH - 20,
         left: 12,
         zIndex: 81,
         color: '#2D3748',
@@ -696,7 +700,7 @@ export default function ProjectPage() {
           top: topFixedH,
           left: 12,
           right: 12,
-          bottom: 50,
+          bottom: 66,
           zIndex: 80,
           borderRadius: 16,
           overflow: 'hidden',
@@ -750,7 +754,7 @@ export default function ProjectPage() {
                 <Text className="block text-sm" style={{ color: '#A0ABB8' }}>暂无账单，点击上方添加</Text>
               </View>
             )}
-            <View style={{ height: 8 }} />
+            <View style={{ height: 16 }} />
           </View>
         </ScrollView>
       </View>
