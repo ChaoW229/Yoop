@@ -95,11 +95,12 @@ export default function ProjectPage() {
     const nonTreatBills = bills.filter(b => !b.is_treat);
     if (!nonTreatBills || nonTreatBills.length === 0) return { balances: [], transfers: [] };
 
-    /* 收集所有参与人 */
+    /* 收集所有参与人（含项目级fallback） */
     const peopleSet = new Set<string>();
     for (const b of nonTreatBills) {
       if (b.payer) peopleSet.add(b.payer);
-      const parts = b.participants || [];
+      const projParts = Array.isArray(project?.participants) && project.participants.length > 0 ? project.participants : null;
+      const parts = Array.isArray(b.participants) && b.participants.length > 0 ? b.participants : (projParts || [b.payer]);
       if (Array.isArray(parts)) {
         parts.forEach((p: string) => { if (p) peopleSet.add(p); });
       }
@@ -166,7 +167,7 @@ export default function ProjectPage() {
   /* 有非请客账单即展示分账区域 */
   const hasSettlement = bills.filter(b => !b.is_treat).length > 0;
   /* 分账卡片固定高度：标题36 + 余额行(1-2行)52*2 + 转账建议(最多3条)38*3 + padding28 = ~240 */
-  const settleH = hasSettlement ? 230 : 0;
+  const settleH = hasSettlement ? 178 : 0;
   const settleGap = 8;                     // 按钮与分账卡片间距
   /* 底部删除按钮区域：按钮本身约48px + 上下padding = ~70 */
   const topFixedH = headerH + cardGap + cardH + buttonGap + buttonH + (settleH > 0 ? settleGap + settleH : 0) + 6;
@@ -585,8 +586,7 @@ export default function ProjectPage() {
         </View>
       </View>
 
-      {/* ========== 分账情况（标题在卡片内部顶部） ========== */}
-      {/* ========== 分账结算（标题在窗口上方间隙） ========== */}
+      {/* ========== 分账结算标题（窗口上方间隙） ========== */}
       {hasSettlement && (
         <Text className="block text-sm font-semibold" style={{
           position: 'fixed',
@@ -696,7 +696,7 @@ export default function ProjectPage() {
           top: topFixedH,
           left: 12,
           right: 12,
-          bottom: 56,
+          bottom: 50,
           zIndex: 80,
           borderRadius: 16,
           overflow: 'hidden',
