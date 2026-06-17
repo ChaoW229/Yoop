@@ -171,10 +171,19 @@ export default function ProjectPage() {
   /* 有非请客账单即展示分账区域 */
   const hasSettlement = bills.filter(b => !b.is_treat).length > 0;
   /* 分账卡片固定高度 */
-  const settleH = hasSettlement ? 195 : 0;
-  const settleGap = 16;                    // 按钮与分账区域间距（需容纳标题）
-  const detailTopGap = 8;                  // 分账卡片与明细标题间距
-  const topFixedH = headerH + cardGap + cardH + buttonGap + buttonH + (settleH > 0 ? settleGap + settleH + detailTopGap : 0);
+  const settleH = hasSettlement ? 200 : 0;       // 分账卡片高度
+  const titleGap = 22;                     // 按钮与分账标题间距（标题要完全露出）
+  const settleCardGap = 4;                 // 标题与其卡片的间距
+  const detailTitleGap = 12;               // 分账卡片与明细标题的间距
+  /* 分账标题top = headerH+cardGap+cardH+buttonGap+buttonH+titleGap */
+  /* 分账卡片top = 标题top+20(标题高度)+settleCardGap */
+  /* 明细标题top = 分账卡片top+settleH+detailTitleGap */
+  /* 明细卡片top = 明细标题top+20 */
+  const settleTitleTop = headerH + cardGap + cardH + buttonGap + buttonH + titleGap;
+  const settleCardTop = settleTitleTop + 20 + settleCardGap;
+  const detailTitleTop = settleCardTop + settleH + detailTitleGap;
+  const detailCardTop = detailTitleTop + 20;
+  /* 明细卡片起始位置 */
 
   const fetchData = async () => {
     try {
@@ -590,14 +599,15 @@ export default function ProjectPage() {
         </View>
       </View>
 
-      {/* ========== 分账结算标题（窗口上方间隙） ========== */}
+      {/* ========== 分账结算标题（卡片上方独立定位） ========== */}
       {hasSettlement && (
         <Text className="block text-sm font-semibold" style={{
           position: 'fixed',
-          top: headerH + cardGap + cardH + buttonGap + buttonH + settleGap - 20,
+          top: settleTitleTop,
           left: 12,
           zIndex: 86,
-          color: '#2D3748',
+          color: '#374151',
+          fontWeight: '700',
         }}
         >💰 分账结算</Text>
       )}
@@ -607,7 +617,7 @@ export default function ProjectPage() {
         <View
           style={{
             position: 'fixed',
-            top: headerH + cardGap + cardH + buttonGap + buttonH + settleGap,
+            top: settleCardTop,
             left: 12,
             right: 12,
             zIndex: 85,
@@ -683,13 +693,14 @@ export default function ProjectPage() {
         </View>
       )}
 
-      {/* ========== 账单明细标题（窗口上方间隙） ========== */}
+      {/* ========== 账单明细标题（卡片上方独立定位） ========== */}
       <Text className="block text-sm font-semibold" style={{
         position: 'fixed',
-        top: topFixedH - 20,
+        top: detailTitleTop,
         left: 12,
         zIndex: 81,
-        color: '#2D3748',
+        color: '#374151',
+        fontWeight: '700',
       }}
       >账单明细</Text>
 
@@ -697,10 +708,10 @@ export default function ProjectPage() {
       <View
         style={{
           position: 'fixed',
-          top: topFixedH,
+          top: detailCardTop,
           left: 12,
           right: 12,
-          bottom: 66,
+          bottom: 62,
           zIndex: 80,
           borderRadius: 16,
           overflow: 'hidden',
@@ -754,7 +765,7 @@ export default function ProjectPage() {
                 <Text className="block text-sm" style={{ color: '#A0ABB8' }}>暂无账单，点击上方添加</Text>
               </View>
             )}
-            <View style={{ height: 16 }} />
+            <View style={{ height: 24 }} />  {/* 底部留白确保圆角可见 */}
           </View>
         </ScrollView>
       </View>
