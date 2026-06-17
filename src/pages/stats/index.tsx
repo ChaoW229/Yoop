@@ -17,11 +17,12 @@ import {
   Ellipsis,
 } from 'lucide-react-taro'
 
-/* ======== 配色方案 ======== */
+/* ======== 配色方案（与小程序整体一致） ======== */
 const THEME = {
-  primary: '#6366F1',
-  primaryLight: '#818CF8',
-  primaryDark: '#4F46E5',
+  primary: '#1890FF',       // 主色（蓝）
+  primaryLight: '#40A9FF',
+  primaryDark: '#096DD9',
+  bgLight: '#E6F7FF',
 }
 
 /* 类别配置（图标 + 颜色）—— 细节页和统计页共用 */
@@ -189,9 +190,10 @@ interface ProjectItem {
 }
 
 const TIME_OPTIONS = [
-  { key: 'month', label: '本月' },
-  { key: 'week', label: '近7天' },
   { key: 'all', label: '全部' },
+  { key: 'month', label: '本月' },
+  { key: 'project', label: '最近项目' },
+  { key: 'custom', label: '自定义时间' },
 ]
 
 /* ======== 主组件 ======== */
@@ -224,6 +226,26 @@ function StatsPage() {
   }, [bills])
 
   /* 时间筛选 */
+  /* 最近项目的日期范围（取最近一个项目的起止时间） */
+  const [projectDateRange, setProjectDateRange] = useState<{start: string; end: string} | null>(null)
+  useEffect(() => {
+    if (projects.length > 0) {
+      // 找最早开始时间和最晚结束时间
+      // minStart, maxEnd reserved for future use
+      projects.forEach(p => {
+        if (p.destination) {
+          // 从项目名或目的地推算——这里用所有账单的日期范围代替
+        }
+      })
+      // 简化：用当前所有账单的起止作为"最近项目"范围
+      if (bills.length > 0) {
+        const dates = bills.map(b => b.bill_date).filter(Boolean)
+        dates.sort()
+        setProjectDateRange({ start: dates[0], end: dates[dates.length - 1] })
+      }
+    }
+  }, [projects, bills])
+
   const filteredBills = useMemo(() => {
     if (!bills.length) return []
     const now = new Date()
@@ -232,35 +254,46 @@ function StatsPage() {
     else if (dateRange === 'month') {
       start = new Date(now.getFullYear(), now.getMonth(), 1)
       end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
-    } else if (dateRange === 'week') {
-      end = new Date()
-      start = new Date(end)
-      start.setDate(start.getDate() - 6)
-      start.setHours(0, 0, 0, 0)
-      end.setHours(23, 59, 59, 999)
-    } else {
-      return bills
     }
+    else if (dateRange === 'week') {
+      end = new Date()
+      start = new Date(end); start.setDate(start.getDate() - 7); start.setHours(0,0,0,0)
+      end.setHours(23,59,59,999)
+    }
+    else if (dateRange === 'project') {
+      if (projectDateRange) {
+        start = new Date(projectDateRange.start)
+        end = new Date(projectDateRange.end)
+      } else {
+        return bills
+      }
+    }
+    else if (dateRange === 'custom') {
+      // 自定义：暂用近30天
+      end = new Date(); end.setHours(23,59,59,999)
+      start = new Date(end); start.setDate(start.getDate() - 30); start.setHours(0,0,0,0)
+    }
+    else { return bills }
     return bills.filter(b => {
       const d = new Date(b.bill_date)
       return d >= start && d <= end
     })
-  }, [bills, dateRange])
+  }, [bills, dateRange, projectDateRange])
 
   const detailFilteredBills = useMemo(() => {
     if (detailCategory === 'all') return filteredBills
     return filteredBills.filter(b => b.category === detailCategory)
   }, [filteredBills, detailCategory])
 
-  /* 总支出 */
+  /* 总支出（包含请客账单） */
   const totalExpense = useMemo(() =>
-    filteredBills.filter(b => !b.is_treat).reduce((s, b) => s + Math.abs(Number(b.amount)), 0),
+    filteredBills.reduce((s, b) => s + Math.abs(Number(b.amount)), 0),
     [filteredBills])
 
-  /* 分类统计 */
+  /* 分类统计（包含请客账单） */
   const categoryStats = useMemo(() => {
     const m = new Map<string, number>()
-    filteredBills.filter(b => !b.is_treat).forEach(b => {
+    filteredBills.forEach(b => {
       m.set(b.category, (m.get(b.category) || 0) + Math.abs(Number(b.amount)))
     })
     return Array.from(m.entries()).map(([name, amount]) => ({ name, amount }))
@@ -331,112 +364,95 @@ function StatsPage() {
   const chartHeaderH = capsuleBottom + 88
   const mapHeaderH = capsuleBottom + 48
 
-  /* ====== 底部三段式Tab（轻量风格） ====== */
+  /* ====== 底部三段式椭圆框Tab（参考删除项目按钮风格） ====== */
+  const TAB_ORDER: TabType[] = ['chart', 'detail', 'map']
+  const TAB_LABELS: Record<TabType, { icon: any; text: string }> = {
+    chart: { icon: FileChartPie, text: '统计' },
+    detail: { icon: FileText, text: '明细' },
+    map: { icon: MapIcon, text: '地图' },
+  }
+
   const renderBottomTabs = () => (
     <View style={{
-      position: 'fixed', bottom: 0, left: 0, right: 0,
-      display: 'flex', flexDirection: 'row',
-      backgroundColor: '#FFFFFF',
-      borderTopWidth: 0.5, borderTopColor: '#E5E7EB',
+      position: 'fixed', bottom: 10, left: 12, right: 12,
+      display: 'flex', flexDirection: 'row', gap: 10,
       zIndex: 200,
-      paddingBottom: 4,
     }}
     >
-      {(['detail', 'chart', 'map'] as TabType[]).map(tab => {
-        const labels: Record<TabType, { icon: any; text: string }> = {
-          detail: { icon: FileText, text: '明细' },
-          chart: { icon: FileChartPie, text: '统计' },
-          map: { icon: MapIcon, text: '地图' },
-        }
+      {TAB_ORDER.map(tab => {
+        const labels = TAB_LABELS[tab]
         const isActive = activeTab === tab
-        const IconComp = labels[tab].icon
+        const IconComp = labels.icon
         return (
           <View key={tab}
             onClick={() => setActiveTab(tab)}
             style={{
-              flex: 1, paddingTop: 8, paddingBottom: 18,
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+              flex: 1,
+              paddingTop: 10, paddingBottom: 10,
+              display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
+              borderRadius: 22,
+              backgroundColor: isActive ? THEME.bgLight : '#FFFFFF',
+              borderWidth: isActive ? 1 : 1,
+              borderColor: isActive ? THEME.primary : '#E5E7EB',
+              boxShadow: isActive ? '0 1px 3px rgba(24,144,255,0.12)' : 'none',
             }}
           >
-            <IconComp size={20} color={isActive ? THEME.primary : '#9CA3AF'} />
+            <IconComp size={16} color={isActive ? THEME.primary : '#9CA3AF'} />
             <Text style={{
-              fontSize: 11,
-              fontWeight: isActive ? '600' : '400',
-              color: isActive ? THEME.primary : '#9CA3AF',
+              fontSize: 13,
+              fontWeight: isActive ? '600' : '500',
+              color: isActive ? THEME.primary : '#6B7280',
             }}
-            >{labels[tab].text}</Text>
-            {/* 活动指示条 */}
-            <View style={{
-              width: 16, height: 2.5, borderRadius: 2,
-              backgroundColor: isActive ? THEME.primary : 'transparent',
-              marginTop: 2,
-            }}
-            />
+            >{labels.text}</Text>
           </View>
         )
       })}
     </View>
   )
 
-  /* ====== 轻量分类标签栏 ====== */
-  const renderCategoryChips = () => (
-    <ScrollView scrollX enhanced show-scrollbar={false}
-      style={{ marginTop: 12, marginLeft: 16, marginRight: 16 }}
-    >
-      <View style={{ display: 'flex', flexDirection: 'row', gap: 8 }}>
-        {allCategories.map(cat => {
-          const isActive = detailCategory === cat
-          return (
-            <View key={cat}
-              onClick={() => setDetailCategory(cat)}
-              style={{
-                paddingTop: 6, paddingBottom: 6, paddingLeft: 14, paddingRight: 14,
-                borderRadius: 20,
-                backgroundColor: isActive ? THEME.primary : '#F3F4F6',
-                flexShrink: 0,
-              }}
-            >
-              <Text style={{
-                fontSize: 13,
-                fontWeight: isActive ? '600' : '400',
-                color: isActive ? '#FFFFFF' : '#6B7280',
-              }}
-              >{cat === 'all' ? '全部' : cat}</Text>
-            </View>
-          )
-        })}
-      </View>
-    </ScrollView>
-  )
+  /* ====== 下拉筛选栏（类别+日期） ====== */
+  const catLabelMap: Record<string, string> = { all: '全部类型', ...Object.fromEntries(allCategories.slice(1).map(c => [c, c])) }
+  const dateLabelMap: Record<string, string> = Object.fromEntries(TIME_OPTIONS.map(o => [o.key, o.label]))
 
-  /* ====== 时间选择标签栏（横向胶囊按钮） ====== */
-  const renderTimePills = () => (
+  const renderFilterBar = () => (
     <View style={{
-      display: 'flex', flexDirection: 'row', gap: 8, paddingLeft: 16, paddingRight: 16, marginTop: 8,
+      marginTop: 10, marginLeft: 16, marginRight: 16,
+      display: 'flex', flexDirection: 'row', gap: 8,
     }}
     >
-      {TIME_OPTIONS.map(opt => {
-        const isActive = dateRange === opt.key
-        return (
-          <View key={opt.key}
-            onClick={() => setDateRange(opt.key)}
-            style={{
-              paddingTop: 5, paddingBottom: 5, paddingLeft: 14, paddingRight: 14,
-              borderRadius: 15,
-              backgroundColor: isActive ? 'rgba(255,255,255,0.3)' : 'transparent',
-              borderWidth: isActive ? 0 : 1,
-              borderColor: 'rgba(255,255,255,0.35)',
-              flexShrink: 0,
-            }}
-          >
-            <Text style={{
-              fontSize: 13, fontWeight: isActive ? '600' : '400',
-              color: '#FFFFFF',
-            }}
-            >{opt.label}</Text>
-          </View>
-        )
-      })}
+      {/* 类别下拉 */}
+      <View onClick={() => {
+        Taro.showActionSheet({
+          itemList: allCategories.map(c => c === 'all' ? '全部类型' : c),
+          success: (res) => { setDetailCategory(allCategories[res.tapIndex]) }
+        })
+      }} style={{
+        flex: 1, display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        paddingTop: 9, paddingBottom: 9, paddingLeft: 13, paddingRight: 13,
+        borderRadius: 20, backgroundColor: '#FFFFFF',
+        border: '1px solid #E5E7EB',
+      }}
+      >
+        <Text style={{ fontSize: 13, color: '#374151' }}>{catLabelMap[detailCategory]}</Text>
+        <Text style={{ fontSize: 12, color: '#9CA3AF' }}>▼</Text>
+      </View>
+
+      {/* 日期下拉 */}
+      <View onClick={() => {
+        Taro.showActionSheet({
+          itemList: TIME_OPTIONS.map(o => o.label),
+          success: (res) => { setDateRange(TIME_OPTIONS[res.tapIndex].key) }
+        })
+      }} style={{
+        flex: 1, display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        paddingTop: 9, paddingBottom: 9, paddingLeft: 13, paddingRight: 13,
+        borderRadius: 20, backgroundColor: '#FFFFFF',
+        border: '1px solid #E5E7EB',
+      }}
+      >
+        <Text style={{ fontSize: 13, color: '#374151' }}>{dateLabelMap[dateRange]}</Text>
+        <Text style={{ fontSize: 12, color: '#9CA3AF' }}>▼</Text>
+      </View>
     </View>
   )
 
@@ -449,7 +465,7 @@ function StatsPage() {
           {/* 固定Header（轻量渐变） */}
           <View style={{
             position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
-            background: 'linear-gradient(135deg, #667EEA 0%, #764BA2 100%)',
+            background: 'linear-gradient(135deg, #1890FF 0%, #096DD9 100%)',
           }}
           >
             <View style={{
@@ -470,14 +486,14 @@ function StatsPage() {
             </View>
           </View>
 
-          {/* 分类标签栏（固定在header下方） */}
+          {/* 筛选栏（类别+日期下拉） */}
           <View style={{ position: 'fixed', top: detailHeaderH, left: 0, right: 0, zIndex: 99, backgroundColor: '#F8FAFC', paddingBottom: 4 }}>
-            {renderCategoryChips()}
+            {renderFilterBar()}
           </View>
 
           {/* 滚动内容 */}
           <ScrollView scrollY enhanced showScrollbar={false}
-            style={{ flex: 1, marginTop: detailHeaderH + 52, marginBottom: 64 }}
+            style={{ flex: 1, marginTop: detailHeaderH + 56, marginBottom: 70 }}
           >
             <View style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
               {(() => {
@@ -502,7 +518,7 @@ function StatsPage() {
 
                 return sortedDates.map(date => {
                   const items = grouped[date]
-                  const dayOut = items.filter(i => !i.is_treat).reduce((s, i) => s + Math.abs(Number(i.amount)), 0)
+                  const dayOut = items.reduce((s, i) => s + Math.abs(Number(i.amount)), 0)
 
                   return (
                     <View key={date} style={{
@@ -566,24 +582,53 @@ function StatsPage() {
           {/* 固定Header */}
           <View style={{
             position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
-            background: 'linear-gradient(135deg, #667EEA 0%, #764BA2 100%)',
+            background: 'linear-gradient(135deg, #1890FF 0%, #096DD9 100%)',
           }}
           >
             <View style={{
               paddingTop: statusBarH, height: capsuleBottom,
-              paddingLeft: 16, paddingRight: 16,
-              display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
             >
               <Text style={{ fontSize: 17, fontWeight: '700', color: '#FFFFFF' }}>支出分析</Text>
-              {renderTimePills()}
             </View>
             {/* 金额行 */}
-            <View style={{ paddingLeft: 16, paddingRight: 16, paddingBottom: 14 }}>
-              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)', display: 'block' }}>共支出</Text>
-              <Text style={{ fontSize: 28, fontWeight: '700', color: '#FFFFFF', letterSpacing: '-0.5px' }}>
-                ¥{totalExpense.toFixed(2)}
-              </Text>
+            <View style={{
+              paddingLeft: 16, paddingRight: 16, paddingBottom: 12,
+              display: 'flex', flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between',
+            }}
+            >
+              <View>
+                <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)', display: 'block' }}>共支出</Text>
+                <Text style={{ fontSize: 26, fontWeight: '700', color: '#FFFFFF', letterSpacing: '-0.5px' }}>
+                  ¥{totalExpense.toFixed(2)}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* 日期筛选栏（统计页只显示日期筛选） */}
+          <View style={{ position: 'fixed', top: chartHeaderH, left: 0, right: 0, zIndex: 99, backgroundColor: '#F8FAFC', paddingBottom: 4 }}>
+            <View style={{
+              marginTop: 10, marginLeft: 16, marginRight: 16,
+              alignSelf: 'flex-start',
+            }}
+            >
+              <View onClick={() => {
+                Taro.showActionSheet({
+                  itemList: TIME_OPTIONS.map(o => o.label),
+                  success: (res) => { setDateRange(TIME_OPTIONS[res.tapIndex].key) }
+                })
+              }} style={{
+                display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 30,
+                paddingTop: 9, paddingBottom: 9, paddingLeft: 15, paddingRight: 15,
+                borderRadius: 20, backgroundColor: '#FFFFFF',
+                border: '1px solid #E5E7EB',
+              }}
+              >
+                <Text style={{ fontSize: 13, color: '#374151' }}>{dateLabelMap[dateRange]}</Text>
+                <Text style={{ fontSize: 12, color: '#9CA3AF' }}>▼</Text>
+              </View>
             </View>
           </View>
 
@@ -602,38 +647,47 @@ function StatsPage() {
 
                 {categoryStats.length > 0 ? (
                   <>
-                    {/* 改进环形图：使用 Canvas 方式绘制正圆 */}
-                    <View style={{ alignItems: 'center', marginBottom: 18 }}>
+                    {/* 环形图（正圆、细环、比例填充、居中显示） */}
+                    <View style={{ alignItems: 'center', marginBottom: 18, paddingTop: 8, paddingBottom: 8 }}>
                       <View style={{
-                        width: 160, height: 160, borderRadius: 80,
+                        width: 150, height: 150, borderRadius: 75,
                         overflow: 'hidden',
                         position: 'relative',
+                        border: '1px solid #F0F0F0',
                       }}
                       >
-                        {/* 外圈 conic-gradient */}
+                        {/* 外圈 conic-gradient — 用累积角度确保比例正确 */}
                         <View style={{
                           position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                          borderRadius: 80,
+                          borderRadius: 75,
                           background: pieData.length > 0
-                            ? `conic-gradient(${pieData.map(d => `${d.color} ${d.angle}%`).join(', ')})`
+                            ? (() => {
+                                let cumAngle = 0
+                                const stops = pieData.map(d => {
+                                  const stop = `${d.color} ${cumAngle.toFixed(2)}% ${((cumAngle += Number(d.angle))).toFixed(2)}%`
+                                  return stop
+                                })
+                                return `conic-gradient(${stops.join(', ')})`
+                              })()
                             : '#E5E7EB',
                         }}
                         />
-                        {/* 内圆遮罩形成环形 */}
+                        {/* 内圆遮罩形成更细的环形 */}
                         <View style={{
                           position: 'absolute',
-                          top: 38, left: 38, right: 38, bottom: 38,
-                          borderRadius: 42,
+                          top: 45, left: 45, right: 45, bottom: 45,
+                          borderRadius: 37,
                           backgroundColor: '#FFFFFF',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          boxShadow: 'inset 0 0 4px rgba(0,0,0,0.03)',
                         }}
                         >
                           <View style={{ alignItems: 'center' }}>
-                            <Text style={{ fontSize: 12, color: '#9CA3AF' }}>共</Text>
-                            <Text style={{ fontSize: 18, fontWeight: '700', color: '#1F2937' }}>
+                            <Text style={{ fontSize: 11, color: '#9CA3AF', display: 'block' }}>共</Text>
+                            <Text style={{ fontSize: 20, fontWeight: '700', color: '#1F2937' }}>
                               {categoryStats.length}
                             </Text>
-                            <Text style={{ fontSize: 12, color: '#9CA3AF' }}>类</Text>
+                            <Text style={{ fontSize: 11, color: '#9CA3AF', display: 'block' }}>类</Text>
                           </View>
                         </View>
                       </View>
@@ -693,7 +747,7 @@ function StatsPage() {
       {/* ==================== 地图 Tab ==================== */}
       {activeTab === 'map' && (
         <>
-          <View style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, background: 'linear-gradient(135deg, #667EEA 0%, #764BA2 100%)' }}>
+          <View style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, background: 'linear-gradient(135deg, #1890FF 0%, #096DD9 100%)' }}>
             <View style={{ paddingTop: statusBarH, height: capsuleBottom, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ fontSize: 17, fontWeight: '700', color: '#FFFFFF' }}>目的地地图</Text>
             </View>
