@@ -11,7 +11,26 @@ export class ProjectsService {
       .select('*')
       .order('created_at', { ascending: false });
     if (error) throw new Error(`查询失败: ${error.message}`);
-    return data || [];
+    const projects = data || [];
+
+    // 对没有 start_date/end_date 的项目，从关联账单自动推算起止日期
+    for (const p of projects) {
+      if (!p.start_date || !p.end_date) {
+        const { data: bills } = await this.client
+          .from('bills')
+          .select('bill_date')
+          .eq('project_id', p.id);
+        if (bills && bills.length > 0) {
+          const dates = (bills as { bill_date: string }[])
+            .map(b => b.bill_date)
+            .filter(Boolean)
+            .sort();
+          if (!p.start_date && dates.length > 0) p.start_date = dates[0];
+          if (!p.end_date && dates.length > 0) p.end_date = dates[dates.length - 1];
+        }
+      }
+    }
+    return projects;
   }
 
   async create(body: { name: string; destination?: string; start_date?: string; end_date?: string; participants?: string[]; cover_url?: string }) {
