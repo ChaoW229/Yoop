@@ -204,6 +204,11 @@ function StatsPage() {
   const [projects, setProjects] = useState<ProjectItem[]>([])
   const [dateRange, setDateRange] = useState<string>('month')
   const [detailCategory, setDetailCategory] = useState<string>('all')
+  const [showCalendar, setShowCalendar] = useState(false)
+  const [calYear, setCalYear] = useState(new Date().getFullYear())
+  const [calMonth, setCalMonth] = useState(new Date().getMonth() + 1)
+  const [customStartDate, setCustomStartDate] = useState<string>('')
+  const [customEndDate, setCustomEndDate] = useState<string>('')
 
   const statusBarH = Taro.getSystemInfoSync().statusBarHeight || 20
   let capsuleBottom = statusBarH + 44
@@ -269,16 +274,18 @@ function StatsPage() {
       }
     }
     else if (dateRange === 'custom') {
-      // 自定义：暂用近30天
-      end = new Date(); end.setHours(23,59,59,999)
-      start = new Date(end); start.setDate(start.getDate() - 30); start.setHours(0,0,0,0)
+      if (customStartDate) {
+        start = new Date(customStartDate); start.setHours(0,0,0,0)
+        if (customEndDate) { end = new Date(customEndDate); end.setHours(23,59,59,999) }
+        else { end = new Date(customStartDate); end.setHours(23,59,59,999) }
+      } else return bills
     }
     else { return bills }
     return bills.filter(b => {
       const d = new Date(b.bill_date)
       return d >= start && d <= end
     })
-  }, [bills, dateRange, projectDateRange])
+  }, [bills, dateRange, projectDateRange, customStartDate, customEndDate])
 
   const detailFilteredBills = useMemo(() => {
     if (detailCategory === 'all') return filteredBills
@@ -289,6 +296,11 @@ function StatsPage() {
   const totalExpense = useMemo(() =>
     filteredBills.reduce((s, b) => s + Math.abs(Number(b.amount)), 0),
     [filteredBills])
+
+  /* 明细页总支出（跟随分类筛选联动） */
+  const detailTotalExpense = useMemo(() =>
+    detailFilteredBills.reduce((s, b) => s + Math.abs(Number(b.amount)), 0),
+    [detailFilteredBills])
 
   /* 分类统计（包含请客账单） */
   const categoryStats = useMemo(() => {
@@ -364,7 +376,42 @@ function StatsPage() {
   const chartHeaderH = capsuleBottom + 88
   const mapHeaderH = capsuleBottom + 48
 
-  /* ====== 底部三段式椭圆框Tab（参考删除项目按钮风格） ====== */
+  
+  /* ====== 日历选择器 ====== */
+  const getDaysInMonth = (y: number, m: number) => new Date(y, m, 0).getDate()
+  const getFirstDayWeekday = (y: number, m: number) => new Date(y, m-1, 1).getDay()
+
+  const quickRanges = [
+    { label: '本周', key: 'thisWeek' }, { label: '本月', key: 'thisMonth' },
+    { label: '上周', key: 'lastWeek' }, { label: '上月', key: 'lastMonth' },
+    { label: '昨天', key: 'yesterday' }, { label: '今天', key: 'today' },
+  ]
+
+  const applyQuick = (key: string) => {
+    const now = new Date(); let e = new Date(); e.setHours(23,59,59,999)
+    let s: Date
+    if (key === 'today') { s = new Date(now); s.setHours(0,0,0,0) }
+    else if (key === 'yesterday') { s = new Date(now); s.setDate(s.getDate()-1); s.setHours(0,0,0,0); e=new Date(s);e.setHours(23,59,59,999) }
+    else if (key === 'thisWeek') { const d=now.getDay()||7; s=new Date(now);s.setDate(s.getDate()-d+1);s.setHours(0,0,0,0) }
+    else if (key === 'lastWeek') { const d=now.getDay()||7; e=new Date(now);e.setDate(e.getDate()-d);e.setHours(23,59,59,999);s=new Date(e);s.setDate(s.getDate()-6);s.setHours(0,0,0,0) }
+    else if (key === 'thisMonth') { s = new Date(now.getFullYear(),now.getMonth(),1) }
+    else if (key === 'lastMonth') { s = new Date(now.getFullYear(),now.getMonth()-1,1); e = new Date(now.getFullYear(),now.getMonth(),0,23,59,59,999) }
+    else return
+    setCustomStartDate(s.toISOString().split('T')[0])
+    setCustomEndDate(e.toISOString().split('T')[0])
+    setDateRange('custom')
+    setShowCalendar(false)
+  }
+
+  const pickDate = (d: number) => {
+    const ds = `${calYear}-${String(calMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+    if (!customStartDate || (customStartDate && customEndDate)) { setCustomStartDate(ds); setCustomEndDate('') }
+    else { if (ds < customStartDate) { setCustomEndDate(customStartDate); setCustomStartDate(ds) } else setCustomEndDate(ds) }
+  }
+
+  const confirmDate = () => { if (customStartDate) setDateRange('custom'); setShowCalendar(false) }
+
+/* ====== 底部三段式椭圆框Tab（参考删除项目按钮风格） ====== */
   const TAB_ORDER: TabType[] = ['chart', 'detail', 'map']
   const TAB_LABELS: Record<TabType, { icon: any; text: string }> = {
     chart: { icon: FileChartPie, text: '统计' },
@@ -450,7 +497,7 @@ function StatsPage() {
         border: '1px solid #E5E7EB',
       }}
       >
-        <Text style={{ fontSize: 13, color: '#374151' }}>{dateLabelMap[dateRange]}</Text>
+        <Text style={{ fontSize: 13, color: '#374151' }}>{dateRange === 'custom' ? (customStartDate && customEndDate ? customStartDate + ' ~ ' + customEndDate : customStartDate || '自定义时间') : dateLabelMap[dateRange]}</Text>
         <Text style={{ fontSize: 12, color: '#9CA3AF' }}>▼</Text>
       </View>
     </View>
@@ -473,7 +520,7 @@ function StatsPage() {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
             >
-              <Text style={{ fontSize: 17, fontWeight: '700', color: '#FFFFFF' }}>记账本</Text>
+              <Text style={{ fontSize: 17, fontWeight: "700", color: "#FFFFFF" }}>账单明细</Text>
             </View>
             {/* 金额行 */}
             <View style={{
@@ -482,7 +529,7 @@ function StatsPage() {
             >
               <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)' }}>总支出</Text>
               <View style={{ flex: 1 }} />
-              <Text style={{ fontSize: 24, fontWeight: '700', color: '#FFFFFF' }}>¥{totalExpense.toFixed(2)}</Text>
+              <Text style={{ fontSize: 24, fontWeight: '700', color: '#FFFFFF' }}>¥{detailTotalExpense.toFixed(2)}</Text>
             </View>
           </View>
 
@@ -615,10 +662,13 @@ function StatsPage() {
             }}
             >
               <View onClick={() => {
-                Taro.showActionSheet({
-                  itemList: TIME_OPTIONS.map(o => o.label),
-                  success: (res) => { setDateRange(TIME_OPTIONS[res.tapIndex].key) }
-                })
+                if (dateRange === 'custom') { setShowCalendar(true) }
+                else {
+                  Taro.showActionSheet({
+                    itemList: TIME_OPTIONS.filter(o => o.key !== 'custom').map(o => o.label),
+                    success: (res) => { const sel = TIME_OPTIONS.filter(o => o.key !== 'custom')[res.tapIndex]; if (sel) setDateRange(sel.key) }
+                  })
+                }
               }} style={{
                 display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 30,
                 paddingTop: 9, paddingBottom: 9, paddingLeft: 15, paddingRight: 15,
@@ -626,7 +676,7 @@ function StatsPage() {
                 border: '1px solid #E5E7EB',
               }}
               >
-                <Text style={{ fontSize: 13, color: '#374151' }}>{dateLabelMap[dateRange]}</Text>
+                <Text style={{ fontSize: 13, color: '#374151' }}>{dateRange === 'custom' ? (customStartDate && customEndDate ? customStartDate + ' ~ ' + customEndDate : customStartDate || '自定义时间') : dateLabelMap[dateRange]}</Text>
                 <Text style={{ fontSize: 12, color: '#9CA3AF' }}>▼</Text>
               </View>
             </View>
@@ -747,97 +797,233 @@ function StatsPage() {
       {/* ==================== 地图 Tab ==================== */}
       {activeTab === 'map' && (
         <>
-          <View style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, background: 'linear-gradient(135deg, #1890FF 0%, #096DD9 100%)' }}>
-            <View style={{ paddingTop: statusBarH, height: capsuleBottom, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontSize: 17, fontWeight: '700', color: '#FFFFFF' }}>目的地地图</Text>
+          <View style={{ position:'fixed',top:0,left:0,right:0,zIndex:100,background:'linear-gradient(135deg,#1890FF 0%,#096DD9 100%)' }}>
+            <View style={{ paddingTop:statusBarH,height:capsuleBottom,display:'flex',alignItems:'center',justifyContent:'center' }}>
+              <Text style={{ fontSize:17,fontWeight:'700',color:'#FFFFFF' }}>足迹地图</Text>
             </View>
           </View>
 
-          <ScrollView scrollY enhanced showScrollbar={false}
-            style={{ flex: 1, marginTop: mapHeaderH, marginBottom: 64 }}
-          >
-            <View style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <View style={{ borderRadius: 16, backgroundColor: '#EFF6FF', padding: 20, minHeight: 280, position: 'relative' }}>
-                <View style={{ alignItems: 'center', justifyContent: 'center', minHeight: 240 }}>
-                  {destinationList.length > 0 ? (
-                    <View style={{ position: 'relative', width: '100%', height: 240 }}>
-                      {destinationList.slice(0, 12).map((dest, i) => {
-                        const info = dest.info
-                        const rawLng = info?.lng || (80 + (i % 6) * 10)
-                        const rawLat = info?.lat || (20 + Math.floor(i / 6) * 10)
-                        const x = ((rawLng - 70) / 66) * 85 + 5
-                        const y = ((55 - rawLat) / 38) * 75 + 5
-                        return (
-                          <View key={`marker-${dest.city}-${i}`} style={{ position: 'absolute', left: `${x}%`, top: `${y}%` }}>
-                            <View style={{ alignItems: 'center' }}>
-                              <View style={{
-                                width: dest.amount > 0 ? 10 : 6, height: dest.amount > 0 ? 10 : 6,
-                                borderRadius: dest.amount > 0 ? 5 : 3,
-                                backgroundColor: dest.amount > 0 ? THEME.primary : '#CCC',
-                                borderWidth: dest.amount > 0 ? 2 : 0, borderColor: '#FFF',
-                              }}
-                              />
-                              {(i < 6 || dest.amount > 0) && (
-                                <Text style={{ fontSize: 9, color: '#374151', marginTop: 2, whiteSpace: 'nowrap' }}>{dest.city}</Text>
-                              )}
-                            </View>
-                          </View>
-                        )
-                      })}
-                      {destinationList.filter(d => !d.info).slice(0, 6).map((dest, i) => {
-                        const positions = [
-                          { x: 25, y: 35 }, { x: 55, y: 25 }, { x: 75, y: 45 },
-                          { x: 35, y: 60 }, { x: 60, y: 65 }, { x: 80, y: 30 },
-                        ]
-                        const pos = positions[i % positions.length]
-                        return (
-                          <View key={`fallback-${dest.city}-${i}`} style={{ position: 'absolute', left: `${pos.x}%`, top: `${pos.y}%` }}>
-                            <View style={{ alignItems: 'center' }}>
-                              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#D1D5DB', borderWidth: 1.5, borderColor: '#FFF' }} />
-                              <Text style={{ fontSize: 9, color: '#9CA3AF', marginTop: 1, whiteSpace: 'nowrap' }}>{dest.city}</Text>
-                            </View>
-                          </View>
-                        )
-                      })}
-                    </View>
-                  ) : (
-                    <View style={{ alignItems: 'center' }}>
-                      <MapIcon size={44} color="#C7D2FE" />
-                      <Text style={{ fontSize: 14, color: '#94A3B8', marginTop: 12, display: 'block' }}>暂无目的地数据</Text>
-                      <Text style={{ fontSize: 12, color: '#CBD5E1', marginTop: 4, display: 'block' }}>请在项目中设置目的地</Text>
-                    </View>
-                  )}
+          <ScrollView scrollY enhanced showScrollbar={false} style={{ flex:1,marginTop:mapHeaderH,marginBottom:64 }}>
+            {/* 地图主区域 - 可视化中国地图 */}
+            <View style={{ margin:12,borderRadius:16,overflow:'hidden',backgroundColor:'#E8EEF4',position:'relative',minHeight:420 }}>
+
+            {(() => {
+              const visitedNames = new Set<string>()
+              projects.forEach(p => {
+                const txt = p.destination||p.name||''
+                if(txt) {
+                  Object.keys(CITY_DB).forEach(k => { if(txt.includes(k)) visitedNames.add(k) })
+                  try{ const ci=recognizeCity(txt);if(ci?.name)visitedNames.add(ci.name) }catch(e){}
+                }
+              })
+              destinationList.forEach(d => {
+                if(d.info?.name) visitedNames.add(d.info.name)
+                else if(d.city) visitedNames.add(d.city)
+              })
+              const vArr = Array.from(visitedNames)
+
+              return (<View style={{ position:'relative',width:'100%',minHeight:400 }}>
+                <View style={{ position:'absolute',top:40,left:30,right:30,bottom:50,border:'2px dashed #B0BEC5',borderRadius:60,backgroundColor:'rgba(232,237,242,0.5)' }} />
+
+                {/* 城市点位 */}
+                {(() => {
+                  const POS:{[k:string]:{x:number;y:number}} = {
+                    '北京':{x:68,y:28},'天津':{x:72,y:34},'上海':{x:82,y:52},'重庆':{x:42,y:58},
+                    '西安':{x:52,y:42},'成都':{x:36,y:52},'广州':{x:70,y:78},'深圳':{x:72,y:80},
+                    '杭州':{x:82,y:54},'南京':{x:76,y:46},'武汉':{x:62,y:54},'长沙':{x:64,y:62},
+                    '郑州':{x:60,y:42},'济南':{x:74,y:36},'青岛':{x:78,y:38},'大连':{x:78,y:24},
+                    '沈阳':{x:78,y:18},'哈尔滨':{x:84,y:10},'长春':{x:82,y:14},
+                    '呼和浩特':{x:56,y:22},'太原':{x:60,y:34},'石家庄':{x:64,y:36},
+                    '合肥':{x:74,y:50},'福州':{x:78,y:68},'厦门':{x:76,y:74},
+                    '南宁':{x:54,y:82},'海口':{x:58,y:90},'昆明':{x:32,y:78},
+                    '贵阳':{x:44,y:68},'拉萨':{x:18,y:56},'乌鲁木齐':{x:12,y:26},
+                    '兰州':{x:34,y:38},'西宁':{x:28,y:36},'银川':{x:44,y:30},
+                    '南昌':{x:70,y:60},'苏州':{x:80,y:52},'无锡':{x:78,y:50},
+                    '宁波':{x:84,y:56},'温州':{x:82,y:62},'绍兴':{x:80,y:55},
+                    '常州':{x:77,y:45},'扬州':{x:76,y:44},'镇江':{x:77,y:47},
+                    '徐州':{x:72,y:40},'台州':{x:83,y:59},'金华':{x:79,y:58},
+                    '嘉兴':{x:81,y:53},'湖州':{x:79,y:51},'衢州':{x:77,y:57},
+                    '舟山':{x:84,y:54},'丽水':{x:78,y:61},'黄山':{x:76,y:53},
+                    '新昌':{x:78,y:55},'伊犁':{x:10,y:32},'喀什':{x:6,y:36},
+                    '桂林':{x:52,y:74},'三亚':{x:60,y:92},'珠海':{x:69,y:79},
+                    '东莞':{x:71,y:77},'佛山':{x:68,y:76},'惠州':{x:71,y:76},
+                    '中山':{x:69,y:78},'江门':{x:67,y:79},'湛江':{x:60,y:85},
+                    '泉州':{x:75,y:70},'漳州':{x:73,y:73},'烟台':{x:80,y:36},
+                    '威海':{x:82,y:34},'潍坊':{x:76,y:38},'临沂':{x:72,y:42},
+                    '泰安':{x:72,y:40},'济宁':{x:70,y:42},'淄博':{x:74,y:38},
+                    '大同':{x:58,y:28},'包头':{x:50,y:24},'宜昌':{x:54,y:56},
+                    '襄阳':{x:56,y:50},'岳阳':{x:62,y:60},'衡阳':{x:60,y:66},
+                    '株洲':{x:63,y:62},'湘潭':{x:62,y:63},'常德':{x:58,y:56},
+                    '张家界':{x:55,y:58},'郴州':{x:62,y:70},'永州':{x:58,y:68},
+                    '邵阳':{x:58,y:66},
+                  }
+                  
+                  return vArr.map((cityName,idx) => {
+                    let pos:{x:number;y:number}|null = POS[cityName]||null
+                    if(!pos) {
+                      const fk = Object.keys(POS).find(k => k.includes(cityName)||cityName.includes(k))
+                      pos = fk?POS[fk]:null
+                    }
+                    if(!pos) {
+                      const dbInfo = CITY_DB[cityName]||Object.values(CITY_DB).find(v=>v.name===cityName)
+                      if(dbInfo) pos = { x: ((Number(dbInfo.lng)-73)/55)*70+18, y: ((48-Number(dbInfo.lat))/35)*70+18 }
+                    }
+                    if(!pos) return null
+                    const colors=['#1890FF','#52C41A','#FAAD14','#EB2F96','#13C2C2','#722ED1','#FA541C']
+                    const color = colors[idx%colors.length]
+                    return (<View key={"vc"+cityName+idx}
+                      style={{ position:"absolute",left:pos.x+"%",top:pos.y+"%",transform:"translateX(-50%) translateY(-50%)",alignItems:"center",zIndex:10+idx }}
+                    >
+                        <View style={{ width:24,height:24,borderRadius:12,backgroundColor:color,borderWidth:2,borderColor:"#FFF" }} />
+                        <Text style={{ fontSize:10,color:"#374151",marginTop:2,backgroundColor:"rgba(255,255,255,0.85)",paddingLeft:3,paddingRight:3,borderRadius:3,fontWeight:"500" }}>{cityName}</Text>
+                      </View>)
+                  })
+                })()}
+
+                {/* 未去过置灰 */}
+                {['北京','上海','广州','深圳','成都','杭州','武汉','西安'].filter(c => !visitedNames.has(c)).map(city => {
+                  const dp:{[s:string]:{x:number;y:number}} = {'北京':{x:68,y:28},'上海':{x:82,y:52},'广州':{x:70,y:78},'深圳':{x:72,y:80},'成都':{x:36,y:52},'杭州':{x:82,y:54},'武汉':{x:62,y:54},'西安':{x:52,y:42}}
+                  const p = dp[city]; if(!p) return null
+                  return(<View key={"g"+city} style={{ position:"absolute",left:p.x+"%",top:p.y+"%",transform:"translateX(-50%) translateY(-50%)",alignItems:"center",zIndex:5 }}>
+                    <View style={{ width:14,height:14,borderRadius:7,backgroundColor:"#D1D5DB",opacity:0.5 }} />
+                    <Text style={{ fontSize:9,color:"#9CA3AF",marginTop:1,opacity:0.5 }}>{city}</Text>
+                  </View>)
+                })}
+
+                {/* 图例 */}
+                <View style={{ position:"absolute",bottom:10,left:10,right:10,display:"flex",flexDirection:"row",gap:12,flexWrap:"wrap" }}>
+                  <View style={{ display:"flex",flexDirection:"row",alignItems:"center",gap:4 }}>
+                    <View style={{ width:10,height:10,borderRadius:5,backgroundColor:"#1890FF" }} />
+                    <Text style={{ fontSize:10,color:"#6B7280" }}>已去过({vArr.length})</Text>
+                  </View>
+                  <View style={{ display:"flex",flexDirection:"row",alignItems:"center",gap:4 }}>
+                    <View style={{ width:10,height:10,borderRadius:5,backgroundColor:"#D1D5DB",opacity:0.5 }} />
+                    <Text style={{ fontSize:10,color:"#9CA3AF" }}>未到过</Text>
+                  </View>
+                </View>
+              </View>)
+            })()}
+            </View>
+
+            {/* 已涉足城市汇总（紧凑标签） */}
+            {destinationList.length>0 && (
+              <View style={{ marginLeft:12,marginRight:12,marginBottom:12,borderRadius:16,backgroundColor:"#FFF",padding:14,boxShadow:"0 1px 3px rgba(0,0,0,0.04)" }}>
+                <Text style={{ fontSize:14,fontWeight:"600",color:"#1F2937",display:"block",marginBottom:10 }}>🗺️ 已涉足城市({destinationList.length}个)</Text>
+                <View style={{ display:"flex",flexDirection:"row",flexWrap:"wrap",gap:8 }}>
+                  {destinationList.map((dest,i) => {
+                    const pc=["#1890FF","#52C41A","#FAAD14","#EB2F96","#13C2C2","#722ED1","#FA541C"]
+                    return(<View key={dest.city} style={{ display:"flex",flexDirection:"row",alignItems:"center",gap:5,paddingLeft:10,paddingRight:10,paddingTop:5,paddingBottom:5,borderRadius:14,backgroundColor:"#F8FAFC",border:"1px solid #E5E7EB" }}>
+                      <View style={{ width:8,height:8,borderRadius:4,backgroundColor:pc[i%pc.length] }} />
+                      <Text style={{ fontSize:12,color:"#374151" }}>{dest.city}</Text>
+                      <Text style={{ fontSize:11,color:"#9CA3AF" }}>¥{dest.amount.toFixed(0)}</Text>
+                    </View>)
+                  })}
                 </View>
               </View>
+            )}
 
-              {destinationList.length > 0 && (
-                <View style={{ borderRadius: 16, backgroundColor: '#FFFFFF', padding: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                  <Text style={{ fontSize: 15, fontWeight: '600', color: '#1F2937', display: 'block', marginBottom: 10 }}>📍 目的地花费</Text>
-                  {destinationList.map((dest, i) => (
-                    <View key={dest.city}
-                      style={{
-                        display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-                        paddingTop: 9, paddingBottom: 9,
-                        borderBottomWidth: i < destinationList.length - 1 ? 0.5 : 0,
-                        borderBottomColor: '#F3F4F6',
-                      }}
-                    >
-                      <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Text style={{ fontSize: 15, fontWeight: '700', color: i < 3 ? THEME.primary : '#9CA3AF', width: 20 }}>#{i + 1}</Text>
-                        <Text style={{ fontSize: 14, color: '#374151', display: 'block' }}>{dest.city}</Text>
-                        <Text style={{ fontSize: 11, color: '#9CA3AF', display: 'block' }}>{dest.info?.province || ''}{dest.count > 1 ? ` (${dest.count}笔)` : ''}</Text>
-                      </View>
-                      <Text style={{ fontSize: 14, fontWeight: '600', color: '#1F2937' }}>¥{dest.amount.toFixed(2)}</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-            </View>
+            {destinationList.length===0 && (
+              <View style={{ margin:12,borderRadius:16,backgroundColor:"#FFF",padding:40,alignItems:"center" }}>
+                <MapIcon size={48} color="#C7D2FE" />
+                <Text style={{ fontSize:14,color:"#94A3B8",marginTop:12,display:"block" }}>暂无足迹数据</Text>
+                <Text style={{ fontSize:12,color:"#CBD5E1",marginTop:4,display:"block" }}>添加项目后这里将展示你的旅行轨迹</Text>
+              </View>
+            )}
           </ScrollView>
         </>
       )}
 
+
       {/* 底部Tab */}
+      
+      {/* 日历选择器弹层 */}
+      {showCalendar && (
+        <View style={{ position:'fixed',top:0,left:0,right:0,bottom:0,backgroundColor:'rgba(0,0,0,0.45)',zIndex:999,display:'flex',flexDirection:'column' }}
+          onClick={() => setShowCalendar(false)}
+        >
+          <View style={{ marginTop:'30%',marginLeft:16,marginRight:16,borderRadius:20,backgroundColor:'#FFF',overflow:'hidden',boxShadow:'0 8px 32px rgba(0,0,0,0.15)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* 标题栏 */}
+            <View style={{ display:'flex',flexDirection:'row',alignItems:'center',justifyContent:'space-between',padding:'14px 16px',borderBottom:'1px solid #F0F0F0' }}>
+              <Text style={{ fontSize:15,fontWeight:'600',color:'#1F2937' }}>选择日期范围</Text>
+              <Text onClick={() => setShowCalendar(false)} style={{ fontSize:18,color:'#9CA3AF',lineHeight:1 }}>✕</Text>
+            </View>
+
+            <View style={{ display:'flex',flexDirection:'row' }}>
+              {/* 快捷选项 */}
+              <View style={{ width:90,padding:'10px 8px',borderRight:'1px solid #F0F0F0',backgroundColor:'#FAFBFC' }}>
+                {quickRanges.map(qr => (
+                  <Text key={qr.key} onClick={() => applyQuick(qr.key)}
+                    style={{ fontSize:12,color:THEME.primary,padding:'6px 8px',borderRadius:8,marginBottom:4,backgroundColor:'#EFF6FF',display:'block' }}
+                  >
+                    {qr.label}
+                  </Text>
+                ))}
+              </View>
+
+              {/* 日历 */}
+              <View style={{ flex:1,padding:10 }}>
+                {/* 年月切换 */}
+                <View style={{ display:'flex',flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:8 }}>
+                  <Text onClick={() => { if(calMonth===1){setCalYear(calYear-1);setCalMonth(12)}else setCalMonth(calMonth-1) }} style={{ fontSize:14,color:THEME.primary,padding:'2px 6px' }}>◀</Text>
+                  <Text style={{ fontSize:14,fontWeight:'600',color:'#1F2937' }}>{calYear}年{calMonth}月</Text>
+                  <Text onClick={() => { if(calMonth===12){setCalYear(calYear+1);setCalMonth(1)}else setCalMonth(calMonth+1) }} style={{ fontSize:14,color:THEME.primary,padding:'2px 6px' }}>▶</Text>
+                </View>
+                {/* 星期头 */}
+                <View style={{ display:'flex',flexDirection:'row',marginBottom:4 }}>
+                  {['日','一','二','三','四','五','六'].map(d => (<Text key={d} style={{ flex:1,fontSize:11,color:'#9CA3AF',textAlign:'center',display:'block' }}>{d}</Text>))}
+                </View>
+                {/* 日期网格 */}
+                <View style={{ display:'flex',flexDirection:'row',flexWrap:'wrap' }}>
+                  {(() => {
+                    const total = getDaysInMonth(calYear,calMonth)
+                    const firstWd = getFirstDayWeekday(calYear,calMonth)
+                    const cells:any[] = []
+                    for(let i=0;i<firstWd;i++) cells.push(<Text key={'e'+i} style={{ width:'14.28%',height:26 }} />)
+                    for(let d=1;d<=total;d++) {
+                      const ds = `${calYear}-${String(calMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+                      const sel = ds===customStartDate||ds===customEndDate
+                      const inR = customStartDate&&customEndDate&&ds>customStartDate&&ds<customEndDate
+                      const today = ds===new Date().toISOString().split('T')[0]
+                      cells.push(
+                        <Text key={d} onClick={() => pickDate(d)}
+                          style={{ width:'14.28%',height:26,textAlign:'center',lineHeight:'26px',fontSize:12,borderRadius:'50%',
+                            backgroundColor: sel?THEME.primary:inR?'#DBEAFE':'transparent',
+                            color: sel?'#FFF':today?THEME.primary:'#374151'
+                          }}
+                        >{d}</Text>
+                      )
+                    }
+                    return cells
+                  })()}
+                </View>
+                {(customStartDate||customEndDate) && (
+                  <View style={{ marginTop:6,alignItems:'center' }}>
+                    <Text style={{ fontSize:11,color:'#6B7280',display:'block' }}>{customStartDate||'开始'} ~ {customEndDate||'结束'}</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+
+            {/* 底部按钮 */}
+            <View style={{ display:'flex',flexDirection:'row',gap:10,padding:'12px 16px',borderTop:'1px solid #F0F0F0' }}>
+              <View onClick={() => { setCustomStartDate('');setCustomEndDate('');setDateRange('all');setShowCalendar(false) }}
+                style={{ flex:1,textAlign:'center',paddingTop:9,paddingBottom:9,borderRadius:18,backgroundColor:'#F3F4F6' }}
+              >
+                <Text style={{ fontSize:13,color:'#6B7280' }}>重置</Text>
+              </View>
+              <View onClick={confirmDate}
+                style={{ flex:1,textAlign:'center',paddingTop:9,paddingBottom:9,borderRadius:18,backgroundColor:THEME.primary }}
+              >
+                <Text style={{ fontSize:13,color:'#FFFFFF' }}>确定</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
+
+
       {renderBottomTabs()}
     </View>
   )
