@@ -209,6 +209,7 @@ function StatsPage() {
   const [calMonth, setCalMonth] = useState(new Date().getMonth() + 1)
   const [customStartDate, setCustomStartDate] = useState<string>('')
   const [customEndDate, setCustomEndDate] = useState<string>('')
+  const [chartCategory, setChartCategory] = useState<string>('all')
 
   const statusBarH = Taro.getSystemInfoSync().statusBarHeight || 20
   let capsuleBottom = statusBarH + 44
@@ -312,19 +313,37 @@ function StatsPage() {
       .sort((a, b) => b.amount - a.amount)
   }, [filteredBills])
 
+  const chartFilteredStats = useMemo(() => {
+    if (chartCategory === 'all') return categoryStats
+    return categoryStats.filter(c => c.name === chartCategory)
+  }, [categoryStats, chartCategory])
+
   /* 饼图数据 */
   const pieData = useMemo(() => {
-    if (!categoryStats.length) return []
-    const total = categoryStats.reduce((s, c) => s + c.amount, 0)
-    return categoryStats.map((c, i) => ({
+    if (!chartFilteredStats.length) return []
+    const total = chartFilteredStats.reduce((s, c) => s + c.amount, 0)
+    return chartFilteredStats.map((c, i) => ({
       ...c,
       percent: total > 0 ? ((c.amount / total) * 100).toFixed(1) : '0',
       angle: total > 0 ? (c.amount / total) * 360 : 0,
       color: getPieColor(i),
     }))
-  }, [categoryStats])
+  }, [chartFilteredStats])
 
-  const maxCatAmount = categoryStats.length > 0 ? Math.max(...categoryStats.map(c => c.amount)) : 1
+  const pieGradientStr = useMemo(() => {
+    if (!pieData.length) return '#E5E7EB'
+    let cumPct = 0; const stops: string[] = []
+    for (let i = 0; i < pieData.length; i++) {
+      const d = pieData[i]; const pct = Number(d.percent)
+      if (pct <= 0) continue
+      stops.push(d.color + ' ' + cumPct.toFixed(1) + '% ' + (cumPct + pct).toFixed(1) + '%')
+      cumPct += pct
+    }
+    if (cumPct < 99.9) stops.push('#F3F4F6 ' + cumPct.toFixed(1) + '% 100%')
+    return 'conic-gradient(from -90deg,' + stops.join(',') + ')'
+  }, [pieData])
+
+  const maxChartAmount = categoryStats.length > 0 ? Math.max(...categoryStats.map(c => c.amount)) : 1
 
   /* 目的地统计 */
   const destinationList = useMemo(() => {
@@ -654,30 +673,16 @@ function StatsPage() {
             </View>
           </View>
 
-          {/* 日期筛选栏（统计页只显示日期筛选） */}
+          {/* 筛选栏（统计页：类别+日期） */}
           <View style={{ position: 'fixed', top: chartHeaderH, left: 0, right: 0, zIndex: 99, backgroundColor: '#F8FAFC', paddingBottom: 4 }}>
-            <View style={{
-              marginTop: 10, marginLeft: 16, marginRight: 16,
-              alignSelf: 'flex-start',
-            }}
-            >
-              <View onClick={() => {
-                if (dateRange === 'custom') { setShowCalendar(true) }
-                else {
-                  Taro.showActionSheet({
-                    itemList: TIME_OPTIONS.filter(o => o.key !== 'custom').map(o => o.label),
-                    success: (res) => { const sel = TIME_OPTIONS.filter(o => o.key !== 'custom')[res.tapIndex]; if (sel) setDateRange(sel.key) }
-                  })
-                }
-              }} style={{
-                display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 30,
-                paddingTop: 9, paddingBottom: 9, paddingLeft: 15, paddingRight: 15,
-                borderRadius: 20, backgroundColor: '#FFFFFF',
-                border: '1px solid #E5E7EB',
-              }}
-              >
-                <Text style={{ fontSize: 13, color: '#374151' }}>{dateRange === 'custom' ? (customStartDate && customEndDate ? customStartDate + ' ~ ' + customEndDate : customStartDate || '自定义时间') : dateLabelMap[dateRange]}</Text>
-                <Text style={{ fontSize: 12, color: '#9CA3AF' }}>▼</Text>
+            <View style={{ marginTop: 10, marginLeft: 16, marginRight: 16, display: 'flex', flexDirection: 'row', gap: 8 }}>
+              <View onClick={() => Taro.showActionSheet({ itemList: allCategories.map(x=>x==='all'?'全部类型':x), success:(r)=>setChartCategory(allCategories[r.tapIndex]) })} style={{ flex:1,display:'flex',flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingTop:9,paddingBottom:9,paddingLeft:13,paddingRight:13,borderRadius:20,backgroundColor:'#FFF',border:'1px solid #E5E7EB' }}>
+                <Text style={{ fontSize:13,color:'#374151' }}>{chartCategory==='all'?'全部类型':chartCategory}</Text>
+                <Text style={{ fontSize:12,color:'#9CA3AF' }}>▼</Text>
+              </View>
+              <View onClick={()=>{if(dateRange==='custom')setShowCalendar(true);else{Taro.showActionSheet({itemList:TIME_OPTIONS.filter(o=>o.key!=='custom').map(o=>o.label),success:r=>{const s=TIME_OPTIONS.filter(o=>o.key!=='custom')[r.tapIndex];if(s)setDateRange(s.key)}})}}} style={{ flex:1,display:'flex',flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingTop:9,paddingBottom:9,paddingLeft:13,paddingRight:13,borderRadius:20,backgroundColor:'#FFF',border:'1px solid #E5E7EB' }}>
+                <Text style={{ fontSize:13,color:'#374151' }}>{dateRange==='custom'?((customStartDate&&customEndDate)?(customStartDate+' ~ '+customEndDate):(customStartDate||'自定义时间')):dateLabelMap[dateRange]}</Text>
+                <Text style={{ fontSize:12,color:'#9CA3AF' }}>▼</Text>
               </View>
             </View>
           </View>
@@ -710,16 +715,7 @@ function StatsPage() {
                         <View style={{
                           position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
                           borderRadius: 75,
-                          background: pieData.length > 0
-                            ? (() => {
-                                let cumAngle = 0
-                                const stops = pieData.map(d => {
-                                  const stop = `${d.color} ${cumAngle.toFixed(2)}% ${((cumAngle += Number(d.angle))).toFixed(2)}%`
-                                  return stop
-                                })
-                                return `conic-gradient(${stops.join(', ')})`
-                              })()
-                            : '#E5E7EB',
+                          background: pieGradientStr,
                         }}
                         />
                         {/* 内圆遮罩形成更细的环形 */}
@@ -748,7 +744,7 @@ function StatsPage() {
                       {categoryStats.map((cat, idx) => {
                         const cfg = getCategoryConfig(cat.name)
                         const IconComp = cfg.icon
-                        const pct = maxCatAmount > 0 ? (cat.amount / maxCatAmount) * 100 : 0
+                        const pct = maxChartAmount > 0 ? (cat.amount / maxChartAmount) * 100 : 0
                         const pieColor = pieData[idx]?.color || PIE_COLORS[0]
                         return (
                           <View key={cat.name} style={{
@@ -797,125 +793,97 @@ function StatsPage() {
       {/* ==================== 地图 Tab ==================== */}
       {activeTab === 'map' && (
         <>
-          <View style={{ position:'fixed',top:0,left:0,right:0,zIndex:100,background:'linear-gradient(135deg,#1890FF 0%,#096DD9 100%)' }}>
+          <View style={{ position:'fixed',top:0,left:0,right:0,zIndex:100,backgroundColor:'#0D1117' }}>
             <View style={{ paddingTop:statusBarH,height:capsuleBottom,display:'flex',alignItems:'center',justifyContent:'center' }}>
-              <Text style={{ fontSize:17,fontWeight:'700',color:'#FFFFFF' }}>足迹地图</Text>
+              <Text style={{ fontSize:17,fontWeight:'700',color:'#E6EDF3' }}>足迹地图</Text>
             </View>
           </View>
 
-          <ScrollView scrollY enhanced showScrollbar={false} style={{ flex:1,marginTop:mapHeaderH,marginBottom:64 }}>
-            {/* 地图主区域 - 可视化中国地图 */}
-            <View style={{ margin:12,borderRadius:16,overflow:'hidden',backgroundColor:'#E8EEF4',position:'relative',minHeight:420 }}>
-
+          <ScrollView scrollY enhanced showScrollbar={false}
+            style={{ flex:1, marginTop:mapHeaderH,marginBottom:64 }}
+          >
             {(() => {
               const visitedNames = new Set<string>()
               projects.forEach(p => {
                 const txt = p.destination||p.name||''
                 if(txt) {
                   Object.keys(CITY_DB).forEach(k => { if(txt.includes(k)) visitedNames.add(k) })
-                  try{ const ci=recognizeCity(txt);if(ci?.name)visitedNames.add(ci.name) }catch(e){}
+                  try{ const ci=recognizeCity(txt); if(ci&&ci.name) visitedNames.add(ci.name) }catch(e){}
                 }
               })
               destinationList.forEach(d => {
-                if(d.info?.name) visitedNames.add(d.info.name)
+                if(d.info&&d.info.name) visitedNames.add(d.info.name)
                 else if(d.city) visitedNames.add(d.city)
               })
               const vArr = Array.from(visitedNames)
 
-              return (<View style={{ position:'relative',width:'100%',minHeight:400 }}>
-                <View style={{ position:'absolute',top:40,left:30,right:30,bottom:50,border:'2px dashed #B0BEC5',borderRadius:60,backgroundColor:'rgba(232,237,242,0.5)' }} />
+              // City -> Province mapping
+              const cityToProv:{[s:string]:string} = {'北京':'北京','天津':'天津','上海':'上海','重庆':'重庆','哈尔滨':'黑龙江','长春':'吉林','沈阳':'辽宁','呼和浩特':'内蒙古','石家庄':'河北','太原':'山西','济南':'山东','青岛':'山东','郑州':'河南','合肥':'安徽','南京':'江苏','苏州':'江苏','无锡':'江苏','常州':'江苏','扬州':'江苏','镇江':'江苏','徐州':'江苏','杭州':'浙江','宁波':'浙江','温州':'浙江','绍兴':'浙江','嘉兴':'浙江','湖州':'浙江','金华':'浙江','台州':'浙江','新昌':'浙江','黄山':'安徽','福州':'福建','厦门':'福建','泉州':'福建','南昌':'江西','长沙':'湖南','株洲':'湖南','湘潭':'湖南','衡阳':'湖南','岳阳':'湖南','常德':'湖南','郴州':'湖南','张家界':'湖南','永州':'湖南','邵阳':'湖南','宜昌':'湖北','襄阳':'湖北','武汉':'湖北','广州':'广东','深圳':'广东','东莞':'广东','佛山':'广东','惠州':'广东','中山':'广东','江门':'广东','珠海':'广东','湛江':'广东','汕头':'广西','南宁':'广西','桂林':'广西','海口':'海南','三亚':'海南','成都':'四川','贵阳':'贵州','昆明':'云南','拉萨':'西藏','西安':'陕西','兰州':'甘肃','西宁':'青海','银川':'宁夏','乌鲁木齐':'新疆','伊犁':'新疆','喀什':'新疆','大连':'辽宁','烟台':'山东','威海':'山东','潍坊':'山东','临沂':'山东','泰安':'山东','济宁':'山东','淄博':'山东','大同':'山西','包头':'内蒙古'}
+              const visitedProvs = new Set<string>()
+              vArr.forEach(city => { const p=cityToProv[city]; if(p) visitedProvs.add(p) })
 
-                {/* 城市点位 */}
-                {(() => {
-                  const POS:{[k:string]:{x:number;y:number}} = {
-                    '北京':{x:68,y:28},'天津':{x:72,y:34},'上海':{x:82,y:52},'重庆':{x:42,y:58},
-                    '西安':{x:52,y:42},'成都':{x:36,y:52},'广州':{x:70,y:78},'深圳':{x:72,y:80},
-                    '杭州':{x:82,y:54},'南京':{x:76,y:46},'武汉':{x:62,y:54},'长沙':{x:64,y:62},
-                    '郑州':{x:60,y:42},'济南':{x:74,y:36},'青岛':{x:78,y:38},'大连':{x:78,y:24},
-                    '沈阳':{x:78,y:18},'哈尔滨':{x:84,y:10},'长春':{x:82,y:14},
-                    '呼和浩特':{x:56,y:22},'太原':{x:60,y:34},'石家庄':{x:64,y:36},
-                    '合肥':{x:74,y:50},'福州':{x:78,y:68},'厦门':{x:76,y:74},
-                    '南宁':{x:54,y:82},'海口':{x:58,y:90},'昆明':{x:32,y:78},
-                    '贵阳':{x:44,y:68},'拉萨':{x:18,y:56},'乌鲁木齐':{x:12,y:26},
-                    '兰州':{x:34,y:38},'西宁':{x:28,y:36},'银川':{x:44,y:30},
-                    '南昌':{x:70,y:60},'苏州':{x:80,y:52},'无锡':{x:78,y:50},
-                    '宁波':{x:84,y:56},'温州':{x:82,y:62},'绍兴':{x:80,y:55},
-                    '常州':{x:77,y:45},'扬州':{x:76,y:44},'镇江':{x:77,y:47},
-                    '徐州':{x:72,y:40},'台州':{x:83,y:59},'金华':{x:79,y:58},
-                    '嘉兴':{x:81,y:53},'湖州':{x:79,y:51},'衢州':{x:77,y:57},
-                    '舟山':{x:84,y:54},'丽水':{x:78,y:61},'黄山':{x:76,y:53},
-                    '新昌':{x:78,y:55},'伊犁':{x:10,y:32},'喀什':{x:6,y:36},
-                    '桂林':{x:52,y:74},'三亚':{x:60,y:92},'珠海':{x:69,y:79},
-                    '东莞':{x:71,y:77},'佛山':{x:68,y:76},'惠州':{x:71,y:76},
-                    '中山':{x:69,y:78},'江门':{x:67,y:79},'湛江':{x:60,y:85},
-                    '泉州':{x:75,y:70},'漳州':{x:73,y:73},'烟台':{x:80,y:36},
-                    '威海':{x:82,y:34},'潍坊':{x:76,y:38},'临沂':{x:72,y:42},
-                    '泰安':{x:72,y:40},'济宁':{x:70,y:42},'淄博':{x:74,y:38},
-                    '大同':{x:58,y:28},'包头':{x:50,y:24},'宜昌':{x:54,y:56},
-                    '襄阳':{x:56,y:50},'岳阳':{x:62,y:60},'衡阳':{x:60,y:66},
-                    '株洲':{x:63,y:62},'湘潭':{x:62,y:63},'常德':{x:58,y:56},
-                    '张家界':{x:55,y:58},'郴州':{x:62,y:70},'永州':{x:58,y:68},
-                    '邵阳':{x:58,y:66},
-                  }
-                  
-                  return vArr.map((cityName,idx) => {
-                    let pos:{x:number;y:number}|null = POS[cityName]||null
-                    if(!pos) {
-                      const fk = Object.keys(POS).find(k => k.includes(cityName)||cityName.includes(k))
-                      pos = fk?POS[fk]:null
-                    }
-                    if(!pos) {
-                      const dbInfo = CITY_DB[cityName]||Object.values(CITY_DB).find(v=>v.name===cityName)
-                      if(dbInfo) pos = { x: ((Number(dbInfo.lng)-73)/55)*70+18, y: ((48-Number(dbInfo.lat))/35)*70+18 }
-                    }
-                    if(!pos) return null
-                    const colors=['#1890FF','#52C41A','#FAAD14','#EB2F96','#13C2C2','#722ED1','#FA541C']
-                    const color = colors[idx%colors.length]
-                    return (<View key={"vc"+cityName+idx}
-                      style={{ position:"absolute",left:pos.x+"%",top:pos.y+"%",transform:"translateX(-50%) translateY(-50%)",alignItems:"center",zIndex:10+idx }}
-                    >
-                        <View style={{ width:24,height:24,borderRadius:12,backgroundColor:color,borderWidth:2,borderColor:"#FFF" }} />
-                        <Text style={{ fontSize:10,color:"#374151",marginTop:2,backgroundColor:"rgba(255,255,255,0.85)",paddingLeft:3,paddingRight:3,borderRadius:3,fontWeight:"500" }}>{cityName}</Text>
+              return (
+                <View style={{ margin:12,borderRadius:20,overflow:'hidden',backgroundColor:'#161B22',position:'relative',minHeight:480 }}>
+                  {/* 地图背景 - 深色 */}
+                  <View style={{ width:'100%',height:420,backgroundColor:'#0D1117',position:'relative',overflow:'hidden' }}>
+
+                    {/* 中国轮廓线 */}
+                    <View style={{ position:'absolute',left:'4%',top:'8%',width:'86%',height:'76%',borderRadius:'55% 45% 45% 55%/48% 52% 46% 50%',borderWidth:1,borderColor:'#30363D',opacity:0.7 }} />
+
+                    {/* 已访问省份填充区域 */}
+                    {Array.from(visitedProvs).map((prov) => {
+                      const pd:{[s:string]:{x:number;y:number;w:number;h:number}}={'北京':{x:70,y:24,w:14,h:12},'天津':{x:74,y:28,w:10,h:8},'上海':{x:85,y:52,w:10,h:10},'重庆':{x:42,y:58,w:16,h:18},'黑龙江':{x:80,y:3,w:20,h:22},'吉林':{x:78,y:17,w:12,h:14},'辽宁':{x:76,y:25,w:14,h:16},'内蒙古':{x:49,y:8,w:30,h:26},'河北':{x:68,y:29,w:18,h:14},'山西':{x:58,y:31,w:12,h:16},'山东':{x:74,y:34,w:16,h:14},'河南':{x:60,y:41,w:16,h:14},'江苏':{x:78,y:45,w:14,h:14},'安徽':{x:72,y:49,w:14,h:14},'浙江':{x:82,y:53,w:12,h:12},'福建':{x:78,y:65,w:10,h:14},'江西':{x:70,y:59,w:12,h:14},'湖北':{x:60,y:53,w:16,h:14},'湖南':{x:62,y:65,w:14,h:14},'广东':{x:68,y:75,w:16,h:16},'广西':{x:52,y:77,w:14,h:16},'海南':{x:58,y:92,w:10,h:8},'四川':{x:36,y:51,w:18,h:20},'贵州':{x:44,y:67,w:12,h:14},'云南':{x:32,y:73,w:16,h:18},'西藏':{x:14,y:55,w:22,h:20},'陕西':{x:52,y:41,w:14,h:16},'甘肃':{x:34,y:35,w:18,h:16},'青海':{x:26,y:37,w:16,h:14},'宁夏':{x:44,y:29,w:8,h:10},'新疆':{x:3,y:19,w:28,h:24}}
+                      const pos = pd[prov]
+                      if(!pos) return null
+                      return (<View key={prov} style={{ position:'absolute',left:pos.x+'%',top:pos.y+'%',width:pos.w+'%',height:pos.h+'%',borderRadius:pos.w>pos.h?pos.h/2:pos.w/2,backgroundColor:'#1890FF1A',borderWidth:1,borderColor:'#1890FF66' }}>
+                        <Text style={{ position:'absolute',top:-14,left:0,right:0,textAlign:'center',fontSize:9,color:'#58A6FF',fontWeight:'600' }}>{prov}</Text>
                       </View>)
-                  })
-                })()}
+                    })}
 
-                {/* 未去过置灰 */}
-                {['北京','上海','广州','深圳','成都','杭州','武汉','西安'].filter(c => !visitedNames.has(c)).map(city => {
-                  const dp:{[s:string]:{x:number;y:number}} = {'北京':{x:68,y:28},'上海':{x:82,y:52},'广州':{x:70,y:78},'深圳':{x:72,y:80},'成都':{x:36,y:52},'杭州':{x:82,y:54},'武汉':{x:62,y:54},'西安':{x:52,y:42}}
-                  const p = dp[city]; if(!p) return null
-                  return(<View key={"g"+city} style={{ position:"absolute",left:p.x+"%",top:p.y+"%",transform:"translateX(-50%) translateY(-50%)",alignItems:"center",zIndex:5 }}>
-                    <View style={{ width:14,height:14,borderRadius:7,backgroundColor:"#D1D5DB",opacity:0.5 }} />
-                    <Text style={{ fontSize:9,color:"#9CA3AF",marginTop:1,opacity:0.5 }}>{city}</Text>
-                  </View>)
-                })}
+                    {/* 城市点位标记 */}
+                    {vArr.map((cityName,i) => {
+                      const cp:{[s:string]:{x:number;y:number}}={'北京':{x:71,y:27},'天津':{x:74,y:31},'上海':{x:86,y:54},'重庆':{x:44,y:61},'西安':{x:53,y:44},'成都':{x:37,y:57},'广州':{x:71,y:80},'深圳':{x:73,y:83},'杭州':{x:84,y:56},'南京':{x:78,y:48},'武汉':{x:63,y:57},'长沙':{x:66,y:68},'郑州':{x:62,y:43},'济南':{x:75,y:38},'青岛':{x:80,y:39},'大连':{x:80,y:25},'沈阳':{x:79,y:22},'哈尔滨':{x:85,y:9},'长春':{x:82,y:15},'呼和浩特':{x:58,y:23},'太原':{x:59,y:35},'石家庄':{x:66,y:34},'合肥':{x:74,y:51},'福州':{x:80,y:70},'厦门':{x:77,y:76},'南宁':{x:55,y:84},'海口':{x:59,y:94},'昆明':{x:33,y:79},'贵阳':{x:45,y:71},'拉萨':{x:17,y:58},'乌鲁木齐':{x:13,y:27},'兰州':{x:36,y:40},'西宁':{x:29,y:38},'银川':{x:45,y:31},'南昌':{x:72,y:63},'苏州':{x:82,y:52},'无锡':{x:80,y:49},'宁波':{x:87,y:59},'温州':{x:84,y:64},'绍兴':{x:82,y:56},'常州':{x:77,y:46},'扬州':{x:77,y:44},'镇江':{x:78,y:47},'徐州':{x:74,y:40},'台州':{x:85,y:59},'金华':{x:81,y:58},'嘉兴':{x:83,y:53},'湖州':{x:81,y:51},'衢州':{x:79,y:57},'舟山':{x:87,y:54},'丽水':{x:80,y:62},'黄山':{x:77,y:54},'新昌':{x:81,y:55},'伊犁':{x:11,y:33},'喀什':{x:6,y:38},'桂林':{x:54,y:77},'三亚':{x:61,y:95},'珠海':{x:70,y:81},'东莞':{x:72,y:79},'佛山':{x:69,y:78},'惠州':{x:72,y:77},'中山':{x:70,y:80},'江门':{x:68,y:81},'湛江':{x:61,y:87},'泉州':{x:77,y:72},'漳州':{x:75,y:75},'烟台':{x:81,y:37},'威海':{x:83,y:36},'潍坊':{x:77,y:40},'临沂':{x:74,y:43},'泰安':{x:73,y:42},'济宁':{x:72,y:43},'淄博':{x:76,y:38},'大同':{x:58,y:30},'包头':{x:51,y:25},'宜昌':{x:56,y:58},'襄阳':{x:58,y:52},'岳阳':{x:64,y:63},'衡阳':{x:63,y:69},'株洲':{x:65,y:65},'湘潭':{x:64,y:66},'常德':{x:59,y:57},'张家界':{x:57,y:60},'郴州':{x:64,y:72},'永州':{x:60,y:70},'邵阳':{x:60,y:68}}
+                      const p = cp[cityName]||{x:50+(i*7)%40,y:30+(i*11)%40}
+                      return(<View key={cityName+i} style={{ position:'absolute',left:p.x+'%',top:p.y+'%',alignItems:'center' }}>
+                        <View style={{ width:7,height:7,borderRadius:3.5,backgroundColor:'#58A6FF',boxShadow:'0 0 5px rgba(88,166,255,0.5)' }} />
+                        <Text style={{ fontSize:8,color:'#E6EDF3',marginTop:1 }}>{cityName}</Text>
+                      </View>)
+                    })}
 
-                {/* 图例 */}
-                <View style={{ position:"absolute",bottom:10,left:10,right:10,display:"flex",flexDirection:"row",gap:12,flexWrap:"wrap" }}>
-                  <View style={{ display:"flex",flexDirection:"row",alignItems:"center",gap:4 }}>
-                    <View style={{ width:10,height:10,borderRadius:5,backgroundColor:"#1890FF" }} />
-                    <Text style={{ fontSize:10,color:"#6B7280" }}>已去过({vArr.length})</Text>
+                    {/* 邻国标签 */}
+                    <Text style={{ position:'absolute',right:'1%',top:'17%',fontSize:10,color:'#30363D' }}>俄罗斯</Text>
+                    <Text style={{ position:'absolute',right:'-1%',top:'38%',fontSize:10,color:'#30363D' }}>韩国</Text>
+                    <Text style={{ position:'absolute',left:'1%',bottom:'14%',fontSize:10,color:'#30363D' }}>印度</Text>
+                    <Text style={{ position:'absolute',right:'4%',bottom:'10%',fontSize:10,color:'#30363D' }}>南海</Text>
+                    <Text style={{ position:'absolute',left:'14%',top:'21%',fontSize:10,color:'#30363D' }}>蒙古</Text>
                   </View>
-                  <View style={{ display:"flex",flexDirection:"row",alignItems:"center",gap:4 }}>
-                    <View style={{ width:10,height:10,borderRadius:5,backgroundColor:"#D1D5DB",opacity:0.5 }} />
-                    <Text style={{ fontSize:10,color:"#9CA3AF" }}>未到过</Text>
+
+                  {/* 底部统计栏 */}
+                  <View style={{ position:'absolute',bottom:0,left:0,right:0,padding:'10px 14px',backgroundColor:'#0D1117EE',display:'flex',flexDirection:'row',alignItems:'center',justifyContent:'space-between' }}>
+                    <View style={{ display:'flex',flexDirection:'row',alignItems:'baseline' }}>
+                      <Text style={{ fontSize:12,color:'#8B949E' }}>累计点亮</Text>
+                      <Text style={{ fontSize:20,fontWeight:'700',color:'#58A6FF' }}>{vArr.length}</Text>
+                      <Text style={{ fontSize:12,color:'#8B949E' }}>市/{visitedProvs.size}省</Text>
+                    </View>
                   </View>
                 </View>
-              </View>)
+              )
             })()}
-            </View>
 
-            {/* 已涉足城市汇总（紧凑标签） */}
+            {/* 城市详情列表 */}
             {destinationList.length>0 && (
-              <View style={{ marginLeft:12,marginRight:12,marginBottom:12,borderRadius:16,backgroundColor:"#FFF",padding:14,boxShadow:"0 1px 3px rgba(0,0,0,0.04)" }}>
-                <Text style={{ fontSize:14,fontWeight:"600",color:"#1F2937",display:"block",marginBottom:10 }}>🗺️ 已涉足城市({destinationList.length}个)</Text>
-                <View style={{ display:"flex",flexDirection:"row",flexWrap:"wrap",gap:8 }}>
-                  {destinationList.map((dest,i) => {
-                    const pc=["#1890FF","#52C41A","#FAAD14","#EB2F96","#13C2C2","#722ED1","#FA541C"]
-                    return(<View key={dest.city} style={{ display:"flex",flexDirection:"row",alignItems:"center",gap:5,paddingLeft:10,paddingRight:10,paddingTop:5,paddingBottom:5,borderRadius:14,backgroundColor:"#F8FAFC",border:"1px solid #E5E7EB" }}>
-                      <View style={{ width:8,height:8,borderRadius:4,backgroundColor:pc[i%pc.length] }} />
-                      <Text style={{ fontSize:12,color:"#374151" }}>{dest.city}</Text>
-                      <Text style={{ fontSize:11,color:"#9CA3AF" }}>¥{dest.amount.toFixed(0)}</Text>
+              <View style={{ marginLeft:12,marginRight:12,marginBottom:12,borderRadius:16,backgroundColor:'#161B22',padding:14,border:'1px solid #21262D' }}>
+                <View style={{ display:'flex',flexDirection:'row',justifyContent:'space-between',marginBottom:10 }}>
+                  <Text style={{ fontSize:14,fontWeight:'600',color:'#E6EDF3' }}>已涉足城市({destinationList.length})</Text>
+                  <Text style={{ fontSize:11,color:'#58A6FF' }}>¥{destinationList.reduce((s,d)=>s+d.amount,0).toFixed(0)}</Text>
+                </View>
+                <View style={{ display:'flex',flexDirection:'row',flexWrap:'wrap',gap:6 }}>
+                  {destinationList.map((d,i) => {
+                    const pc=['#1890FF','#52C41A','#FAAD14','#EB2F96','#13C2C2','#722ED1','#FA541C']
+                    return(<View key={d.city} style={{ display:'flex',flexDirection:'row',alignItems:'center',gap:4,paddingLeft:8,paddingRight:8,paddingTop:4,paddingBottom:4,borderRadius:12,backgroundColor:'#21262D' }}>
+                      <View style={{ width:6,height:6,borderRadius:3,backgroundColor:pc[i%pc.length] }} />
+                      <Text style={{ fontSize:11,color:'#E6EDF3' }}>{d.city}</Text>
+                      <Text style={{ fontSize:10,color:'#8B949E' }}>¥{d.amount.toFixed(0)}</Text>
                     </View>)
                   })}
                 </View>
@@ -923,16 +891,15 @@ function StatsPage() {
             )}
 
             {destinationList.length===0 && (
-              <View style={{ margin:12,borderRadius:16,backgroundColor:"#FFF",padding:40,alignItems:"center" }}>
-                <MapIcon size={48} color="#C7D2FE" />
-                <Text style={{ fontSize:14,color:"#94A3B8",marginTop:12,display:"block" }}>暂无足迹数据</Text>
-                <Text style={{ fontSize:12,color:"#CBD5E1",marginTop:4,display:"block" }}>添加项目后这里将展示你的旅行轨迹</Text>
+              <View style={{ margin:12,borderRadius:16,backgroundColor:'#161B22',padding:40,alignItems:'center',border:'1px solid #21262D' }}>
+                <MapIcon size={44} color="#21262D" />
+                <Text style={{ fontSize:14,color:'#8B949E',marginTop:12,display:'block' }}>暂无足迹数据</Text>
+                <Text style={{ fontSize:12,color:'#484F58',marginTop:4,display:'block' }}>添加项目后这里将展示你的旅行轨迹</Text>
               </View>
             )}
           </ScrollView>
         </>
       )}
-
 
       {/* 底部Tab */}
       
